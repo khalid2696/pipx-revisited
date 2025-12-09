@@ -30,6 +30,7 @@ addpath('./precomputedFunnelLibrary/');
 %configurable flags
 drawFlag = 1;
 saveFlag = 0;
+videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
@@ -275,10 +276,12 @@ end
 %% start of online re-planning phase
 %-----------------------------------------------------------%
 
-writerObj = VideoWriter('myVideo.mp4', 'Motion JPEG AVI');
-writerObj.FrameRate = 30; % Sets the frame rate to 30 frames per second
-writerObj.Quality = 90;   % Sets the video quality (0-100)
-open(writerObj);
+if videoFlag
+    writerObj = VideoWriter('myVideo.mp4', 'Motion JPEG AVI');
+    writerObj.FrameRate = 30; % Sets the frame rate to 30 frames per second
+    writerObj.Quality = 90;   % Sets the video quality (0-100)
+    open(writerObj);
+end
 
 %PiP-X algorithm: Online motion planning/replanning using Funnels
 while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
@@ -294,18 +297,18 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         
         %drawing solution funnel-paths if they exist
         if drawFlag && robotMoveStatus
-            figure; hold on; axis equal
+            %figure; hold on; axis equal
             O.drawAllObstacles(); O.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
             %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
             % 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
             drawnow
             
-            % Capture the current figure as a frame
-            %F = getframe(gcf);
-
-            % Write the frame to the video file
-            %writeVideo(writerObj, F);
+            if videoFlag
+                %Capture the current figure as a frame and writes it video file
+                F = getframe(gcf);
+                writeVideo(writerObj, F);
+            end
         end
         
         %robot-motion
@@ -368,8 +371,11 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     % end
 end
 
-close(writerObj);
-disp('Video created successfully!');
+if videoFlag
+    close(writerObj);
+    disp('Video created successfully!');
+end
+
 %-----------------------------------------------------------%
 % end of online re-planning and robot motion
 %-----------------------------------------------------------%
