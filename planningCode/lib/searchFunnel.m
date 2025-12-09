@@ -96,8 +96,8 @@ classdef searchFunnel < handle
 
             N = length(neighbors);
             flag = 0;
-            maxNeighborsAllowed = 8;
-            delta = 0.5;
+            %maxNeighborsAllowed = 12;
+            delta = 1;
 
             if (N < 1) %if no neighbor return
                 flag = 1;
@@ -105,10 +105,10 @@ classdef searchFunnel < handle
             end
             
             %restricting the max number of neighbors
-            if N > maxNeighborsAllowed
-                N = maxNeighborsAllowed;
-                %disp('\n Neighbors pruned!')
-            end
+            %if N > maxNeighborsAllowed
+            %    N = maxNeighborsAllowed;
+            %    %disp('\n Neighbors pruned!')
+            %end
 
             prevEdgeCount = obj.numFunnelEdges;
             
@@ -200,11 +200,13 @@ classdef searchFunnel < handle
         %new functions added (Jul '24)
         function shiftedFunnel = steer(obj,parentNode,desiredConfig)
     
-            funnel = obj.findFunnel(parentNode.pose,desiredConfig); 
-        
-            shiftVector = [parentNode.pose 0]; %start point -- x, y and z
+            %funnel = obj.findFunnel(parentNode.pose,desiredConfig);
+            %shiftVector = [parentNode.pose 0]; %start point -- x, y and z
+
+            funnel = obj.findFunnel(desiredConfig, parentNode.pose);
+            shiftVector = [desiredConfig 0]; %start point -- x, y and z
+
             shiftedFunnel = obj.shiftAlongCyclicCoordinates(funnel,shiftVector);
-        
         end
 
         %Extracting the funnel-edge (parent to sampled node) from the trajectory library
@@ -214,7 +216,7 @@ classdef searchFunnel < handle
             
             [~, closestXIndex] = min(abs(obj.configXArray - deltaQ(1)));  
             [~, closestYIndex] = min(abs(obj.configYArray - deltaQ(2)));
-        
+            
             dictionaryKey = [obj.configXArray(closestXIndex), obj.configYArray(closestYIndex)];
         
             funnel = obj.funnelLibrary(num2str(dictionaryKey));
@@ -569,7 +571,7 @@ classdef searchFunnel < handle
                 %P = tempFunnel.RofA;
                 x = tempFunnel.trajectory;
                 drawFunnel(obj,tempFunnel,2);
-                plot(x(1,:),x(2,:),'-.c','LineWidth',2.5);
+                plot(x(1,:),x(2,:),'-.c','LineWidth',1.5);
                 
                 tempNode = obj.graphNodes(tempNode.parent);
             end

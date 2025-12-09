@@ -620,7 +620,7 @@ classdef obstacleList < handle
             initialState  = traj(1:2,1);
             finalState = traj(1:2,end);
             midState = (initialState+finalState)/2; %computing the approx centre of the trajectory
-            funnelRadius = 1.5*euclidianDist(obj,initialState,finalState)/2;          
+            funnelRadius = 1*euclidianDist(obj,initialState,finalState)/2;          
             
             for i = 1:obj.indexOfLast
                
