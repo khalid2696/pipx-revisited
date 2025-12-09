@@ -34,7 +34,7 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 500; %225 and 300
+prePlanningIterationLimit = 400; %225 and 300
 totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
 
@@ -257,7 +257,6 @@ if drawFlag
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
 
-return
 %-----------------------------------------------------------%
 %% start of robot motion and online re-planning phase
 %-----------------------------------------------------------%
