@@ -92,12 +92,17 @@ classdef obstacleList < handle
 
         function exploredObstacles = senseObstacles(obj,robotLocation)
             
+            exploredObstacles = {};
+            if obj.numObstacles == 0
+                return %return if obstacle-free
+            end
+            
             tempKDTree = obj.obstacleTree;
-            range = 1.15*obj.sensorRadius; %trying to make up for circleRadius
+            range = 1.05*obj.sensorRadius; %trying to make up for circleRadius
             %range = obj.sensorRadius + obj.toleranceLimit;
+
             obstaclesInRange = tempKDTree.kdFindWithinRangePayload(range, robotLocation);
             
-            exploredObstacles = {};
             
             for i=1:length(obstaclesInRange)
                 tempObstacle = obstaclesInRange{i};

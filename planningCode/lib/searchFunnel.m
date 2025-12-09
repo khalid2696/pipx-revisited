@@ -41,7 +41,7 @@ classdef searchFunnel < handle
         goalNode
     end
     methods
-        function obj = searchFunnel(library,libraryResolution)
+        function obj = searchFunnel(library, extendDistance, libraryResolution)
             
             obj.startNode = []; %will be updated in runtime
             obj.goalNode  = []; %will be updated in runtime
@@ -54,7 +54,7 @@ classdef searchFunnel < handle
             
             obj.funnelLibrary = library;
             obj.stateDimension = 6; %no. of states
-            obj.extendDistance = 4;
+            obj.extendDistance = extendDistance;
 
             if strcmp(libraryResolution,'dense') %1-Sparse %0.5-Nominal %0.25-Dense
                 obj.resolution = 0.25;
@@ -65,7 +65,8 @@ classdef searchFunnel < handle
             end
         
             obj.configXArray = -obj.extendDistance:obj.resolution:obj.extendDistance;
-            obj.configYArray = -obj.extendDistance:obj.resolution:obj.extendDistance; 
+            obj.configYArray = -obj.extendDistance:obj.resolution:obj.extendDistance;
+
         end
         
         function obj = addNode(obj,node)
@@ -581,8 +582,12 @@ classdef searchFunnel < handle
         
         %draws funnel defined by trajectory, x and ellipsoids, P along the knot points
         function drawFunnel(obj,funnel,status)
+            if nargin < 3
+                status = 1; %gray-colored funnels
+            end
+
             N = length(funnel.trajectory);
-            for j=N-10:-3:1 %change it to -1 to get more pretty plots
+            for j=N:-1:1 %change it to -1 to get more pretty plots
                 P = funnel.RofA(:,:,j);
                 xt = funnel.trajectory(1:2,j);
                 drawEllipse(obj,xt,P,status);

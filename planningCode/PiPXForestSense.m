@@ -35,8 +35,8 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 225; %225 and 300
-totalIterationLimit = 300; %Maximum number of iterations %keep it less than 300 always!
+prePlanningIterationLimit = 50; %225 and 300
+totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
 
 planningFrequency = 1;
@@ -44,7 +44,7 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 15; %15
+    numTreeObstacles = 0; %15
 end
 
 envLB = 0;
@@ -57,16 +57,15 @@ O = obstacleList(envLB,envUB,epsilon,1); %obstacle class  epsilon - tolerance
                                          %mode - 1 for sensing, 2 for
                                          %dynamic addition/deletion
 
-%distFunct = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
-T = KDTree(2, @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2))); %initialise the tree, 2 - num of dimensions of configuration space
+distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
+T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
 
 %load('funnelLibraryNominal.mat');
 %F = searchFunnel(funnelLibrary,'nominal');
 
 load('funnelLibrarySparse.mat');
 %load('./precomputedFunnelLibrary/library.mat');
-F = searchFunnel(funnelLibrary,'sparse');
-
+F = searchFunnel(funnelLibrary,epsilon,'sparse');
 
 C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
@@ -87,10 +86,10 @@ G = searchGraph(); %augmented graph data structure to store F and C
 %goalPose = rand([1 2])*(O.envUB-envLB) + O.envLB;
 
 %--------------------------------%
-%random start and goal locations around a circle of radius 40 (for experiments)
+%random start and goal locations around a circle of distance 20 (for experiments)
 %--------------------------------%
 workspaceCenter = (O.envLB + O.envUB)/2;
-fixedRadius = 20;
+fixedRadius = 10;
 randTheta = rand()*pi;
 
 startPose = [workspaceCenter + fixedRadius*cos(randTheta), workspaceCenter + fixedRadius*sin(randTheta)];  
@@ -207,11 +206,18 @@ close(progressBar);
 
 
 if ~startFound
+    C.drawSearchGraph();
     error(['Couldnot compute an initial funnel-path.. Exiting in pre-planning phase itself! ' ...
         'Increase the number of samples in the next run!']);
     %break
 end
 
+%%
+F.drawFunnel(F.funnelEdges(4));
+F.drawFunnel(F.funnelEdges(2));
+
+F.isCompossible(F.funnelEdges(2), F.funnelEdges(4))
+%%
 %-----------------------------------------------------------%
 % end of pre-planning phase
 %% ----------------------------------------------------------%
@@ -264,6 +270,11 @@ if drawFlag
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
 
+%return
+%-----------------------------------------------------------%
+%% start of online re-planning phase
+%-----------------------------------------------------------%
+
 if drawFlag
     planner.setupPlot()
     F.drawGoalBranch();
@@ -272,9 +283,6 @@ if drawFlag
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
     drawnow
 end
-%-----------------------------------------------------------%
-%% start of online re-planning phase
-%-----------------------------------------------------------%
 
 if videoFlag
     writerObj = VideoWriter('myVideo.mp4', 'Motion JPEG AVI');
