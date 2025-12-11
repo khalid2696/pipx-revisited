@@ -666,7 +666,7 @@ classdef searchFunnel < handle
             traj = funnel.trajectory';
             plot3(traj(:,1),traj(:,2),obj.time,'--k','LineWidth',1.5);
             %Plotting the end and start points
-            plot3(traj(1,1),traj(1,2),obj.time(1),'ok','LineWidth',1.5,'MarkerSize',3);
+            plot3(traj(1,1),traj(1,2),obj.time(1),'ok','LineWidth',1.5,'MarkerSize',2);
             plot3(traj(end,1),traj(end,2),obj.time(end),'.k','LineWidth',2,'MarkerSize',4);
         end
 

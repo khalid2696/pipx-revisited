@@ -43,21 +43,19 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 30; %15
+    numTreeObstacles = 45; %15
 end
 
 envLB = 0;
-envUB = 50;
-obstacleSizeRange = [1 3]; %radius of circular obstacles
-robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
+envUB = 25;
+obstacleSizeRange = [1 3]; %radius of obstacles
 
 planner = PiPxPlanner(envLB,envUB);
 planner.setupPlot()
 
-O = obstacleList(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1); 
-%obstacle class:  epsilon - tolerance
-%mode - 1 for sensing, 2 for
-%dynamic addition/deletion
+O = obstacleList(envLB,envUB,epsilon,obstacleSizeRange,1); %obstacle class  epsilon - tolerance
+                                                           %mode - 1 for sensing, 2 for
+                                                           %dynamic addition/deletion
 
 distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
@@ -86,7 +84,7 @@ G = searchGraph(); %augmented graph data structure to store F and C
 %goalPose = rand([1 2])*(O.envUB-envLB) + O.envLB;
 
 %--------------------------------%
-%random start and goal locations around a circle of fixed distance (for experiments)
+%random start and goal locations around a circle of distance 20 (for experiments)
 %--------------------------------%
 workspaceCenter = (O.envLB + O.envUB)/2;
 fixedDistance = 40;
@@ -348,7 +346,10 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             end        %flag = True (1) if no new configs were added, False (0) if new configs were added
         end
         
-        break
+        if flag == 1   %break out of this re-planning loop if and only if 
+            break  %new configurations were added to the search space
+        end
+
     end
     
     iteration = iteration+1; %updating the iteration count

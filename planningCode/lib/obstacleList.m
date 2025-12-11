@@ -22,8 +22,7 @@
 
 %Class definition for the random forest environment with collision-checking routines
 classdef obstacleList < handle
-    properties
-        
+    properties     
         envLB
         envUB
         numObstacles %useful for keeping track of num of active obstacles
@@ -36,19 +35,19 @@ classdef obstacleList < handle
         obstacleTree
      
         %internal use
-        indexOfLast
-        
+        indexOfLast        
     end
+
     methods
         %constructor class - initialises with the position, size and an unique id
-        function obj = obstacleList(envLB,envUB,epsilon,sizeRange,type)
+        function obj = obstacleList(envLB,envUB,sensorRadius,sizeRange,epsilon,type)
             
             obj.envLB = envLB;
             obj.envUB = envUB;
             obj.numObstacles = 0;
             obj.indexOfLast = 0;
 
-            obj.sensorRadius = 3*epsilon; %14
+            obj.sensorRadius = sensorRadius; %14
             obj.toleranceLimit = epsilon/2; %extra-padding       
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
 
