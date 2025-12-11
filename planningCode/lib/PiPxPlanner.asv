@@ -76,9 +76,15 @@ classdef PiPxPlanner < handle
             if flag %if no neighbors found, continue with the next sampling
                 return
             end
+
+            %for debugging purposes
+            if robotMove
+                %plot(newNodePose(1),newNodePose(2), 'xb','MarkerSize',7,'LineWidth',1.4)
+                %drawnow
+            end
         
             thisNode = nodeStruct(C.numNodes+1,newNodePose);
-
+            
             %add the the new sampled node to existing funnel-network 
             flag = F.constructFunnelNetwork(T,C,O,thisNode,neighbors);
             

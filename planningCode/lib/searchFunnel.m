@@ -55,14 +55,17 @@ classdef searchFunnel < handle
             obj.funnelLibrary = library;
             obj.stateDimension = 6; %no. of states
             obj.extendDistance = extendDistance;
-
-            if strcmp(libraryResolution,'dense') %1-Sparse %0.5-Nominal %0.25-Dense
-                obj.resolution = 0.25;
-            elseif strcmp(libraryResolution,'sparse')
-                obj.resolution = 1;
-            else
-                obj.resolution = 0.5;
-            end
+            
+            obj.resolution = 1/libraryResolution;
+            
+            % Previous implementation
+            % if strcmp(libraryResolution,'dense') %1-Sparse %0.5-Nominal %0.25-Dense
+            %     obj.resolution = 0.25;
+            % elseif strcmp(libraryResolution,'sparse')
+            %     obj.resolution = 1;
+            % else
+            %     obj.resolution = 0.5;
+            % end
         
             obj.configXArray = -obj.extendDistance:obj.resolution:obj.extendDistance;
             obj.configYArray = -obj.extendDistance:obj.resolution:obj.extendDistance;
@@ -104,7 +107,7 @@ classdef searchFunnel < handle
                 return
             end
             
-            %restricting the max number of neighbors: for faster runtime
+            %restricting the max number of neighbors: for faster runtime (not required)
             %if N > maxNeighborsAllowed
             %    N = maxNeighborsAllowed;
             %    %disp('\n Neighbors pruned!')

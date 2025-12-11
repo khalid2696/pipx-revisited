@@ -61,9 +61,7 @@ distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distanc
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
 
 load('./precomputedFunnelLibrary/library.mat');
-%resolution of the pre-computed funnel library
-funnelLibraryResolution = 1; %higher this resolution, finer the motion plan
-F = searchFunnel(funnelLibrary,epsilon,funnelLibraryResolution);
+F = searchFunnel(funnelLibrary,epsilon,'sparse');
 
 C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
@@ -100,8 +98,8 @@ goalPose  = [workspaceCenter - fixedRadius*cos(randTheta), workspaceCenter - fix
 %goalPose = [45.6,44.8];
 
 %round off to nearest integer (resolution of the motion planner)
-startPose = round(startPose * funnelLibraryResolution) / funnelLibraryResolution;
-goalPose = round(goalPose * funnelLibraryResolution) / funnelLibraryResolution;
+startPose = round(startPose * resolution) / resolution;
+goalPose = round(goalPose * resolution) / resolution;
 
 
 %initially adding obstacles
@@ -265,7 +263,8 @@ end
 
 if drawFlag
     planner.setupPlot()
-    F.drawGoalBranch(); O.drawAllObstacles();
+    F.drawGoalBranch();
+    O.drawAllObstacles();
     title('Robot motion along the solution funnel-path')
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
     drawnow
@@ -328,8 +327,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             remainingPathLength = C.startNode.cost;
             idleTime = 0; robotMove = 1;
             fprintf('\n\nRobot moving.... ');
-            fprintf('\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
-                traversedPathLength,remainingPathLength);
+            fprintf('\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>',traversedPathLength,remainingPathLength);
         end
         
         break
@@ -345,7 +343,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 break  %new configurations were added to the search space
             end        %flag = True (1) if no new configs were added, False (0) if new configs were added
         end
-        
+
         if flag == 1   %break out of this re-planning loop if and only if 
             break  %new configurations were added to the search space
         end

@@ -41,7 +41,7 @@ classdef obstacleList < handle
     end
     methods
         %constructor class - initialises with the position, size and an unique id
-        function obj = obstacleList(envLB,envUB,epsilon,sizeRange,type)
+        function obj = obstacleList(envLB,envUB,epsilon,type)
             
             obj.envLB = envLB;
             obj.envUB = envUB;
@@ -50,7 +50,7 @@ classdef obstacleList < handle
 
             obj.sensorRadius = 3*epsilon; %14
             obj.toleranceLimit = epsilon/2; %extra-padding       
-            obj.sizeRange = sizeRange; %specify the size range of circular obstacles
+            obj.sizeRange = [1.5 3.5]; %specify the size range of circular obstacles
 
             if nargin<4 %type - 2 #addition/deletion of obstacles
                 return
@@ -148,23 +148,25 @@ classdef obstacleList < handle
             offset = obj.sensorRadius/2;
             
             if(nargin == 2)
+                %centre = 100*rand([1 2]);   %useful while debugging, where we don't have to
                 centre = rand(n,2).*(obj.envUB - obj.envLB) + obj.envLB;
-                sizeRange = obj.sizeRange;
-                % for i=1:n
-                %     location = centre(i,:);
-                %     size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand(); 
-                % 
-                %     %initialise an obstacle and add it to the list
-                %     randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-                %     addObstacle(obj,randomObstacle);
-                %     addedObstacles{i} = randomObstacle;
-                % end
-                % 
-                % return
+                sizeRange = [2 4]; %specify the range of workspace and size everytime
+                
+                for i=1:n
+                    location = centre(i,:);
+                    size = obj.sizeRange(1) + (obj.sizeRange(2) - osizeRange(1))*rand(); 
+                        
+                    %initialise an obstacle and add it to the list
+                    randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
+                    addObstacle(obj,randomObstacle);
+                    addedObstacles{i} = randomObstacle;
+                end
+                
+                return
             end
                 
             if (nargin == 3)    %implies doesn't include the size range
-                sizeRange = obj.sizeRange;
+                sizeRange = [2 4];
             end
             
             for i=1:n

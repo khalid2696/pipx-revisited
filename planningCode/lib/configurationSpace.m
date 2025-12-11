@@ -90,10 +90,10 @@ classdef configurationSpace < handle
             start = obj.startNode.pose;
             if(robotMove)
                 prob = rand();
-                if prob < 0.7 %0.9
-                    r = O.sensorRadius*rand() + 3; %epsilon away
-                else
-                    %r = 2*O.sensorRadius*rand() + 2; %1.5
+                if prob < 0.9 %sample from the sensor radius with bias
+                    r = O.sensorRadius*rand() + O.toleranceLimit; %providing some extra look-ahead
+                else %sample at random from the configuration space
+                    %r = 2*O.sensorRadius*rand() + O.toleranceLimit; 
                     xSample = (O.envUB - O.envLB)*rand() + O.envLB;
                     ySample = (O.envUB - O.envLB)*rand() + O.envLB;
                     sample = [xSample ySample];
