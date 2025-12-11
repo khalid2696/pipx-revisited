@@ -41,7 +41,7 @@ classdef searchFunnel < handle
         goalNode
     end
     methods
-        function obj = searchFunnel(library,libraryResolution)
+        function obj = searchFunnel(library, extendDistance, libraryResolution)
             
             obj.startNode = []; %will be updated in runtime
             obj.goalNode  = []; %will be updated in runtime
@@ -54,18 +54,22 @@ classdef searchFunnel < handle
             
             obj.funnelLibrary = library;
             obj.stateDimension = 6; %no. of states
-            obj.extendDistance = 4;
-
-            if strcmp(libraryResolution,'dense') %1-Sparse %0.5-Nominal %0.25-Dense
-                obj.resolution = 0.25;
-            elseif strcmp(libraryResolution,'sparse')
-                obj.resolution = 1;
-            else
-                obj.resolution = 0.5;
-            end
+            obj.extendDistance = extendDistance;
+            
+            obj.resolution = 1/libraryResolution;
+            
+            % Previous implementation
+            % if strcmp(libraryResolution,'dense') %1-Sparse %0.5-Nominal %0.25-Dense
+            %     obj.resolution = 0.25;
+            % elseif strcmp(libraryResolution,'sparse')
+            %     obj.resolution = 1;
+            % else
+            %     obj.resolution = 0.5;
+            % end
         
             obj.configXArray = -obj.extendDistance:obj.resolution:obj.extendDistance;
-            obj.configYArray = -obj.extendDistance:obj.resolution:obj.extendDistance; 
+            obj.configYArray = -obj.extendDistance:obj.resolution:obj.extendDistance;
+
         end
         
         function obj = addNode(obj,node)
@@ -95,19 +99,19 @@ classdef searchFunnel < handle
 
             N = length(neighbors);
             flag = 0;
-            maxNeighborsAllowed = 8;
-            delta = 0.5;
+            %maxNeighborsAllowed = 12;
+            delta = 1;
 
             if (N < 1) %if no neighbor return
                 flag = 1;
                 return
             end
             
-            %restricting the max number of neighbors
-            if N > maxNeighborsAllowed
-                N = maxNeighborsAllowed;
-                %disp('\n Neighbors pruned!')
-            end
+            %restricting the max number of neighbors: for faster runtime (not required)
+            %if N > maxNeighborsAllowed
+            %    N = maxNeighborsAllowed;
+            %    %disp('\n Neighbors pruned!')
+            %end
 
             prevEdgeCount = obj.numFunnelEdges;
             
@@ -199,11 +203,13 @@ classdef searchFunnel < handle
         %new functions added (Jul '24)
         function shiftedFunnel = steer(obj,parentNode,desiredConfig)
     
-            funnel = obj.findFunnel(parentNode.pose,desiredConfig); 
-        
-            shiftVector = [parentNode.pose 0]; %start point -- x, y and z
+            %funnel = obj.findFunnel(parentNode.pose,desiredConfig);
+            %shiftVector = [parentNode.pose 0]; %start point -- x, y and z
+
+            funnel = obj.findFunnel(desiredConfig, parentNode.pose);
+            shiftVector = [desiredConfig 0]; %start point -- x, y and z
+
             shiftedFunnel = obj.shiftAlongCyclicCoordinates(funnel,shiftVector);
-        
         end
 
         %Extracting the funnel-edge (parent to sampled node) from the trajectory library
@@ -213,7 +219,7 @@ classdef searchFunnel < handle
             
             [~, closestXIndex] = min(abs(obj.configXArray - deltaQ(1)));  
             [~, closestYIndex] = min(abs(obj.configYArray - deltaQ(2)));
-        
+            
             dictionaryKey = [obj.configXArray(closestXIndex), obj.configYArray(closestYIndex)];
         
             funnel = obj.funnelLibrary(num2str(dictionaryKey));
@@ -236,9 +242,9 @@ classdef searchFunnel < handle
         % modified compossibility check - 2 options: SDP or surface-sampling (24 Oct '25)
         %--------------------------------------------------------------------------------%
         
-        %checks whether funnel1 is compossible with funnel2
+        %checks whether funnel1 is composable with funnel2
         %that is if outlet of funnel1 is contained within the inlet of funnel2
-        function check = isCompossible(obj, funnel1, funnel2, checkingMethod)
+        function check = isComposable(obj, funnel1, funnel2, checkingMethod)
         
             %check = 1;  
             if nargin < 4
@@ -259,10 +265,10 @@ classdef searchFunnel < handle
             end
 
             if strcmpi(checkingMethod, 'SDP')
-                check = obj.isCompossible_usingSDP(inletRofA, inletCenter, outletRofA, outletCenter);
+                check = obj.isComposable_usingSDP(inletRofA, inletCenter, outletRofA, outletCenter);
             else
                 numSamplePoints = 1000;
-                check = obj.isCompossible_usingSurfaceSampling(inletRofA, inletCenter, outletRofA, outletCenter, numSamplePoints);
+                check = obj.isComposable_usingSurfaceSampling(inletRofA, inletCenter, outletRofA, outletCenter, numSamplePoints);
             end
             
             %if check == 0
@@ -273,9 +279,9 @@ classdef searchFunnel < handle
 
         end
 
-        % %checks whether funnel1 is compossible with funnel2
+        % %checks whether funnel1 is composable with funnel2
         % %that is if outlet of funnel1 is contained within the inlet of funnel2
-        % function check = isCompossible(obj,funnel1,funnel2)
+        % function check = isComposable(obj,funnel1,funnel2)
         % 
         %     %check = 1;  
         % 
@@ -450,7 +456,7 @@ classdef searchFunnel < handle
                 obj.drawEllipse(funnel1.trajectory(:,end),funnel1.RofA(:,:,end),0); %end is the outlet
                 obj.drawEllipse(funnel2.trajectory(:,1),funnel2.RofA(:,:,1),2); %1 is the inlet
 
-                check = obj.isCompossible(funnel1,funnel2);
+                check = obj.isComposable(funnel1,funnel2);
                 
                 if ~check
                     disp('Compossibility check failed in the solution funnel-path!!')
@@ -565,24 +571,27 @@ classdef searchFunnel < handle
 
                 tempFunnel = obj.funnelEdges(tempNode.parentFunnelEdge);
                 
-                %P = tempFunnel.RofA;
                 x = tempFunnel.trajectory;
                 drawFunnel(obj,tempFunnel,2);
-                plot(x(1,:),x(2,:),'-.c','LineWidth',2.5);
+                plot(x(1,:),x(2,:),'-.c','LineWidth',1.5);
                 
                 tempNode = obj.graphNodes(tempNode.parent);
             end
 
             %plot(start(1),start(2),'sg','LineWidth',3,'MarkerSize',7);
-            plot(start(1),start(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+            plot(start(1),start(2),'dm', 'MarkerSize', 4, 'LineWidth', 2.5);
             plot(goal(1),goal(2),'xr','LineWidth', 3,'MarkerSize',7);
            
         end
         
         %draws funnel defined by trajectory, x and ellipsoids, P along the knot points
         function drawFunnel(obj,funnel,status)
+            if nargin < 3
+                status = 1; %gray-colored funnels
+            end
+
             N = length(funnel.trajectory);
-            for j=N-10:-3:1 %change it to -1 to get more pretty plots
+            for j=N:-1:1 %change it to -1 to get more pretty plots
                 P = funnel.RofA(:,:,j);
                 xt = funnel.trajectory(1:2,j);
                 drawEllipse(obj,xt,P,status);
@@ -627,9 +636,9 @@ classdef searchFunnel < handle
             ell = sqrtm(E)*[cos(th); sin(th)];
 
             if status == 2 
-                color = [0 0.9 0.1]; alpha = 0.5; %green
+                color = [0 0.9 0.1]; alpha = 0.8; %green
             elseif status == 1
-                color = [0.8 0.8 0.8]; alpha = 0.5; %gray
+                color = [0.8 0.8 0.8]; alpha = 0.7; %gray
             else
                 color = [0.99 0.99 0.99]; alpha = 0.8; %opaque
             end
@@ -799,7 +808,7 @@ classdef searchFunnel < handle
         % Function to check ellipsoid containment
         % checks whether ellipsoid 2 (red) is within ellipsoid 1 (blue)
         % or alternatively whether ellipsoid 1 (blue) contains ellipsoid 2 (red)
-        function check = isCompossible_usingSDP(obj, M_1, xc_1, M_2, xc_2)
+        function check = isComposable_usingSDP(obj, M_1, xc_1, M_2, xc_2)
             
             % Computes matrices for ellipsoid 1 (F, g, h)
             [F_1, g_1, h_1] = obj.generate_ellipsoid_params(M_1, xc_1);
@@ -840,7 +849,7 @@ classdef searchFunnel < handle
             h = x_c'*M*x_c - 1;
         end
 
-        function check = isCompossible_usingSurfaceSampling(obj, inletRofA, inletCenter, outletRofA, outletCenter, numSamplePoints)
+        function check = isComposable_usingSurfaceSampling(obj, inletRofA, inletCenter, outletRofA, outletCenter, numSamplePoints)
             
             %first pass check
             %if(outletCenter-inletCenter)'*inletRofA*(outletCenter-inletCenter)>1 %if the centre itself doesn't lie in the ellipse, return  

@@ -78,7 +78,7 @@ classdef PiPxPlanner < handle
             end
         
             thisNode = nodeStruct(C.numNodes+1,newNodePose);
-            
+
             %add the the new sampled node to existing funnel-network 
             flag = F.constructFunnelNetwork(T,C,O,thisNode,neighbors);
             
@@ -96,14 +96,14 @@ classdef PiPxPlanner < handle
             
             [neighbors, flag] = obj.findNeighborsInRBall(T,startPose);
 
-            if flag
+            if flag %if no neighbors found, exit
                 return
             end
             
             startNode = nodeStruct(C.numNodes+1,startPose);
             flag = F.constructFunnelNetwork(T,C,O,startNode,neighbors);
             
-            if flag
+            if flag %if no funnel-edges were added, exit
                 return
             end
             

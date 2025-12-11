@@ -178,8 +178,8 @@ classdef searchGraph < handle
 
                     %inlet of outFunnel from node
                     tempOutFunnel = F.funnelEdges(tempInletVertex.vertexData(2));
-
-                    if F.isCompossible(thisInFunnel,tempOutFunnel)    
+                    
+                    if F.isComposable(thisInFunnel,tempOutFunnel)   
                         tempContinuityEdge = edgeStruct(nan, [thisOutletVertex.index tempInletVertex.index], 0); %edge-cost is zero
                         tempContinuityEdge.type = 0; %continuity-edge
                         obj.addEdge(tempContinuityEdge);

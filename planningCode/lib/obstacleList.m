@@ -29,6 +29,7 @@ classdef obstacleList < handle
         numObstacles %useful for keeping track of num of active obstacles
         toleranceLimit
         sensorRadius %sensor radius of the robot
+        sizeRange %size range of circular obstacles
         
         %list of obstacles with obstacleStruct datatype
         obstacles
@@ -40,16 +41,17 @@ classdef obstacleList < handle
     end
     methods
         %constructor class - initialises with the position, size and an unique id
-        function obj = obstacleList(envLB,envUB,epsilon,type)
+        function obj = obstacleList(envLB,envUB,epsilon,sizeRange,type)
             
             obj.envLB = envLB;
             obj.envUB = envUB;
             obj.numObstacles = 0;
             obj.indexOfLast = 0;
 
-            obj.sensorRadius = 14; %14
+            obj.sensorRadius = 3*epsilon; %14
             obj.toleranceLimit = epsilon/2; %extra-padding       
-            
+            obj.sizeRange = sizeRange; %specify the size range of circular obstacles
+
             if nargin<4 %type - 2 #addition/deletion of obstacles
                 return
             end
@@ -92,12 +94,17 @@ classdef obstacleList < handle
 
         function exploredObstacles = senseObstacles(obj,robotLocation)
             
+            exploredObstacles = {};
+            if obj.numObstacles == 0
+                return %return if obstacle-free
+            end
+            
             tempKDTree = obj.obstacleTree;
-            range = 1.15*obj.sensorRadius; %trying to make up for circleRadius
+            range = 1.05*obj.sensorRadius; %trying to make up for circleRadius
             %range = obj.sensorRadius + obj.toleranceLimit;
+
             obstaclesInRange = tempKDTree.kdFindWithinRangePayload(range, robotLocation);
             
-            exploredObstacles = {};
             
             for i=1:length(obstaclesInRange)
                 tempObstacle = obstaclesInRange{i};
@@ -115,15 +122,14 @@ classdef obstacleList < handle
         function addedObstacles = addDynamicObstacles(obj,n,startPose,goalPose) %n - number of obstacles
             
             addedObstacles = cell(n,1);
-            
-            sizeRange = [1.5 3.5]; %specify the range of workspace and size everytime
 
             i = 1;
             while i<=n
                 location = rand(1,2).*(obj.envUB - obj.envLB) + obj.envLB;
-                size = sizeRange(1) + (sizeRange(2) - sizeRange(1))*rand();
+                size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
 
-                if (euclidianDist(obj,location,goalPose) < size+3) || (euclidianDist(obj,location,startPose) < size+3)
+                if (euclidianDist(obj,location,goalPose) < size+obj.toleranceLimit) || ...
+                        (euclidianDist(obj,location,startPose) < size+obj.toleranceLimit)
                     continue %explicitly avoid obstacles occluding start or goal location
                 end
 
@@ -142,25 +148,23 @@ classdef obstacleList < handle
             offset = obj.sensorRadius/2;
             
             if(nargin == 2)
-                %centre = 100*rand([1 2]);   %useful while debugging, where we don't have to
                 centre = rand(n,2).*(obj.envUB - obj.envLB) + obj.envLB;
-                sizeRange = [2 4]; %specify the range of workspace and size everytime
-                
-                for i=1:n
-                    location = centre(i,:);
-                    size = sizeRange(1) + (sizeRange(2) - sizeRange(1))*rand(); 
-                        
-                    %initialise an obstacle and add it to the list
-                    randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-                    addObstacle(obj,randomObstacle);
-                    addedObstacles{i} = randomObstacle;
-                end
-                
-                return
+                sizeRange = obj.sizeRange;
+                % for i=1:n
+                %     location = centre(i,:);
+                %     size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand(); 
+                % 
+                %     %initialise an obstacle and add it to the list
+                %     randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
+                %     addObstacle(obj,randomObstacle);
+                %     addedObstacles{i} = randomObstacle;
+                % end
+                % 
+                % return
             end
                 
             if (nargin == 3)    %implies doesn't include the size range
-                sizeRange = [2 4];
+                sizeRange = obj.sizeRange;
             end
             
             for i=1:n
@@ -364,8 +368,7 @@ classdef obstacleList < handle
                 tempHead = G.graphVertices(tempEdge.parent);
                 tempTail = G.graphVertices(tempEdge.child);
 
-                %A more finer-check to see whether edge is indeed in
-                %collision
+                %Collision check to see whether edge is in collision
                 if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
                     %fprintf('\n\n The edge that was skipped: %d',tempEdge.index);
                     %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'g','LineWidth',3)
@@ -400,8 +403,7 @@ classdef obstacleList < handle
                 tempHead = G.graphVertices(tempEdge.parent);
                 tempTail = G.graphVertices(tempEdge.child);
 
-                %A more finer-check to see whether edge is indeed in
-                %collision
+                %Collision check to see whether edge is in collision
                 if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
                     %fprintf('\n\n The edge that was skipped: %d',tempEdge.index);
                     %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'g','LineWidth',3)
@@ -557,8 +559,8 @@ classdef obstacleList < handle
 
                 %If the closest point lies within the edge and as well as at a
                 %distance less than the radius, it implies collision
-                if((euclidianDist(obj,closestPoint,centre) < radius))
-                %if(liesInBetween(obj,v,w,closestPoint) && (euclidianDist(obj,closestPoint,centre) < radius))
+                %if((euclidianDist(obj,closestPoint,centre) < radius))
+                if(liesInBetween(obj,v,w,closestPoint) && (euclidianDist(obj,closestPoint,centre) < radius))
                     check = 0;
                     return
                 end
@@ -615,7 +617,7 @@ classdef obstacleList < handle
             initialState  = traj(1:2,1);
             finalState = traj(1:2,end);
             midState = (initialState+finalState)/2; %computing the approx centre of the trajectory
-            funnelRadius = 1.5*euclidianDist(obj,initialState,finalState)/2;          
+            funnelRadius = 1*euclidianDist(obj,initialState,finalState)/2;          
             
             for i = 1:obj.indexOfLast
                
@@ -639,20 +641,11 @@ classdef obstacleList < handle
             success = 1;
             
             traj = funnel.trajectory;
-            %RofA = funnel.RofA;
             
             initialState  = traj(1:2,1);
             finalState = traj(1:2,end);
             midState = (initialState+finalState)/2; %computing the approx centre of the trajectory
             funnelRadius = 1.5*euclidianDist(obj,initialState,finalState)/2;
-            
-            %Basis = [1 0; 0 1; 0 0; 0 0; 0 0; 0 0]; %xy
-            %E = Basis'/RofA(:,:,1)*Basis;
-            %[~, D, ~] = svd(E);
-            %a = sqrt(D(1,1)); %compute largest semi-major axis  value along the trajectory
-                              %will be at the start of the trajectory!   
-            %funnelRadius = euclidianDist(obj,initialState,finalState)/2 + a; %computing the approx radius of bounding circle
-            
             
             if(thisObstacle.status == 0) %if inactive continue
                 return
@@ -743,8 +736,9 @@ classdef obstacleList < handle
             for i = 1:funnelSize
                 index = vanDerSequence(i);
                 E = Basis'/RofA(:,:,index)*Basis;
-                %RofA = inv(E); %RofA is technically inverse(E), but I'm avoiding
-                %taking double inverse in ellipse collision checking sub-routine 
+                %E = inv(E);
+                %projected ellipse is technically inverse(E), but I'm avoiding
+                %taking double inverse in subsequent SVD analysis (ellipse collision checking sub-routine) 
                 x = funnel.trajectory(1:2,index);
 
                 if(~ellipseCircleCollisionFree(obj,x,E,obstacle))
