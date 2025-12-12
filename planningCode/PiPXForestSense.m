@@ -34,8 +34,8 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 300; %225 and 300
-totalIterationLimit = 400; %Maximum number of iterations %keep it less than 300 always!
+prePlanningIterationLimit = 250; %300 and 350
+totalIterationLimit = 450; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
 
 planningFrequency = 1;
@@ -43,7 +43,7 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 30; %15
+    numTreeObstacles = 10; %15
 end
 
 envLB = 0;
@@ -54,7 +54,7 @@ robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times th
 planner = PiPxPlanner(envLB,envUB);
 planner.setupPlot()
 
-O = obstacleList(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1); 
+W = forestEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1); 
 %obstacle class:  epsilon - tolerance
 %mode - 1 for sensing, 2 for
 %dynamic addition/deletion
@@ -82,13 +82,13 @@ G = searchGraph(); %augmented graph data structure to store F and C
 %--------------------------------%
 %random start and goal locations
 %--------------------------------%
-%startPose = rand([1 2])*(O.envUB-envLB) + O.envLB;
-%goalPose = rand([1 2])*(O.envUB-envLB) + O.envLB;
+%startPose = rand([1 2])*(W.envUB-envLB) + W.envLB;
+%goalPose = rand([1 2])*(W.envUB-envLB) + W.envLB;
 
 %--------------------------------%
 %random start and goal locations around a circle of fixed distance (for experiments)
 %--------------------------------%
-workspaceCenter = (O.envLB + O.envUB)/2;
+workspaceCenter = (W.envLB + W.envUB)/2;
 fixedDistance = 40;
 randTheta = rand()*pi;
 
@@ -107,12 +107,12 @@ goalPose = round(goalPose * funnelLibraryResolution) / funnelLibraryResolution;
 
 
 %initially adding obstacles
-O.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
+W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
                                                       
-O.initialiseObstacleTree();
-O.senseObstacles(startPose);
+W.initialiseObstacleTree();
+W.senseObstacles(startPose);
 
-if(~O.vertexCollisionFree(goalPose))
+if(~W.vertexCollisionFree(goalPose))
     error('Goal inside the obstacles. No path exists!')
 end
 
@@ -152,13 +152,13 @@ T.kdInsertAsPayload(goalNode);
 %nodeStruct(id, [xPose yPose])
 %edgeStruct(id, [parent child], cost) 
 %searchGraph(nodes,edges)
-%obstacleList(obstacles)
+%forestEnvironment(obstacles)
 
 %save the initial environment
 if saveFlag
     dir = ['./temp/trial' num2str(1) '/'];
     mkdir(dir);
-    fileCount = planner.saveData(F,C,O,dir,fileCount);
+    fileCount = planner.saveData(F,C,W,dir,fileCount);
 end
 
 %draw the initial environment
@@ -166,7 +166,7 @@ if drawFlag
     %Plotting start and goal positions
     plot(goalPose(1), goalPose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
     plot(startPose(1), startPose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
-    O.drawAllObstacles(); O.drawSensorRadius(C.startNode.pose);
+    W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
     drawnow
 end
 
@@ -177,7 +177,7 @@ progressBar = waitbar(0, 'Funnel RRG construction progress');
 
 while iteration < prePlanningIterationLimit %&& ~startFound
     
-    flag = planner.generateFunnelRRG(F,C,G,O,T,startFound,robotMove,epsilon);    
+    flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove,epsilon);    
     
     if ~flag %if new configurations were added to the search space
         iteration = iteration+1; %updating the iteration count
@@ -186,7 +186,7 @@ while iteration < prePlanningIterationLimit %&& ~startFound
     % Finding start config for the first time
     if(~startFound && F.inFunnel(startPose))
         
-        flag = planner.addStartNodeToFunnelRRG(F,C,G,O,T,startPose);
+        flag = planner.addStartNodeToFunnelRRG(F,C,G,W,T,startPose);
         
         if ~flag
             iteration = iteration+1; %updating the iteration count if start config was found
@@ -215,11 +215,11 @@ end
 
 % Plotting funnel tree and saving relevant data structures
 if saveFlag
-    fileCount = planner.saveData(F,C,O,dir,fileCount);
+    fileCount = planner.saveData(F,C,W,dir,fileCount);
 end
 
 if drawFlag
-    C.drawSearchGraph(); O.drawAllObstacles();   
+    C.drawSearchGraph(); W.drawAllObstacles();   
     drawnow
     title('Constructed funnel roadmap and the computed Shortest path')
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
@@ -261,13 +261,15 @@ if drawFlag
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
 
+%return
+
 %-----------------------------------------------------------%
 %% start of robot motion and online re-planning phase
 %-----------------------------------------------------------%
 
 if drawFlag
     planner.setupPlot()
-    F.drawGoalBranch(); O.drawAllObstacles();
+    F.drawGoalBranch(); W.drawAllObstacles();
     title('Robot motion along the solution funnel-path')
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
     drawnow
@@ -285,9 +287,9 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     
     %plotting replanned funnel-path as robot moves
     if drawFlag
-         if robotMoveStatus %drawing solution funnel-paths if they exist
+         if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
             %figure; hold on; axis equal
-            O.drawAllObstacles(); O.drawSensorRadius(C.startNode.pose);
+            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
             %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
             % 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
@@ -303,7 +305,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
 
     %sense obstacles
     while mod(iteration,sensingFrequency) == 0
-        planner.makeDynamicChangesToGraph(F,C,G,Q,O,T);
+        planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
         break
     end
 
@@ -341,7 +343,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     while mod(iteration,planningFrequency) == 0
         
         while true %run replanning loop till we add a new config and funnel-edges
-            flag = planner.generateFunnelRRG(F,C,G,O,T,startFound,robotMove,epsilon);    
+            flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove,epsilon);    
             
             if flag == 1   %break out of this re-planning loop if and only if 
                 break  %new configurations were added to the search space
@@ -367,7 +369,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     end
     
     if (saveFlag && robotMoveStatus)
-        fileCount = planner.saveData(F,C,O,dir,fileCount);
+        fileCount = planner.saveData(F,C,W,dir,fileCount);
     end
     
     % if(toc>120) %potentially no path exists (5 minutes of planning time)
@@ -386,7 +388,7 @@ end
 %-----------------------------------------------------------%
 
 %% post-processing
-%clearvars -except planner F C G T O Q traversedPathLength drawFlag saveFlag ...
+%clearvars -except planner F C G T W Q traversedPathLength drawFlag saveFlag ...
 %                    fileCount startPose goalPose dir success iteration
 
 if C.goalCheck(C.startNode.pose)
@@ -415,7 +417,7 @@ if drawFlag
     C.drawSearchGraph();
     title('Overall funnel roadmap')
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
-    O.drawAllObstacles();
+    W.drawAllObstacles();
 end
 
 if saveFlag

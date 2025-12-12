@@ -88,8 +88,8 @@ classdef searchFunnel < handle
         function trajectoryLength = computeNominalTrajectoryLength(obj,funnel)
             trajectoryLength = 0;
 
-            for i=2:length(funnel.trajectory)
-                ds = norm(funnel.trajectory(1:2,i) - funnel.trajectory(1:2,i-1));
+            for i=2:length(funnel.trajectory_stateSpace)
+                ds = norm(funnel.trajectory_stateSpace(1:2,i) - funnel.trajectory_stateSpace(1:2,i-1));
                 trajectoryLength = trajectoryLength + ds;
             end
         end
@@ -127,16 +127,22 @@ classdef searchFunnel < handle
                     %disp('A "small-hop" neighbor encountered.. discarding it!')
                     continue
                 end
-        
-                %outFunnel for newNode/ inFunnel for neighborNode 
-                newFunnel = obj.steer(newNode,thisNeighbor.pose);
+                
+                %---------------------------------------------------------------%
+                % outFunnelEdges from newNode <--> inFunnelEdges to neighborNode 
+                %---------------------------------------------------------------%
+                %rough sanity check before subsequent computations
+                %Note: make sense only for "almost-holonomic" robots
+                if ~O.edgeCollisionFree(thisNeighbor.pose,newNode.pose)
+                    continue
+                end
 
-                if(~O.funnelCollisionFree(newFunnel) || ~O.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
+                %outFunnel for newNode/ inFunnel for neighborNode 
+                funnelEdge = obj.steer(newNode,thisNeighbor.pose);
+
+                if ~O.funnelCollisionFree(funnelEdge) %|| ~O.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
                     continue
                 end           
-            
-                %Add the edge to the search tree
-                funnelEdge = funnelStruct(nan,newFunnel);
 
                 %funnels and edges direction are swapped (because of reverse search)
                 funnelEdge.child = thisNeighbor.index; funnelEdge.parent = newNode.index;
@@ -160,15 +166,20 @@ classdef searchFunnel < handle
                 thisNeighbor.outEdges(end+1) = tempEdge.index;
                 newNode.inEdges(end+1) = tempEdge.index;
 
-                %outFunnel for neighbor/ inFunnel for newNode 
-                newFunnel = obj.steer(thisNeighbor,newNode.pose);
-
-                if(~O.funnelCollisionFree(newFunnel) || ~O.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
+                %----------------------------------------------------------------%
+                % inFunnelEdges to newNode <--> outFunnelEdges from neighborNodes 
+                %----------------------------------------------------------------%
+                %rough sanity check before subsequent computations
+                %Note: make sense only for "almost-holonomic" robots
+                if ~O.edgeCollisionFree(thisNeighbor.pose,newNode.pose)
                     continue
                 end
 
-                %Add the edge to the search tree
-                funnelEdge = funnelStruct(nan,newFunnel);
+                funnelEdge = obj.steer(thisNeighbor,newNode.pose);
+
+                if ~O.funnelCollisionFree(funnelEdge) %|| ~O.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
+                    continue
+                end
 
                 %funnels and edges direction are swapped (because of reverse search)
                 funnelEdge.child = newNode.index; funnelEdge.parent = thisNeighbor.index;
@@ -201,15 +212,33 @@ classdef searchFunnel < handle
         end
         
         %new functions added (Jul '24)
-        function shiftedFunnel = steer(obj,parentNode,desiredConfig)
+        function funnelEdge = steer(obj,parentNode,desiredConfig)
     
             %funnel = obj.findFunnel(parentNode.pose,desiredConfig);
             %shiftVector = [parentNode.pose 0]; %start point -- x, y and z
 
             funnel = obj.findFunnel(desiredConfig, parentNode.pose);
+            
+            %instantiating an empty struct
+            funnelEdge = funnelStruct(); %id would be assigned later
+            funnelEdge.time = funnel.time;
+            
+            %assigning the trajectory
+            funnelEdge.trajectory_stateSpace = funnel.trajectory; %just for initialisation
+            %shifting the trajectory along the cyclic coordinates
             shiftVector = [desiredConfig 0]; %start point -- x, y and z
+            funnelEdge.trajectory_stateSpace = obj.shiftAlongCyclicCoordinates(funnelEdge,shiftVector);
+            
+            %assigning the invariant sets
+            funnelEdge.invariantSet_stateSpace = funnel.RofA;
 
-            shiftedFunnel = obj.shiftAlongCyclicCoordinates(funnel,shiftVector);
+            %computing projections onto configuration space and workspace for later use
+            funnelEdge.trajectory_configurationSpace = funnel.trajectory_complete;
+            funnelEdge.trajectory_configurationSpace = obj.shiftAlongCyclicCoordinates_Temp(funnelEdge,shiftVector);
+            funnelEdge.invariantSet_configurationSpace = funnel.RofA_complete;
+
+            funnelEdge.trajectory_workSpace = [];
+            funnelEdge.invariantSet_workSpace = [];
         end
 
         %Extracting the funnel-edge (parent to sampled node) from the trajectory library
@@ -226,16 +255,29 @@ classdef searchFunnel < handle
         end 
 
         %new functions added (Jul '24)
-        function shiftedFunnel = shiftAlongCyclicCoordinates(obj,funnel,cyclicCoords)
-    
-            N = length(funnel.time);
+        function shiftedTrajectory = shiftAlongCyclicCoordinates(obj,funnelEdge,cyclicCoords)
+              
+            %Constructing the shift matrix
+            shiftArray = ones(length(funnelEdge.time),1)*[cyclicCoords 0 0 0]; %no shift along velocity!      
             
-            %instantiating an empty struct
-            shiftedFunnel = struct('time',funnel.time,'trajectory',NaN(6,N),'RofA',funnel.RofA);
+            %transposing: N * nx -> nx * N (to match convention)
+            shiftArray = shiftArray';
             
-            %defining the shift vector
-            shiftArray = ones(N,1)*[cyclicCoords 0 0 0]; %no shift along velocity!
-            shiftedFunnel.trajectory = funnel.trajectory + shiftArray';
+            %shifted trajectory
+            shiftedTrajectory = funnelEdge.trajectory_stateSpace + shiftArray;
+        end
+
+        %new functions added (Jul '24)
+        function shiftedTrajectory = shiftAlongCyclicCoordinates_Temp(obj,funnelEdge,cyclicCoords)
+              
+            %Constructing the shift matrix
+            shiftArray = ones(length(funnelEdge.time),1)*[cyclicCoords 0 0 0 0 0 0 0 0 0]; %no shift along velocity!      
+            
+            %transposing: N * nx -> nx * N (to match convention)
+            shiftArray = shiftArray';
+            
+            %shifted trajectory
+            shiftedTrajectory = funnelEdge.trajectory_configurationSpace + shiftArray;
         end
 
         %--------------------------------------------------------------------------------%
@@ -251,11 +293,11 @@ classdef searchFunnel < handle
                 checkingMethod = 'Sampling';
             end
             
-            outletRofA = funnel1.RofA(:,:,end); %index 'end': outlet of funnel 1
-            outletCenter = funnel1.trajectory(:,end); %index 'end': outlet of funnel 1
+            outletRofA = funnel1.invariantSet_configurationSpace(:,:,end); %index 'end': outlet of funnel 1
+            outletCenter = funnel1.trajectory_configurationSpace(:,end); %index 'end': outlet of funnel 1
          
-            inletRofA = funnel2.RofA(:,:,1); %index 1: inlet of funnel 2
-            inletCenter = funnel2.trajectory(:,1); %index 1: inlet of funnel 2
+            inletRofA = funnel2.invariantSet_configurationSpace(:,:,1); %index 1: inlet of funnel 2
+            inletCenter = funnel2.trajectory_configurationSpace(:,1); %index 1: inlet of funnel 2
             
             %first pass check
             if(outletCenter-inletCenter)'*inletRofA*(outletCenter-inletCenter)>1 %if the centre itself doesn't lie in the ellipse, return  
@@ -285,11 +327,11 @@ classdef searchFunnel < handle
         % 
         %     %check = 1;  
         % 
-        %     %outletRofA = funnel1.RofA(:,:,end); %index 'end': outlet of funnel 1
-        %     outletCenter = funnel1.trajectory(:,end); %index 'end': outlet of funnel 1
+        %     %outletRofA = funnel1.invariantSet_stateSpace(:,:,end); %index 'end': outlet of funnel 1
+        %     outletCenter = funnel1.trajectory_stateSpace(:,end); %index 'end': outlet of funnel 1
         % 
-        %     inletRofA = funnel2.RofA(:,:,1); %index 1: inlet of funnel 2
-        %     inletCenter = funnel2.trajectory(:,1); %index 1: inlet of funnel 2
+        %     inletRofA = funnel2.invariantSet_stateSpace(:,:,1); %index 1: inlet of funnel 2
+        %     inletCenter = funnel2.trajectory_stateSpace(:,1); %index 1: inlet of funnel 2
         % 
         %     %first pass check
         %     if(outletCenter-inletCenter)'*inletRofA*(outletCenter-inletCenter)>1 %if the centre itself doesn't lie in the ellipse, return  
@@ -315,9 +357,9 @@ classdef searchFunnel < handle
         %     checkPoints = zeros(obj.stateDimension,checkResolution,numProjections); %2 because 2D ellipses
         % 
         %     %accessing the funnel's outlet properties
-        %     %outletRofA = reshape(funnel.RofA(end,:,:),numDimensions,numDimensions);
-        %     outletRofA = funnel.RofA(:,:,end);
-        %     outletCenter = funnel.trajectory(:,end); %index 'end': outlet of funnel 1
+        %     %outletRofA = reshape(funnel.invariantSet_stateSpace(end,:,:),numDimensions,numDimensions);
+        %     outletRofA = funnel.invariantSet_stateSpace(:,:,end);
+        %     outletCenter = funnel.trajectory_stateSpace(:,end); %index 'end': outlet of funnel 1
         % 
         %     count = 1;
         % 
@@ -372,8 +414,8 @@ classdef searchFunnel < handle
 
             for i=1:obj.numFunnelEdges
                 thisFunnel = obj.funnelEdges(i);
-                traj = thisFunnel.trajectory;
-                funnel = thisFunnel.RofA;        
+                traj = thisFunnel.trajectory_stateSpace;
+                funnel = thisFunnel.invariantSet_stateSpace;        
                 
                 %at this stage you have the trajectory and
                 %the RofA along the knot points
@@ -404,7 +446,7 @@ classdef searchFunnel < handle
                 
                 thisFunnel = obj.funnelEdges(i);
                 
-                if obj.notInBoudingCircle(thisFunnel.trajectory,thisFunnel.RofA,configurationPose)
+                if obj.notInBoudingCircle(thisFunnel.trajectory_stateSpace,thisFunnel.invariantSet_stateSpace,configurationPose)
                     continue
                 end 
             
@@ -420,8 +462,8 @@ classdef searchFunnel < handle
 
             check = 0;
             
-            inletCenter = funnel.trajectory(1:2,1); %1 is inlet
-            inletRegion = funnel.RofA(:,:,1); %1 is inlet
+            inletCenter = funnel.trajectory_stateSpace(1:2,1); %1 is inlet
+            inletRegion = funnel.invariantSet_stateSpace(:,:,1); %1 is inlet
             
             if(inBasin(obj,inletCenter,inletRegion,configurationPose))
                 check = 1;        
@@ -453,8 +495,8 @@ classdef searchFunnel < handle
 
                 obj.drawFunnel(funnel2,2)
 
-                obj.drawEllipse(funnel1.trajectory(:,end),funnel1.RofA(:,:,end),0); %end is the outlet
-                obj.drawEllipse(funnel2.trajectory(:,1),funnel2.RofA(:,:,1),2); %1 is the inlet
+                obj.drawEllipse(funnel1.trajectory_stateSpace(:,end),funnel1.invariantSet_stateSpace(:,:,end),0); %end is the outlet
+                obj.drawEllipse(funnel2.trajectory_stateSpace(:,1),funnel2.invariantSet_stateSpace(:,:,1),2); %1 is the inlet
 
                 check = obj.isComposable(funnel1,funnel2);
                 
@@ -532,14 +574,14 @@ classdef searchFunnel < handle
                 thisFunnel = obj.funnelEdges(thisNode.parentFunnelEdge);
                 
                 if ~thisFunnel.withinObstacle
-                    traj = thisFunnel.trajectory';
+                    traj = thisFunnel.trajectory_stateSpace';
                     plot(traj(:,1),traj(:,2),'-.b','LineWidth',2.5);
                     
                     %funnel-inlet
-                    obj.drawEllipse(thisFunnel.trajectory(:,1),thisFunnel.RofA(:,:,1),1);
+                    obj.drawEllipse(thisFunnel.trajectory_stateSpace(:,1),thisFunnel.invariantSet_stateSpace(:,:,1),1);
                     
                     %funnel-outlet
-                    obj.drawEllipse(thisFunnel.trajectory(:,end),thisFunnel.RofA(:,:,end),2);
+                    obj.drawEllipse(thisFunnel.trajectory_stateSpace(:,end),thisFunnel.invariantSet_stateSpace(:,:,end),2);
                     
                     %Plotting the end and start points
                     plot(traj(1,1),traj(1,2),'oy','LineWidth',2.5,'MarkerSize',5); %inlet to the funnel
@@ -571,7 +613,7 @@ classdef searchFunnel < handle
 
                 tempFunnel = obj.funnelEdges(tempNode.parentFunnelEdge);
                 
-                x = tempFunnel.trajectory;
+                x = tempFunnel.trajectory_stateSpace;
                 drawFunnel(obj,tempFunnel,2);
                 plot(x(1,:),x(2,:),'-.c','LineWidth',1.5);
                 
@@ -590,10 +632,10 @@ classdef searchFunnel < handle
                 status = 1; %gray-colored funnels
             end
 
-            N = length(funnel.trajectory);
+            N = length(funnel.trajectory_stateSpace);
             for j=N:-1:1 %change it to -1 to get more pretty plots
-                P = funnel.RofA(:,:,j);
-                xt = funnel.trajectory(1:2,j);
+                P = funnel.invariantSet_stateSpace(:,:,j);
+                xt = funnel.trajectory_stateSpace(1:2,j);
                 drawEllipse(obj,xt,P,status);
             end
 
@@ -606,7 +648,7 @@ classdef searchFunnel < handle
 
         %draws trajectory, x in 2D space
         function drawTrajectory(obj,funnel)
-            traj = funnel.trajectory';
+            traj = funnel.trajectory_stateSpace';
             plot(traj(:,1),traj(:,2),':k','LineWidth',1.4);
             %Plotting the end and start points
             plot(traj(1,1),traj(1,2),'ok','LineWidth',1.5,'MarkerSize',3); %inlet to the funnel
@@ -615,7 +657,7 @@ classdef searchFunnel < handle
 
         %draws deleted trajectory, x in white
         function drawDeletedTrajectory(obj,funnel)
-            traj = funnel.trajectory';
+            traj = funnel.trajectory_stateSpace';
             plot(traj(:,1),traj(:,2),':w','LineWidth',2.4);
             %Plotting the end and start points
             plot(traj(1,1),traj(1,2),'ow','LineWidth',1.5,'MarkerSize',3); %inlet to the funnel
@@ -650,10 +692,10 @@ classdef searchFunnel < handle
         %draws the funnel with time-trajectory and ellipsoids information at the knot points
         function drawFunnelwithTime(obj,funnel)
             %figure(2)
-            N = length(funnel.trajectory);
+            N = length(funnel.trajectory_stateSpace);
             for j=N:-1:1
-                P = funnel.RofA(:,:,j);
-                xt = funnel.trajectory(:,j);
+                P = funnel.invariantSet_stateSpace(:,:,j);
+                xt = funnel.trajectory_stateSpace(:,j);
                 t = funnel.time(:,j);
                 drawEllipsewithTime(obj,t,xt,P);
             end
@@ -663,7 +705,7 @@ classdef searchFunnel < handle
         %draws trajectory with time in a 3D plot
         function drawTrajectorywithTime(obj,funnel)
             %figure(2)
-            traj = funnel.trajectory';
+            traj = funnel.trajectory_stateSpace';
             plot3(traj(:,1),traj(:,2),obj.time,'--k','LineWidth',1.5);
             %Plotting the end and start points
             plot3(traj(1,1),traj(1,2),obj.time(1),'ok','LineWidth',1.5,'MarkerSize',2);
@@ -720,7 +762,7 @@ classdef searchFunnel < handle
                 end
                 
                 tempFunnel = obj.funnelEdges(temp.bestInlet);
-                x = tempFunnel.trajectory;
+                x = tempFunnel.trajectory_stateSpace;
                 t = tempFunnel.time;
                 
                 drawFunnelWithTime(obj,tempFunnel,2);
