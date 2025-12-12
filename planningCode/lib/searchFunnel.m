@@ -93,10 +93,12 @@ classdef searchFunnel < handle
         end
         
         function trajectoryLength = computeNominalTrajectoryLength(obj,funnel)
-            trajectoryLength = 0;
+            
+            configSpaceTrajectory = funnel.trajectory_configurationSpace;
 
-            for i=2:length(funnel.trajectory_stateSpace)
-                ds = norm(funnel.trajectory_stateSpace(1:2,i) - funnel.trajectory_stateSpace(1:2,i-1));
+            trajectoryLength = 0;
+            for i=2:length(configSpaceTrajectory)
+                ds = norm(configSpaceTrajectory(:,i) - configSpaceTrajectory(:,i-1));
                 trajectoryLength = trajectoryLength + ds;
             end
         end
@@ -244,7 +246,7 @@ classdef searchFunnel < handle
             funnelEdge.trajectory_configurationSpace = obj.shiftAlongCyclicCoordinates_Temp(funnelEdge,shiftVector);
             funnelEdge.invariantSet_configurationSpace = funnel.RofA_complete;
 
-            
+            %project the funnel in state-space to workspace
             [funnelEdge.trajectory_workSpace, funnelEdge.invariantSet_workSpace] = ...
                 obj.projectFunnel_nD_to_mD(funnelEdge, obj.workspaceDimensionIndices);
         end
@@ -408,8 +410,8 @@ classdef searchFunnel < handle
 
                 obj.drawFunnel(funnel2,2)
 
-                obj.drawEllipse(funnel1.trajectory_stateSpace(:,end),funnel1.invariantSet_stateSpace(:,:,end),0); %end is the outlet
-                obj.drawEllipse(funnel2.trajectory_stateSpace(:,1),funnel2.invariantSet_stateSpace(:,:,1),2); %1 is the inlet
+                obj.drawEllipse(funnel1.trajectory_workSpace(:,end),funnel1.invariantSet_workSpace(:,:,end),0); %end is the outlet
+                obj.drawEllipse(funnel2.trajectory_workSpace(:,1),funnel2.invariantSet_workSpace(:,:,1),2); %1 is the inlet
 
                 check = obj.isComposable(funnel1,funnel2);
                 
@@ -487,18 +489,18 @@ classdef searchFunnel < handle
                 thisFunnel = obj.funnelEdges(thisNode.parentFunnelEdge);
                 
                 if ~thisFunnel.withinObstacle
-                    traj = thisFunnel.trajectory_stateSpace';
-                    plot(traj(:,1),traj(:,2),'-.b','LineWidth',2.5);
+                    traj = thisFunnel.trajectory_workSpace;
+                    plot(traj(1,:),traj(2,:),'-.b','LineWidth',2.5);
                     
                     %funnel-inlet
-                    obj.drawEllipse(thisFunnel.trajectory_stateSpace(:,1),thisFunnel.invariantSet_stateSpace(:,:,1),1);
+                    obj.drawEllipse(traj(:,1),thisFunnel.invariantSet_workSpace(:,:,1),1);
                     
                     %funnel-outlet
-                    obj.drawEllipse(thisFunnel.trajectory_stateSpace(:,end),thisFunnel.invariantSet_stateSpace(:,:,end),2);
+                    obj.drawEllipse(traj(:,end),thisFunnel.invariantSet_workSpace(:,:,end),2);
                     
                     %Plotting the end and start points
-                    plot(traj(1,1),traj(1,2),'oy','LineWidth',2.5,'MarkerSize',5); %inlet to the funnel
-                    plot(traj(end,1),traj(end,2),'xg','LineWidth',3,'MarkerSize',7); %outlet of the funnel
+                    plot(traj(1,1),traj(2,1),'oy','LineWidth',2.5,'MarkerSize',5); %inlet to the funnel
+                    plot(traj(1,end),traj(2,end),'xg','LineWidth',3,'MarkerSize',7); %outlet of the funnel
                 end
             end
         end
@@ -526,7 +528,7 @@ classdef searchFunnel < handle
 
                 tempFunnel = obj.funnelEdges(tempNode.parentFunnelEdge);
                 
-                x = tempFunnel.trajectory_stateSpace;
+                x = tempFunnel.trajectory_workSpace;
                 drawFunnel(obj,tempFunnel,2);
                 plot(x(1,:),x(2,:),'-.c','LineWidth',1.5);
                 
@@ -545,10 +547,10 @@ classdef searchFunnel < handle
                 status = 1; %gray-colored funnels
             end
 
-            N = length(funnel.trajectory_stateSpace);
-            for j=N:-1:1 %change it to -1 to get more pretty plots
-                P = funnel.invariantSet_stateSpace(:,:,j);
-                xt = funnel.trajectory_stateSpace(1:2,j);
+            N = length(funnel.time);
+            for k=N:-1:1 %change it to -1 to get more pretty plots
+                P = funnel.invariantSet_workSpace(:,:,k);
+                xt = funnel.trajectory_workSpace(:,k);
                 drawEllipse(obj,xt,P,status);
             end
 
@@ -561,7 +563,7 @@ classdef searchFunnel < handle
 
         %draws trajectory, x in 2D space
         function drawTrajectory(obj,funnel)
-            traj = funnel.trajectory_stateSpace';
+            traj = funnel.trajectory_workSpace';
             plot(traj(:,1),traj(:,2),':k','LineWidth',1.4);
             %Plotting the end and start points
             plot(traj(1,1),traj(1,2),'ok','LineWidth',1.5,'MarkerSize',3); %inlet to the funnel
@@ -570,7 +572,7 @@ classdef searchFunnel < handle
 
         %draws deleted trajectory, x in white
         function drawDeletedTrajectory(obj,funnel)
-            traj = funnel.trajectory_stateSpace';
+            traj = funnel.trajectory_workSpace';
             plot(traj(:,1),traj(:,2),':w','LineWidth',2.4);
             %Plotting the end and start points
             plot(traj(1,1),traj(1,2),'ow','LineWidth',1.5,'MarkerSize',3); %inlet to the funnel
@@ -579,16 +581,42 @@ classdef searchFunnel < handle
 
         %draws an ellipse defined by xTMx<1 with centre c
         %status - 2 - goal branch; 1 - normal edge; 0 - deleted edge
-        function drawEllipse(obj,center,RofA,status)
+        % function drawEllipse(obj,center,RofA,status)
+        % 
+        %     N = 20; %50 for more pretty plots
+        %     th = linspace(-pi,pi,N);
+        % 
+        %     %Basis = [1 0; 0 1; 0 0; 0 0; 0 0; 0 0]; %xy
+        %     %Basis = [0 0; 0 1; 0 1; 0 0; 0 0; 0 0]; %yz
+        %     %Basis = [1 0; 0 0; 0 1; 0 0; 0 0; 0 0];  %zx
+        %     E = Basis'/RofA*Basis;
+        %     %ell = E^(1/2)*[cos(th); sin(th)];
+        %     ell = sqrtm(E)*[cos(th); sin(th)];
+        % 
+        %     if status == 2 
+        %         color = [0 0.9 0.1]; alpha = 0.8; %green
+        %     elseif status == 1
+        %         color = [0.8 0.8 0.8]; alpha = 0.7; %gray
+        %     else
+        %         color = [0.99 0.99 0.99]; alpha = 0.8; %opaque
+        %     end
+        % 
+        %     fill(center(1) + ell(1,:),center(2) + ell(2,:),color,'edgeColor',color,'FaceAlpha',alpha);
+        % end
 
-            N = 12; %50 for more pretty plots
-            th = linspace(-pi,pi,N);
-            Basis = [1 0; 0 1; 0 0; 0 0; 0 0; 0 0]; %xy
-            %Basis = [0 0; 0 1; 0 1; 0 0; 0 0; 0 0]; %yz
-            %Basis = [1 0; 0 0; 0 1; 0 0; 0 0; 0 0];  %zx
-            E = Basis'/RofA*Basis;
-            %ell = E^(1/2)*[cos(th); sin(th)];
-            ell = sqrtm(E)*[cos(th); sin(th)];
+        %draws an ellipse defined by xTMx<1 with centre c
+        %status - 2 - goal branch; 1 - normal edge; 0 - deleted edge
+        function drawEllipse(obj, ellipseCenter, ellipseMatrix, status)
+            
+            [eig_vec, eig_val] = eig(ellipseMatrix);
+            
+            theta = linspace(0, 2*pi, 20); % Parameterize ellipse
+            ellipse_boundary = eig_val^(-1/2) * [cos(theta); sin(theta)];
+            rotated_ellipse = eig_vec * ellipse_boundary;
+            
+            % plot(ellipseCenter(1) + rotated_ellipse(1, :), ...
+            %      ellipseCenter(2) + rotated_ellipse(2, :), ...
+            %      '-k', 'LineWidth', 1.2);  
 
             if status == 2 
                 color = [0 0.9 0.1]; alpha = 0.8; %green
@@ -598,98 +626,101 @@ classdef searchFunnel < handle
                 color = [0.99 0.99 0.99]; alpha = 0.8; %opaque
             end
 
-            fill(center(1) + ell(1,:),center(2) + ell(2,:),color,'edgeColor',color,'FaceAlpha',alpha);
+            fill(ellipseCenter(1) + rotated_ellipse(1,:), ...
+                 ellipseCenter(2) + rotated_ellipse(2,:), ...
+                 color,'edgeColor',color,'FaceAlpha',alpha);
         end
 
-        %3D - (x,y) + time - counterparts of the former functions
-        %draws the funnel with time-trajectory and ellipsoids information at the knot points
-        function drawFunnelwithTime(obj,funnel)
-            %figure(2)
-            N = length(funnel.trajectory_stateSpace);
-            for j=N:-1:1
-                P = funnel.invariantSet_stateSpace(:,:,j);
-                xt = funnel.trajectory_stateSpace(:,j);
-                t = funnel.time(:,j);
-                drawEllipsewithTime(obj,t,xt,P);
-            end
-            drawTrajectorywithTime(obj,funnel); 
-        end
-
-        %draws trajectory with time in a 3D plot
-        function drawTrajectorywithTime(obj,funnel)
-            %figure(2)
-            traj = funnel.trajectory_stateSpace';
-            plot3(traj(:,1),traj(:,2),obj.time,'--k','LineWidth',1.5);
-            %Plotting the end and start points
-            plot3(traj(1,1),traj(1,2),obj.time(1),'ok','LineWidth',1.5,'MarkerSize',2);
-            plot3(traj(end,1),traj(end,2),obj.time(end),'.k','LineWidth',2,'MarkerSize',4);
-        end
-
-        %draws 2D ellipses "elevated" along the time axis
-        %status - 2 - goal branch; 1 - normal edge; 0 - deleted edge
-        function drawEllipsewithTime(obj,time,center,RofA,status)
-            %figure(2);
-            hold on
-            N = 50;
-            th = linspace(-pi,pi,N);
-            Basis = [1 0; 0 1; 0 0; 0 0; 0 0; 0 0]; %xy
-            %Basis = [0 0; 0 1; 0 1; 0 0; 0 0; 0 0]; %yz
-            %Basis = [1 0; 0 0; 0 1; 0 0; 0 0; 0 0];  %zx
-            E = Basis'/RofA*Basis;
-            ell = E^(1/2)*[cos(th); sin(th)];
-            time = time*ones(length(ell),1);
-
-            if status == 2
-                color = [0 0.9 0.1]; 
-            elseif status == 1
-                color = [0.8 0.8 0.8];
-            else
-                color = [1 1 1];
-            end
-
-            fill3(center(1) + ell(1,:),center(2) + ell(2,:),time, color,'edgeColor',color,'FaceAlpha',0.1);
-        end   
-
-        %draws the goal branch along the time axis as well
-        function drawGoalBranchwithTime(obj,searchGraph)
-            %figure(2)
-  
-            %Constructing the goal branch by backtracking through parent pointers
-            start = searchGraph.startNode.pose;
-            goal = searchGraph.goalNode.pose;
-            delta = 0.001;
-            
-            %Constructing the goal branch by backtracking through parent pointers
-            temp = searchGraph.startNode;
-            finishTime = temp.timeToGoal;
-            
-            while 1
-                if abs(temp.pose - goal) < delta
-                    break
-                end
-                
-                if (isnan(temp.parent))
-                    disp('There does not exist a feasible path currently!');
-                    return
-                    %break
-                end
-                
-                tempFunnel = obj.funnelEdges(temp.bestInlet);
-                x = tempFunnel.trajectory_stateSpace;
-                t = tempFunnel.time;
-                
-                drawFunnelWithTime(obj,tempFunnel,2);
-                plot3(x(:,1),x(:,2),t,'-.m','LineWidth',3);
-                  
-                temp = searchGraph.graphNodes(temp.parent);
-                
-            end
-
-            plot3(start(1),start(2),finishTime,'sg','LineWidth',3,'MarkerSize',7);
-            plot3(goal(1),goal(2),0,'xr','LineWidth', 3,'MarkerSize',7);
-        end
+        % Legacy code (deprecated on Dec 12 '25 - Khalid M Jaffar)
+        % %3D - (x,y) + time - counterparts of the former functions
+        % %draws the funnel with time-trajectory and ellipsoids information at the knot points
+        % function drawFunnelwithTime(obj,funnel)
+        %     %figure(2)
+        %     N = length(funnel.trajectory_stateSpace);
+        %     for j=N:-1:1
+        %         P = funnel.invariantSet_stateSpace(:,:,j);
+        %         xt = funnel.trajectory_stateSpace(:,j);
+        %         t = funnel.time(:,j);
+        %         drawEllipsewithTime(obj,t,xt,P);
+        %     end
+        %     drawTrajectorywithTime(obj,funnel); 
+        % end
+        % 
+        % %draws trajectory with time in a 3D plot
+        % function drawTrajectorywithTime(obj,funnel)
+        %     %figure(2)
+        %     traj = funnel.trajectory_stateSpace';
+        %     plot3(traj(:,1),traj(:,2),obj.time,'--k','LineWidth',1.5);
+        %     %Plotting the end and start points
+        %     plot3(traj(1,1),traj(1,2),obj.time(1),'ok','LineWidth',1.5,'MarkerSize',2);
+        %     plot3(traj(end,1),traj(end,2),obj.time(end),'.k','LineWidth',2,'MarkerSize',4);
+        % end
+        % 
+        % %draws 2D ellipses "elevated" along the time axis
+        % %status - 2 - goal branch; 1 - normal edge; 0 - deleted edge
+        % function drawEllipsewithTime(obj,time,center,RofA,status)
+        %     %figure(2);
+        %     hold on
+        %     N = 50;
+        %     th = linspace(-pi,pi,N);
+        %     Basis = [1 0; 0 1; 0 0; 0 0; 0 0; 0 0]; %xy
+        %     %Basis = [0 0; 0 1; 0 1; 0 0; 0 0; 0 0]; %yz
+        %     %Basis = [1 0; 0 0; 0 1; 0 0; 0 0; 0 0];  %zx
+        %     E = Basis'/RofA*Basis;
+        %     ell = E^(1/2)*[cos(th); sin(th)];
+        %     time = time*ones(length(ell),1);
+        % 
+        %     if status == 2
+        %         color = [0 0.9 0.1]; 
+        %     elseif status == 1
+        %         color = [0.8 0.8 0.8];
+        %     else
+        %         color = [1 1 1];
+        %     end
+        % 
+        %     fill3(center(1) + ell(1,:),center(2) + ell(2,:),time, color,'edgeColor',color,'FaceAlpha',0.1);
+        % end   
+        % 
+        % %draws the goal branch along the time axis as well
+        % function drawGoalBranchwithTime(obj,searchGraph)
+        %     %figure(2)
+        % 
+        %     %Constructing the goal branch by backtracking through parent pointers
+        %     start = searchGraph.startNode.pose;
+        %     goal = searchGraph.goalNode.pose;
+        %     delta = 0.001;
+        % 
+        %     %Constructing the goal branch by backtracking through parent pointers
+        %     temp = searchGraph.startNode;
+        %     finishTime = temp.timeToGoal;
+        % 
+        %     while 1
+        %         if abs(temp.pose - goal) < delta
+        %             break
+        %         end
+        % 
+        %         if (isnan(temp.parent))
+        %             disp('There does not exist a feasible path currently!');
+        %             return
+        %             %break
+        %         end
+        % 
+        %         tempFunnel = obj.funnelEdges(temp.bestInlet);
+        %         x = tempFunnel.trajectory_stateSpace;
+        %         t = tempFunnel.time;
+        % 
+        %         drawFunnelWithTime(obj,tempFunnel,2);
+        %         plot3(x(:,1),x(:,2),t,'-.m','LineWidth',3);
+        % 
+        %         temp = searchGraph.graphNodes(temp.parent);
+        % 
+        %     end
+        % 
+        %     plot3(start(1),start(2),finishTime,'sg','LineWidth',3,'MarkerSize',7);
+        %     plot3(goal(1),goal(2),0,'xr','LineWidth', 3,'MarkerSize',7);
+        % end
         
-        % Legacy code (deprecated on Dec 12 '24 - Khalid M Jaffar)
+        % Legacy code (deprecated on Dec 12 '25 - Khalid M Jaffar)
         % %checks whether funnel1 is composable with funnel2
         % %that is if outlet of funnel1 is contained within the inlet of funnel2
         % function check = isComposable(obj,funnel1,funnel2)
