@@ -25,16 +25,12 @@ classdef searchFunnel < handle
     properties
         
         funnelLibrary
+        stateDimension
         extendDistance
         resolution
         configXArray
         configYArray
         
-        %dimensions of the various spaces: state, configuration & workspace
-        stateSpaceDimensionIndices
-        CspaceDimensionIndices
-        workspaceDimensionIndices
-
         numNodes 
         numFunnelEdges
         
@@ -57,6 +53,7 @@ classdef searchFunnel < handle
             obj.funnelEdges = funnelStruct();
             
             obj.funnelLibrary = library;
+            obj.stateDimension = 6; %no. of states
             obj.extendDistance = extendDistance;
             
             obj.resolution = 1/libraryResolution;
@@ -72,10 +69,6 @@ classdef searchFunnel < handle
         
             obj.configXArray = -obj.extendDistance:obj.resolution:obj.extendDistance;
             obj.configYArray = -obj.extendDistance:obj.resolution:obj.extendDistance;
-
-            obj.CspaceDimensionIndices = 1:12;     %12-state system
-            obj.CspaceDimensionIndices = [1 2 3];  %x-y-z configuration space
-            obj.workspaceDimensionIndices = [1 2]; %x-y workspace
 
         end
         
@@ -244,9 +237,10 @@ classdef searchFunnel < handle
             funnelEdge.trajectory_configurationSpace = obj.shiftAlongCyclicCoordinates_Temp(funnelEdge,shiftVector);
             funnelEdge.invariantSet_configurationSpace = funnel.RofA_complete;
 
-            
-            [funnelEdge.trajectory_workSpace, funnelEdge.invariantSet_workSpace] = ...
-                obj.projectFunnel_nD_to_mD(funnelEdge, obj.workspaceDimensionIndices);
+            [trajectory_mD, ellipsoids_mD] = projectFunnel_nD_to_mD(obj, trajectory_nD, ellipsoids_nD, projection_dims)
+
+            funnelEdge.trajectory_workSpace = [];
+            funnelEdge.invariantSet_workSpace = [];
         end
 
         %Extracting the funnel-edge (parent to sampled node) from the trajectory library
@@ -688,8 +682,7 @@ classdef searchFunnel < handle
             plot3(start(1),start(2),finishTime,'sg','LineWidth',3,'MarkerSize',7);
             plot3(goal(1),goal(2),0,'xr','LineWidth', 3,'MarkerSize',7);
         end
-        
-        % Legacy code (deprecated on Dec 12 '24 - Khalid M Jaffar)
+                % Legacy code (Khalid M Jaffar - Dec 12 '24)
         % %checks whether funnel1 is composable with funnel2
         % %that is if outlet of funnel1 is contained within the inlet of funnel2
         % function check = isComposable(obj,funnel1,funnel2)
@@ -932,15 +925,12 @@ classdef searchFunnel < handle
             
         end
 
-        function [trajectory_mD, ellipsoids_mD] = projectFunnel_nD_to_mD(obj, funnelEdge, projection_dims)
+        function [trajectory_mD, ellipsoids_mD] = projectFunnel_nD_to_mD(obj, trajectory_nD, ellipsoids_nD, projection_dims)
             % Input:
-            % funnelEdge 
+            % n*N trajectory and n*n*N ellipsoid matrices 
             % projection_dims: m-element vector specifying which dimensions to project onto
             %                  (e.g., [1 2] for xy-plane, [1 2 3] for xyz-plane, etc.)
             
-            trajectory_nD = funnelEdge.trajectory_stateSpace; %n*N trajectory
-            ellipsoids_nD = funnelEdge.invariantSet_stateSpace; %n*n*N ellipsoid matrices 
-
             %get the dimensionality of state-space and projection space
             n = size(trajectory_nD, 1);     
             m = length(projection_dims); 
@@ -960,7 +950,7 @@ classdef searchFunnel < handle
                 temp_trajectory_nD = trajectory_nD(:,k);
                 temp_ellipsoid_nD = ellipsoids_nD(:,:,k);
         
-                ellipsoids_mD(:,:,k) = inv(basisMatrix' / temp_ellipsoid_nD * basisMatrix);
+                ellipsoids_mD(:,:,k) = inv(basisMatrix' *inv(temp_ellipsoid_nD) * basisMatrix);
                 trajectory_mD(:,k) = basisMatrix' * temp_trajectory_nD;
             end
         end
