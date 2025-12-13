@@ -85,17 +85,17 @@ classdef configurationSpace < handle
         %-------------------------------------------------------------------------%
         %function to sample configurations
         
-        function sample = sampleNode(obj,O,startFound,robotMove)
+        function sample = sampleNode(obj,W,startFound,robotMove)
 
             start = obj.startNode.pose;
             if(robotMove)
                 prob = rand();
                 if prob < 0.9 %sample from the sensor radius with bias
-                    r = O.sensorRadius*rand() + O.toleranceLimit; %providing some extra look-ahead
+                    r = W.sensorRadius*rand() + W.toleranceLimit; %providing some extra look-ahead
                 else %sample at random from the configuration space
-                    %r = 2*O.sensorRadius*rand() + O.toleranceLimit; 
-                    xSample = (O.envUB - O.envLB)*rand() + O.envLB;
-                    ySample = (O.envUB - O.envLB)*rand() + O.envLB;
+                    %r = 2*W.sensorRadius*rand() + W.toleranceLimit; 
+                    xSample = (W.envUB - W.envLB)*rand() + W.envLB;
+                    ySample = (W.envUB - W.envLB)*rand() + W.envLB;
                     sample = [xSample ySample];
                     return
                 end
@@ -115,8 +115,8 @@ classdef configurationSpace < handle
             prob = rand();
             if prob < bias
                 %random sampling of nodes
-                xSample = (O.envUB - O.envLB)*rand() + O.envLB;
-                ySample = (O.envUB - O.envLB)*rand() + O.envLB;
+                xSample = (W.envUB - W.envLB)*rand() + W.envLB;
+                ySample = (W.envUB - W.envLB)*rand() + W.envLB;
                 sample = [xSample ySample];
             else
                 sample = start;
@@ -126,10 +126,10 @@ classdef configurationSpace < handle
         
         %function to extrapolate to a new configuration from the nearest neighbor in
         %the existing RRG
-        function newNodePose = expandSearchGraph(obj,T,O,startFound,robotMove,epsilon)
+        function newNodePose = expandSearchGraph(obj,T,W,startFound,robotMove,epsilon)
             
             %sampling a point at random
-            sampledPoint = obj.sampleNode(O,startFound,robotMove);
+            sampledPoint = obj.sampleNode(W,startFound,robotMove);
             %plot(sampledPoint(1),sampledPoint(2), 'xy','MarkerSize',7,'LineWidth',1.4)
 
             nearestNode = T.kdFindNearestPayload(sampledPoint);

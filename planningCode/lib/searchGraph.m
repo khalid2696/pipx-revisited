@@ -157,6 +157,7 @@ classdef searchGraph < handle
                     if ismember(tempInletVertex.index,thisOutletVertex.outNeighbors)
                        continue
                     end
+                    
 
                     %first-check to rule out the case of encountering goal region
                     %vertexData - [goalIndex (= 1) | NaN]

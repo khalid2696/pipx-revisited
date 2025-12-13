@@ -25,13 +25,17 @@ classdef PiPxPlanner < handle
     properties
         envLB
         envUB
+        extendDistance
+        resolution
     end %end of properties
 
     methods
-        function obj = PiPxPlanner(envLB,envUB) %constructor class
+        function obj = PiPxPlanner(envLB,envUB,epsilon,resolution) %constructor class
             
             obj.envLB = envLB;
             obj.envUB = envUB;
+            obj.extendDistance = epsilon;
+            obj.resolution = resolution;
 
             if(nargin == 0)
             
@@ -59,14 +63,14 @@ classdef PiPxPlanner < handle
             % obj.goalNode  = []; %will be updated in runtime
         end
 
-        function flag = generateFunnelRRG(obj,F,C,G,O,T,startFound,robotMove,epsilon)
+        function flag = generateFunnelRRG(obj,F,C,G,W,T,startFound,robotMove,epsilon)
 
-            newNodePose = C.expandSearchGraph(T,O,startFound,robotMove,epsilon);
+            newNodePose = C.expandSearchGraph(T,W,startFound,robotMove,epsilon);
             
             %plot(newNodePose(1),newNodePose(2), 'xb','MarkerSize',7,'LineWidth',1.4)
             %drawnow
             
-            if(~O.vertexCollisionFree(newNodePose) || F.inFunnel(newNodePose))
+            if(~W.vertexCollisionFree(newNodePose) || F.inAnyInlets(newNodePose))
                 flag = 1; return
             end
             
@@ -80,7 +84,7 @@ classdef PiPxPlanner < handle
             thisNode = nodeStruct(C.numNodes+1,newNodePose);
 
             %add the the new sampled node to existing funnel-network 
-            flag = F.constructFunnelNetwork(T,C,O,thisNode,neighbors);
+            flag = F.constructFunnelNetwork(T,C,W,thisNode,neighbors);
             
             if flag %if no new edges were added, continue with the next sampling
                 return
@@ -89,7 +93,7 @@ classdef PiPxPlanner < handle
             G.constructAugmentedGraph(F,C,thisNode);
         end
         
-        function flag = addStartNodeToFunnelRRG(obj,F,C,G,O,T,startPose)
+        function flag = addStartNodeToFunnelRRG(obj,F,C,G,W,T,startPose)
         
             %nearestNeighbor = C.graphNodes(end).pose; %using the neighbors of the previous node
             %[neighbors, flag] = obj.findNeighborsInRBall(T,nearestNeighbor);
@@ -101,7 +105,7 @@ classdef PiPxPlanner < handle
             end
             
             startNode = nodeStruct(C.numNodes+1,startPose);
-            flag = F.constructFunnelNetwork(T,C,O,startNode,neighbors);
+            flag = F.constructFunnelNetwork(T,C,W,startNode,neighbors);
             
             if flag %if no funnel-edges were added, exit
                 return
@@ -141,10 +145,10 @@ classdef PiPxPlanner < handle
         
         %-------------------------------------------------------------------------%
         %Environment dynamicity (as sensed by the robot) related function
-        function makeDynamicChangesToGraph(obj,F,C,G,Q,O,T)   
+        function makeDynamicChangesToGraph(obj,F,C,G,Q,W,T)   
         
-            exploredObstacles = O.senseObstacles(C.currentRobotNode.pose); %sense from the middle
-            modifiedEdges = O.getModifiedEdges(F,C,G,T,exploredObstacles);
+            exploredObstacles = W.senseObstacles(C.currentRobotNode.pose); %sense from the middle
+            modifiedEdges = W.getModifiedEdges(F,C,G,T,exploredObstacles);
             
             if (isempty(modifiedEdges))
                 return
@@ -177,8 +181,15 @@ classdef PiPxPlanner < handle
         function r = rBall(obj,iteration)
             
             %Shrinking rate from RRT* paper
-            epsilon = 4.5; r0 = 800; d = 2; iteration = iteration+1;
-            r = min(r0*(log(iteration)/(iteration))^1/d,epsilon);
+            %epsilon = 4.5; 
+            r0 = 50; d = 2; iteration = iteration+1;
+            epsilon = obj.extendDistance * d^(1/d); %L_infinity-norm to L2-norm
+            
+            r = min(r0*(log(iteration)/(iteration))^(1/d), epsilon);
+            r = max(r, 1/obj.resolution);
+            
+            %rBall radius is saturated by max extend distance (UB) and
+            %resolution of the funnelLibrary (LB)
         end
         
         %-------------------------------------------------------------------------%
@@ -195,11 +206,11 @@ classdef PiPxPlanner < handle
         
         %-------------------------------------------------------------------------%
         %Saving data functions
-        function fileCount = saveData(obj,F,C,O,dir,fileCount)
+        function fileCount = saveData(obj,F,C,W,dir,fileCount)
             nodes = C.graphNodes;
             edges = C.graphEdges;
             funnels = F.funnelEdges;  
-            obstacles = O.obstacles;
+            obstacles = W.obstacles;
             robotNode = C.startNode;
             save([dir 'iteration_' num2str(fileCount) '.mat'],'nodes','edges','funnels','obstacles','robotNode');
             

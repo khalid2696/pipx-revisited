@@ -30,6 +30,16 @@ classdef funnelStruct < handle
         trajectory
         RofA
         
+        %Projections to lower-dimension spaces, for computation speed-up
+        trajectory_stateSpace
+        invariantSet_stateSpace
+
+        trajectory_configurationSpace
+        invariantSet_configurationSpace
+
+        trajectory_workSpace
+        invariantSet_workSpace
+        
         %search graph based attributes
         parent
         child
@@ -52,6 +62,15 @@ classdef funnelStruct < handle
                 obj.trajectory = [];
                 obj.RofA = [];
                 
+                obj.trajectory_stateSpace = [];
+                obj.invariantSet_stateSpace = [];
+        
+                obj.trajectory_configurationSpace = [];
+                obj.invariantSet_configurationSpace = [];
+        
+                obj.trajectory_workSpace = [];
+                obj.invariantSet_workSpace = [];
+           
                 obj.cost = inf;
                 obj.nominalCost = inf;
                 return
@@ -60,6 +79,15 @@ classdef funnelStruct < handle
                 obj.time = funnel.time;
                 obj.trajectory = funnel.trajectory;
                 obj.RofA = funnel.RofA;
+
+                obj.trajectory_stateSpace = funnel.trajectory;
+                obj.invariantSet_stateSpace = funnel.RofA;
+        
+                obj.trajectory_configurationSpace = [];
+                obj.invariantSet_configurationSpace = [];
+        
+                obj.trajectory_workSpace = [];
+                obj.invariantSet_workSpace = [];
             end
             
             if nargin < 3

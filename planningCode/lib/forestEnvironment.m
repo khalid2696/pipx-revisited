@@ -21,9 +21,8 @@
 % the software.
 
 %Class definition for the random forest environment with collision-checking routines
-classdef obstacleList < handle
-    properties
-        
+classdef forestEnvironment < handle
+    properties     
         envLB
         envUB
         numObstacles %useful for keeping track of num of active obstacles
@@ -36,19 +35,19 @@ classdef obstacleList < handle
         obstacleTree
      
         %internal use
-        indexOfLast
-        
+        indexOfLast        
     end
+
     methods
         %constructor class - initialises with the position, size and an unique id
-        function obj = obstacleList(envLB,envUB,epsilon,sizeRange,type)
+        function obj = forestEnvironment(envLB,envUB,sensorRadius,sizeRange,epsilon,type)
             
             obj.envLB = envLB;
             obj.envUB = envUB;
             obj.numObstacles = 0;
             obj.indexOfLast = 0;
 
-            obj.sensorRadius = 3*epsilon; %14
+            obj.sensorRadius = sensorRadius; %14
             obj.toleranceLimit = epsilon/2; %extra-padding       
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
 
@@ -283,10 +282,7 @@ classdef obstacleList < handle
             end
 
             centre  = thisObstacle.location;
-            %epsilon = sqrt(obstacle.radius^2+obj.toleranceLimit^2); %extra-padding
-            %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
             epsilon = thisObstacle.radius + obj.toleranceLimit; %extra-padding
-            %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
 
             nodes = tree.kdFindWithinRangePayload(epsilon,centre);         
             motionEdgeIndices = [];      
@@ -586,9 +582,7 @@ classdef obstacleList < handle
 
             %Accessing the centre and radius from the obstacles file
             centre = thisObstacle.location;
-            %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
             radius = thisObstacle.radius + obj.toleranceLimit; %new addition -- extra padding
-            %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
 
             %Checking if the edge (v,w) intersects the circle
 
@@ -611,13 +605,12 @@ classdef obstacleList < handle
         function success = funnelCollisionFree(obj,funnel)
             success = 1;
             
-            traj = funnel.trajectory;
-            %RofA = funnel.RofA;
+            traj = funnel.trajectory_workSpace;
             
-            initialState  = traj(1:2,1);
-            finalState = traj(1:2,end);
-            midState = (initialState+finalState)/2; %computing the approx centre of the trajectory
-            funnelRadius = 1*euclidianDist(obj,initialState,finalState)/2;          
+            initialConfig  = traj(:,1);
+            finalConfig = traj(:,end);
+            midConfig = (initialConfig+finalConfig)/2; %computing the approx centre of the trajectory
+            boundingCircleRadius = 1*euclidianDist(obj,initialConfig,finalConfig)/2; %coefficient: scaling for safety          
             
             for i = 1:obj.indexOfLast
                
@@ -626,7 +619,7 @@ classdef obstacleList < handle
                     continue
                 end
 
-                if(boundingCircleCheck(obj,midState,funnelRadius,thisObstacle)) %if the funnel is sufficiently far off
+                if(boundingCircleCheck(obj,midConfig,boundingCircleRadius,thisObstacle)) %if the funnel is sufficiently far off
                     continue                                         %from the obstacle return with 1   
                 end
 
@@ -640,18 +633,18 @@ classdef obstacleList < handle
         function success = funnelCollisionFreeWithThisObstacle(obj,funnel,thisObstacle)
             success = 1;
             
-            traj = funnel.trajectory;
+            traj = funnel.trajectory_workSpace;
             
-            initialState  = traj(1:2,1);
-            finalState = traj(1:2,end);
-            midState = (initialState+finalState)/2; %computing the approx centre of the trajectory
-            funnelRadius = 1.5*euclidianDist(obj,initialState,finalState)/2;
+            initialConfig  = traj(:,1);
+            finalConfig = traj(:,end);
+            midConfig = (initialConfig+finalConfig)/2; %computing the approx centre of the trajectory
+            boundingCircleRadius = 1*euclidianDist(obj,initialConfig,finalConfig)/2;
             
             if(thisObstacle.status == 0) %if inactive continue
                 return
             end
 
-            if(boundingCircleCheck(obj,midState,funnelRadius,thisObstacle)) %if the funnel is sufficiently far off
+            if(boundingCircleCheck(obj,midConfig,boundingCircleRadius,thisObstacle)) %if the funnel is sufficiently far off
                 return                                         %from the obstacle return with 1   
             end
 
@@ -727,21 +720,16 @@ classdef obstacleList < handle
         %checks collision b/w funnel and each circular obstacle
         function success = funnelCircleCollision(obj,funnel,obstacle)
             
-            RofA = funnel.RofA;
-            success = 1;    
-            Basis = [1 0; 0 1; 0 0; 0 0; 0 0; 0 0]; %xy
-            funnelSize = size(RofA,3);
-            vanDerSequence = ceil(vdcorput(obj,funnelSize,2)*funnelSize);
+            success = 1;
+            N = length(funnel.time);
+            vanDerSequence = ceil(vdcorput(obj,N,2)*N);
 
-            for i = 1:funnelSize
-                index = vanDerSequence(i);
-                E = Basis'/RofA(:,:,index)*Basis;
-                %E = inv(E);
-                %projected ellipse is technically inverse(E), but I'm avoiding
-                %taking double inverse in subsequent SVD analysis (ellipse collision checking sub-routine) 
-                x = funnel.trajectory(1:2,index);
+            for k = 1:N
+                index = vanDerSequence(k);
+                x_c = funnel.trajectory_workSpace(:,index);
+                M = funnel.invariantSet_workSpace(:,:,index);
 
-                if(~ellipseCircleCollisionFree(obj,x,E,obstacle))
+                if(~ellipseCircleCollisionFree(obj,x_c,M,obstacle))
                     success = 0;
                     return
                 end
@@ -753,7 +741,7 @@ classdef obstacleList < handle
 
             success = 1;
             %for algebraic analaysis
-            [~, D, V] = svd(M);
+            [~, D, V] = svd(inv(M));
 
             a = sqrt(max(diag(D))); b = sqrt(min(diag(D)));
             c = sqrt(a^2 - b^2); %Focal length

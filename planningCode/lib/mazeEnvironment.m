@@ -21,7 +21,7 @@
 % the software.
 
 %Class definition for the maze environment with collision-checking routines
-classdef maze < handle
+classdef mazeEnvironment < handle
     properties
         
         envLB
@@ -42,7 +42,7 @@ classdef maze < handle
     end
     methods
         %constructor class - initialises with the position, size and an unique id
-        function obj = maze(envLB,envUB,epsilon,mode)
+        function obj = mazeEnvironment(envLB,envUB,epsilon,mode)
             
             obj.envLB = envLB;
             obj.envUB = envUB;
@@ -524,13 +524,12 @@ classdef maze < handle
         function success = funnelCollisionFree(obj,funnel)
             success = 1;
             
-            traj = funnel.trajectory;
-            RofA = funnel.RofA;
+            traj = funnel.trajectory_workSpace;
             
-            initialState  = traj(1:2,1);
-            finalState = traj(1:2,end);
-            midState = (initialState+finalState)/2; %computing the approx centre of the trajectory
-            funnelRadius = 1.5*euclidianDist(obj,initialState,finalState)/2;
+            initialConfig  = traj(:,1);
+            finalConfig = traj(:,end);
+            midConfig = (initialConfig+finalConfig)/2; %computing the approx centre of the trajectory
+            boundingCircleRadius = 1*euclidianDist(obj,initialConfig,finalConfig)/2;
                         
             for i = 1:obj.indexOfLast
                
@@ -539,7 +538,7 @@ classdef maze < handle
                     continue
                 end
 
-                if(boundingCircleCheck(obj,midState,funnelRadius,thisObstacle)) %if the funnel is sufficiently far off
+                if(boundingCircleCheck(obj,midConfig,boundingCircleRadius,thisObstacle)) %if the funnel is sufficiently far off
                     continue                                         %from the obstacle return with 1   
                 end
 
@@ -620,20 +619,16 @@ classdef maze < handle
         %checks collision b/w funnel and each circular obstacle
         function success = funnelCircleCollision(obj,funnel,obstacle)
             
-            RofA = funnel.RofA;
-            success = 1;    
-            Basis = [1 0; 0 1; 0 0; 0 0; 0 0; 0 0]; %xy
-            funnelSize = size(RofA,3);
-            vanDerSequence = ceil(vdcorput(obj,funnelSize,2)*funnelSize);
+            success = 1;
+            N = length(funnel.time);
+            vanDerSequence = ceil(vdcorput(obj,N,2)*N);
 
-            for i = 1:funnelSize
-                index = vanDerSequence(i);
-                E = Basis'/RofA(:,:,index)*Basis;
-                %RofA = inv(E); %RofA is technically inverse(E), but I'm avoiding
-                %taking double inverse in ellipse collision checking sub-routine 
-                x = funnel.trajectory(:,index);
+            for k = 1:N
+                index = vanDerSequence(k);
+                x_c = funnel.trajectory_workSpace(:,index);
+                M = funnel.invariantSet_workSpace(:,:,index);
 
-                if(~ellipseCircleCollisionFree(obj,x,E,obstacle))
+                if(~ellipseCircleCollisionFree(obj,x_c,M,obstacle))
                     success = 0;
                     return
                 end
@@ -645,7 +640,7 @@ classdef maze < handle
 
             success = 1;
             %for algebraic analaysis
-            [~, D, V] = svd(M);
+            [~, D, V] = svd(inv(M));
 
             a = sqrt(max(diag(D))); b = sqrt(min(diag(D)));
             c = sqrt(a^2 - b^2); %Focal length

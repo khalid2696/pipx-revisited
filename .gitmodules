@@ -1,0 +1,4 @@
+[submodule "funnelLibraryCode"]
+	path = funnelLibraryCode
+	url = https://github.com/khalid2696/computeSOSFunnels.git
+	branch = quads
