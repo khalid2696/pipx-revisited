@@ -34,7 +34,7 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 50; %300 and 350
+prePlanningIterationLimit = 300; %300 and 350
 totalIterationLimit = 450; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
 
@@ -43,16 +43,13 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 10; %15
+    numTreeObstacles = 30; %15
 end
 
 envLB = 0;
 envUB = 50;
 obstacleSizeRange = [1 3]; %radius of circular obstacles
 robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
-
-planner = PiPxPlanner(envLB,envUB);
-planner.setupPlot()
 
 W = forestEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1); 
 %obstacle class:  epsilon - tolerance
@@ -69,6 +66,9 @@ F = searchFunnel(funnelLibrary,epsilon,funnelLibraryResolution);
 
 C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
+
+planner = PiPxPlanner(envLB,envUB,epsilon,funnelLibraryResolution);
+planner.setupPlot()
 
 %------------------------------------%
 %user-input start and goal locations
@@ -184,7 +184,7 @@ while iteration < prePlanningIterationLimit %&& ~startFound
     end
 
     % Finding start config for the first time
-    if(~startFound && F.inFunnel(startPose))
+    if(~startFound && F.inAnyInlets(startPose))
         
         flag = planner.addStartNodeToFunnelRRG(F,C,G,W,T,startPose);
         
@@ -261,7 +261,7 @@ if drawFlag
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
 
-return
+%return
 
 %-----------------------------------------------------------%
 %% start of robot motion and online re-planning phase

@@ -104,7 +104,7 @@ classdef searchFunnel < handle
         end
 
         %constructing the funnel network
-        function flag = constructFunnelNetwork(obj,T,C,O,newNode,neighbors)
+        function flag = constructFunnelNetwork(obj,T,C,W,newNode,neighbors)
 
             N = length(neighbors);
             flag = 0;
@@ -142,14 +142,14 @@ classdef searchFunnel < handle
                 %---------------------------------------------------------------%
                 %rough sanity check before subsequent computations
                 %Note: make sense only for "almost-holonomic" robots
-                if ~O.edgeCollisionFree(thisNeighbor.pose,newNode.pose)
+                if ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose)
                     continue
                 end
 
                 %outFunnel for newNode/ inFunnel for neighborNode 
                 funnelEdge = obj.steer(newNode,thisNeighbor.pose);
 
-                if ~O.funnelCollisionFree(funnelEdge) %|| ~O.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
+                if ~W.funnelCollisionFree(funnelEdge) %|| ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
                     continue
                 end           
 
@@ -180,13 +180,13 @@ classdef searchFunnel < handle
                 %----------------------------------------------------------------%
                 %rough sanity check before subsequent computations
                 %Note: make sense only for "almost-holonomic" robots
-                if ~O.edgeCollisionFree(thisNeighbor.pose,newNode.pose)
+                if ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose)
                     continue
                 end
 
                 funnelEdge = obj.steer(thisNeighbor,newNode.pose);
 
-                if ~O.funnelCollisionFree(funnelEdge) %|| ~O.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
+                if ~W.funnelCollisionFree(funnelEdge) %|| ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
                     continue
                 end
 
@@ -233,18 +233,18 @@ classdef searchFunnel < handle
             funnelEdge.time = funnel.time;
             
             %assigning the trajectory
-            funnelEdge.trajectory_stateSpace = funnel.trajectory; %just for initialisation
+            funnelEdge.trajectory_stateSpace = funnel.trajectory_complete; %just for initialisation
             %shifting the trajectory along the cyclic coordinates
-            shiftVector = [desiredConfig 0]; %start point -- x, y and z
+            shiftVector = [desiredConfig 0]; %cyclic coordinates -- x, y and z
             funnelEdge.trajectory_stateSpace = obj.shiftAlongCyclicCoordinates(funnelEdge,shiftVector);
             
             %assigning the invariant sets
-            funnelEdge.invariantSet_stateSpace = funnel.RofA;
+            funnelEdge.invariantSet_stateSpace = funnel.RofA_complete;
 
             %computing projections onto configuration space and workspace for later use
-            funnelEdge.trajectory_configurationSpace = funnel.trajectory_complete;
-            funnelEdge.trajectory_configurationSpace = obj.shiftAlongCyclicCoordinates_Temp(funnelEdge,shiftVector);
-            funnelEdge.invariantSet_configurationSpace = funnel.RofA_complete;
+            %project the funnel in state-space to C-space
+            [funnelEdge.trajectory_configurationSpace, funnelEdge.invariantSet_configurationSpace] = ...
+                obj.projectFunnel_nD_to_mD(funnelEdge, obj.CspaceDimensionIndices);
 
             %project the funnel in state-space to workspace
             [funnelEdge.trajectory_workSpace, funnelEdge.invariantSet_workSpace] = ...
@@ -268,26 +268,19 @@ classdef searchFunnel < handle
         function shiftedTrajectory = shiftAlongCyclicCoordinates(obj,funnelEdge,cyclicCoords)
               
             %Constructing the shift matrix
-            shiftArray = ones(length(funnelEdge.time),1)*[cyclicCoords 0 0 0]; %no shift along velocity!      
+            shiftVector = zeros(size(funnelEdge.trajectory_stateSpace,1), 1);
+            
+            for i=1:length(obj.CspaceDimensionIndices)
+                shiftVector(obj.CspaceDimensionIndices(i)) = cyclicCoords(i);
+            end
+
+            shiftArray = ones(length(funnelEdge.time),1)*shiftVector'; %no shift along velocity!      
             
             %transposing: N * nx -> nx * N (to match convention)
             shiftArray = shiftArray';
             
             %shifted trajectory
             shiftedTrajectory = funnelEdge.trajectory_stateSpace + shiftArray;
-        end
-
-        %new functions added (Jul '24)
-        function shiftedTrajectory = shiftAlongCyclicCoordinates_Temp(obj,funnelEdge,cyclicCoords)
-              
-            %Constructing the shift matrix
-            shiftArray = ones(length(funnelEdge.time),1)*[cyclicCoords 0 0 0 0 0 0 0 0 0]; %no shift along velocity!      
-            
-            %transposing: N * nx -> nx * N (to match convention)
-            shiftArray = shiftArray';
-            
-            %shifted trajectory
-            shiftedTrajectory = funnelEdge.trajectory_configurationSpace + shiftArray;
         end
 
         %--------------------------------------------------------------------------------%
@@ -303,11 +296,11 @@ classdef searchFunnel < handle
                 checkingMethod = 'Sampling';
             end
             
-            outletRofA = funnel1.invariantSet_configurationSpace(:,:,end); %index 'end': outlet of funnel 1
-            outletCenter = funnel1.trajectory_configurationSpace(:,end); %index 'end': outlet of funnel 1
+            outletRofA = funnel1.invariantSet_stateSpace(:,:,end); %index 'end': outlet of funnel 1
+            outletCenter = funnel1.trajectory_stateSpace(:,end); %index 'end': outlet of funnel 1
          
-            inletRofA = funnel2.invariantSet_configurationSpace(:,:,1); %index 1: inlet of funnel 2
-            inletCenter = funnel2.trajectory_configurationSpace(:,1); %index 1: inlet of funnel 2
+            inletRofA = funnel2.invariantSet_stateSpace(:,:,1); %index 1: inlet of funnel 2
+            inletCenter = funnel2.trajectory_stateSpace(:,1); %index 1: inlet of funnel 2
             
             %first pass check
             if(outletCenter-inletCenter)'*inletRofA*(outletCenter-inletCenter)>1 %if the centre itself doesn't lie in the ellipse, return  
@@ -326,35 +319,6 @@ classdef searchFunnel < handle
             %check
 
         end
-
-        function check = inFunnel(obj,point)
-
-            check = 0;
-
-            for i=1:obj.numFunnelEdges
-                thisFunnel = obj.funnelEdges(i);
-                traj = thisFunnel.trajectory_stateSpace;
-                funnel = thisFunnel.invariantSet_stateSpace;        
-                
-                %at this stage you have the trajectory and
-                %the RofA along the knot points
-                if(notInBoudingCircle(obj,traj,funnel,point))
-                    continue
-                end 
-
-                funnelSize = length(thisFunnel.time);
-                vanDerSequence = ceil(vdcorput(obj,funnelSize,2)*funnelSize);
-                
-                for j=1:funnelSize
-                    state = traj(1:2,vanDerSequence(j));
-                    RofA = funnel(:,:,vanDerSequence(j));
-                    if(inBasin(obj,state,RofA,point))
-                        check = 1;        
-                        return
-                    end
-                end
-            end
-        end
         
         %new function added!
         function check = inAnyInlets(obj,configurationPose) %2D configuration for now
@@ -365,11 +329,11 @@ classdef searchFunnel < handle
                 
                 thisFunnel = obj.funnelEdges(i);
                 
-                if obj.notInBoudingCircle(thisFunnel.trajectory_stateSpace,thisFunnel.invariantSet_stateSpace,configurationPose)
+                if obj.notInBoudingCircle(thisFunnel.trajectory_workSpace, configurationPose)
                     continue
                 end 
             
-                if inFunnelInlet(obj,thisFunnel,configurationPose)
+                if obj.inFunnelInlet(thisFunnel,configurationPose)
                     check = 1;        
                     return
                 end
@@ -381,10 +345,10 @@ classdef searchFunnel < handle
 
             check = 0;
             
-            inletCenter = funnel.trajectory_stateSpace(1:2,1); %1 is inlet
-            inletRegion = funnel.invariantSet_stateSpace(:,:,1); %1 is inlet
+            inletCenter_workspaceProjected = funnel.trajectory_workSpace(:,1); %1 is inlet
+            inletRegion_workspaceProjected = funnel.invariantSet_workSpace(:,:,1); %1 is inlet
             
-            if(inBasin(obj,inletCenter,inletRegion,configurationPose))
+            if(obj.inBasin(inletCenter_workspaceProjected,inletRegion_workspaceProjected,configurationPose))
                 check = 1;        
                 return
             end
@@ -579,30 +543,6 @@ classdef searchFunnel < handle
             %plot(trajectory(end,1),trajectory(end,2),'.k','LineWidth',2,'MarkerSize',4); %interior of the funnel
         end
 
-        %draws an ellipse defined by xTMx<1 with centre c
-        %status - 2 - goal branch; 1 - normal edge; 0 - deleted edge
-        % function drawEllipse(obj,center,RofA,status)
-        % 
-        %     N = 20; %50 for more pretty plots
-        %     th = linspace(-pi,pi,N);
-        % 
-        %     %Basis = [1 0; 0 1; 0 0; 0 0; 0 0; 0 0]; %xy
-        %     %Basis = [0 0; 0 1; 0 1; 0 0; 0 0; 0 0]; %yz
-        %     %Basis = [1 0; 0 0; 0 1; 0 0; 0 0; 0 0];  %zx
-        %     E = Basis'/RofA*Basis;
-        %     %ell = E^(1/2)*[cos(th); sin(th)];
-        %     ell = sqrtm(E)*[cos(th); sin(th)];
-        % 
-        %     if status == 2 
-        %         color = [0 0.9 0.1]; alpha = 0.8; %green
-        %     elseif status == 1
-        %         color = [0.8 0.8 0.8]; alpha = 0.7; %gray
-        %     else
-        %         color = [0.99 0.99 0.99]; alpha = 0.8; %opaque
-        %     end
-        % 
-        %     fill(center(1) + ell(1,:),center(2) + ell(2,:),color,'edgeColor',color,'FaceAlpha',alpha);
-        % end
 
         %draws an ellipse defined by xTMx<1 with centre c
         %status - 2 - goal branch; 1 - normal edge; 0 - deleted edge
@@ -721,6 +661,34 @@ classdef searchFunnel < handle
         % end
         
         % Legacy code (deprecated on Dec 12 '25 - Khalid M Jaffar)
+        %
+        % function check = inFunnel(obj, config)
+        % 
+        %     check = 0;
+        % 
+        %     for i=1:obj.numFunnelEdges
+        %         thisFunnel = obj.funnelEdges(i);
+        %         trajectoryProjected = thisFunnel.trajectory_workSpace;
+        %         invariantSetsProjected = thisFunnel.invariantSet_workSpace;        
+        % 
+        %         if obj.notInBoudingCircle(trajectoryProjected, config)
+        %             continue
+        %         end 
+        % 
+        %         N = length(thisFunnel.time);
+        %         vanDerSequence = ceil(vdcorput(obj,N,2)*N);
+        % 
+        %         for k = 1:N
+        %             nomStateProjected = trajectoryProjected(:,vanDerSequence(k));
+        %             ellipsoidProjected = invariantSetsProjected(:,:,vanDerSequence(k));
+        %             if(inBasin(obj,nomStateProjected,ellipsoidProjected,config))
+        %                 check = 1;        
+        %                 return
+        %             end
+        %         end
+        %     end
+        % end
+        %
         % %checks whether funnel1 is composable with funnel2
         % %that is if outlet of funnel1 is contained within the inlet of funnel2
         % function check = isComposable(obj,funnel1,funnel2)
@@ -845,30 +813,26 @@ classdef searchFunnel < handle
         end
         
      
-        %Function to perform a course-check whether the point is not in the
+        %Function to perform a course-check whether a configuration is not in the
         %bounding circle of the funnel, returns 1 if point is outside the circle
-        function pass = notInBoudingCircle(obj,x,RofA,point)
+        function pass = notInBoudingCircle(obj,traj,config)
             pass = 0;
-            initialState  = x(1:2,1);
-            finalState = x(1:2,end);
-            midState = (initialState+finalState)/2; %computing the approx centre of the trajectory
+            initialConfig  = traj(:,1);
+            finalConfig = traj(:,end);
+            midConfig = (initialConfig+finalConfig)/2; %computing the approx centre of the trajectory
 
-            radius = 1.2*euclidianDist(obj,initialState,finalState)/2;
-            if(euclidianDist(obj,midState,point)>radius)
+            radius = 1.1*euclidianDist(obj,initialConfig,finalConfig)/2;
+            if(euclidianDist(obj,midConfig,config)>radius)
                 pass = 1;
             end
         end
         
         %Function to determine whether a point lies inside an ellipse or not
-        function check = inBasin(obj,x,RofA,point)
+        % (x'-x_c)'*Ellipsoid*(x'-x_c) < 1 implies x is within ellipsoid 
+        function check = inBasin(obj,x_c, Ellipsoid, x)
             check = 0;
-            Basis = [1 0; 0 1; 0 0; 0 0; 0 0; 0 0]; %xy
-            %Basis = [0 0; 0 1; 0 1; 0 0; 0 0; 0 0]; %yz
-            %Basis = [1 0; 0 0; 0 1; 0 0; 0 0; 0 0];  %zx
-
-            E = Basis'*(RofA\Basis);   %Basis'*inv(RofA)*Basis
-            %P = inv(E);
-            if(point'-x)'*(E\(point'-x)) < 1 % (point'-x)'*inv(E)*(point'-x)
+            
+            if (x'-x_c)'*Ellipsoid*(x'-x_c) < 1
                 check=1;
                 return
             end
