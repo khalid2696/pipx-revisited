@@ -30,19 +30,21 @@ classdef mazeEnvironment < handle
         numObstacles %useful for keeping track of num of active obstacles
         toleranceLimit
         sensorRadius %sensor radius of the robot
+        sizeRange %width range of rectangle obstacles
         
         obstacleTree
         
-        rectangles %list of rectangles in the maze
+        rectangles %list of rectangle panels in the maze
         obstacles  %list of obstacles with obstacleStruct datatype
      
         %internal use
         indexOfLast
         
     end
+
     methods
         %constructor class - initialises with the position, size and an unique id
-        function obj = mazeEnvironment(envLB,envUB,epsilon,mode)
+        function obj = mazeEnvironment(envLB,envUB,sensorRadius,sizeRange,epsilon,type)
             
             obj.envLB = envLB;
             obj.envUB = envUB;
@@ -51,18 +53,19 @@ classdef mazeEnvironment < handle
             obj.numObstacles = 0;
             obj.indexOfLast = 0;
                  
-            obj.sensorRadius = 12;
-            obj.toleranceLimit = epsilon; %15
+            obj.sensorRadius = sensorRadius;
+            obj.sizeRange = sizeRange;
+            obj.toleranceLimit = epsilon/2; %extra-padding
             
             distFunct = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function
             obj.obstacleTree = KDTree(2, distFunct); %initialise the tree, 2 - num of dimensions
             
-            initialiseMaze(obj,mode);
+            initialiseMaze(obj,type);
             splitRectangles(obj);
         end
         
-        function obj = initialiseMaze(obj,mode)
-            switch mode
+        function obj = initialiseMaze(obj,type)
+            switch type
                 case 1
                     rectangleList = [0.2 0.8 0.55 0.05 0 ;
                                      0.8 0.6 0.8 0.05 90;
@@ -138,7 +141,7 @@ classdef mazeEnvironment < handle
             obj.numObstacles = obj.numObstacles+1; %increment the total #obstacles by 1
         end
         
-        function exploredObstacles = senseWalls(obj,robotLocation)
+        function exploredObstacles = senseObstacles(obj,robotLocation)
             
             tempKDTree = obj.obstacleTree;
             range = 1.15*obj.sensorRadius; %trying to make up for circleRadius
@@ -162,48 +165,49 @@ classdef mazeEnvironment < handle
             
         end
         
-        function addedObstacles = addRandomObstacles(obj,n,centre,sizeRange) %n - number of obstacles                    
-            
-            addedObstacles = cell(n,1);
-            offset = obj.sensorRadius/2;
-            
-            if(nargin == 2)
-                %centre = 100*rand([1 2]);   %useful while debugging, where we don't have to
-                centre = rand(n,2).*(obj.envUB - obj.envLB) + obj.envLB;
-                sizeRange = [2 4]; %specify the range of workspace and size everytime
-                
-                for i=1:n
-                    location = centre(i,:);
-                    size = sizeRange(1) + (sizeRange(2) - sizeRange(1))*rand();
-                
-                    %initialise an obstacle and add it to the list
-                    randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-                    addObstacle(obj,randomObstacle);
-                    addedObstacles{i} = randomObstacle;
-                end
-                
-                return
-            end
-                
-            if (nargin == 3)    %implies doesn't include the size range
-                sizeRange = [2 4];
-            end
-            
-            for i=1:n
-                %assign random locations and size
-                r = (obj.sensorRadius-offset)*rand() + offset;
-                theta  = 2*pi*rand();
-                location = [centre(1)+r*cos(theta) centre(2)+r*sin(theta)];
-                size = sizeRange(1) + (sizeRange(2) - sizeRange(1))*rand();
-
-                %initialise an obstacle and add it to the list
-                randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-                addObstacle(obj,randomObstacle);
-                addedObstacles{i} = randomObstacle;
-            end     
-        end
+        % Not relevant for maze environment
+        % function addedObstacles = addRandomObstacles(obj,n,centre,sizeRange) %n - number of obstacles                    
+        % 
+        %     addedObstacles = cell(n,1);
+        %     offset = obj.sensorRadius/2;
+        % 
+        %     if(nargin == 2)
+        %         %centre = 100*rand([1 2]);   %useful while debugging, where we don't have to
+        %         centre = rand(n,2).*(obj.envUB - obj.envLB) + obj.envLB;
+        %         sizeRange = [2 4]; %specify the range of workspace and size everytime
+        % 
+        %         for i=1:n
+        %             location = centre(i,:);
+        %             size = sizeRange(1) + (sizeRange(2) - sizeRange(1))*rand();
+        % 
+        %             %initialise an obstacle and add it to the list
+        %             randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
+        %             addObstacle(obj,randomObstacle);
+        %             addedObstacles{i} = randomObstacle;
+        %         end
+        % 
+        %         return
+        %     end
+        % 
+        %     if (nargin == 3)    %implies doesn't include the size range
+        %         sizeRange = [2 4];
+        %     end
+        % 
+        %     for i=1:n
+        %         %assign random locations and size
+        %         r = (obj.sensorRadius-offset)*rand() + offset;
+        %         theta  = 2*pi*rand();
+        %         location = [centre(1)+r*cos(theta) centre(2)+r*sin(theta)];
+        %         size = sizeRange(1) + (sizeRange(2) - sizeRange(1))*rand();
+        % 
+        %         %initialise an obstacle and add it to the list
+        %         randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
+        %         addObstacle(obj,randomObstacle);
+        %         addedObstacles{i} = randomObstacle;
+        %     end     
+        % end
         
-        function obj = removeObstacle(obj,G,obstacle)
+        function obj = removeObstacle(obj,C,obstacle)
             
             if(obj.numObstacles < 1 || obstacle.status == 0)
                 return %no obstacle to remove or if obstacle has already been removed
@@ -221,8 +225,8 @@ classdef mazeEnvironment < handle
             for i=1:length(tempEdges)
                 thisEdge = tempEdges(i);
                 
-                head = G.graphNodes(thisEdge.parent);
-                tail = G.graphNodes(thisEdge.child);
+                head = C.graphNodes(thisEdge.parent);
+                tail = C.graphNodes(thisEdge.child);
                 newCost = euclidianDist(obj,head.pose,tail.pose);
                 
                 tempEdges(i).withinObstacle = 0;
@@ -234,7 +238,7 @@ classdef mazeEnvironment < handle
             
         end
         
-        function deletedObstacles = removeRandomObstacles(obj,G,n,robotLocation)
+        function deletedObstacles = removeRandomObstacles(obj,C,n,robotLocation)
             
             range = 1.15*obj.sensorRadius; %trying to make up for circleRadius
             
@@ -251,14 +255,22 @@ classdef mazeEnvironment < handle
                 if(tempObstacle.status == 0) 
                     continue %if the obstacle is inactive continue
                 end
-                removeObstacle(obj,G,tempObstacle);
+                removeObstacle(obj,C,tempObstacle);
                 i = i+1;
                 deletedObstacles{i} = tempObstacle;
             end
             
         end     
         
-        function findNodesWithinEachObstacle(obj,G,tree,obstacle)        
+        %functions to determine which nodes and edges are within obstacles
+        function findNodesWithinObstacles(obj,C,tree,obstacles)
+            
+             for i = 1:length(obstacles)
+                obj.findNodesWithinEachObstacle(C,tree,obstacles{i});
+            end
+        end
+
+        function findNodesWithinEachObstacle(obj,C,tree,obstacle)        
             if obstacle.status == 0 
                 %nodes = {};
                 return %if the obstacle is not active continue
@@ -275,118 +287,173 @@ classdef mazeEnvironment < handle
                 tempNode.withinObstacle = 1; %make the within obstacle flag true
             end 
         end
+        
+        function collisionEdges = findEdgesWithinObstacles(obj,F,G,tree,obstacles)
             
-        %functions to determine which nodes and edges are within obstacles
-        %function collisionNodes = findNodesWithinObstacles(obj,G,tree,obstacles)
-        function findNodesWithinObstacles(obj,G,tree,obstacles)
-            
-             for i = 1:length(obstacles)
-                findNodesWithinEachObstacle(obj,G,tree,obstacles{i});
+            collisionEdges = [];
+            %for i = 1:obj.indexOfLast
+            for i = 1:length(obstacles)
+                edges = obj.findEdgesWithinEachObstacle(F,G,tree,obstacles{i});
+                collisionEdges = [collisionEdges edges'];
             end
         end
-      
-        
-        function edges = findEdgesWithinEachObstacle(obj,G,tree,obstacle)
+
+        function edges = findEdgesWithinEachObstacle(obj,F,G,tree,thisObstacle)
                 
-            if obstacle.status == 0 
+            if thisObstacle.status == 0 
                 edges = [];
                 return %if the obstacle is not active continue
             end
 
-            centre  = obstacle.location;
-            epsilon = sqrt(obstacle.radius^2+obj.toleranceLimit^2);
+            centre  = thisObstacle.location;
+            epsilon = thisObstacle.radius + obj.toleranceLimit; %extra-padding
 
             nodes = tree.kdFindWithinRangePayload(epsilon,centre);         
-            edgeIndices = [];
-
-            for j=1:length(nodes)
-                thisNode = nodes{j};
-
-                %pre-allocating memory to edge indices
-                edgesRaw = NaN((length(thisNode.inEdges)+length(thisNode.outEdges)),1);
-                s = 0;
-                for k=1:length(thisNode.inEdges)
-                    tempEdgeIndex = thisNode.inEdges(k);
-                    tempEdge = G.graphEdges(tempEdgeIndex);
-
-                    tempHead = G.graphNodes(tempEdge.parent);
-                    tempTail = G.graphNodes(tempEdge.child);
-
-                    if obj.edgeCollisionFree(tempHead.pose,tempTail.pose)
-                        continue
-                    end
-
-                    s = s+1;
-                    edgesRaw(s) = tempEdgeIndex;
-
-                end
-
-                for k=1:length(thisNode.outEdges)
-                    tempEdgeIndex = thisNode.outEdges(k);
-                    tempEdge = G.graphEdges(tempEdgeIndex);
-
-                    tempHead = G.graphNodes(tempEdge.parent);
-                    tempTail = G.graphNodes(tempEdge.child);
-
-                    if obj.edgeCollisionFree(tempHead.pose,tempTail.pose)
-                        continue
-                    end
-
-                    s = s+1;
-                    edgesRaw(s) = tempEdgeIndex; 
-                end
-
-                edgeIndices = [edgeIndices unique(edgesRaw(1:s))']; %to remove any possible duplicates    
+            motionEdgeIndices = [];      
+            
+            for i=1:length(nodes)
+                thisNode = nodes{i};
+                
+                %fprintf('\n\nNode number: %d',i);
+                %fprintf('\nNode index: %d',thisNode.index);
+                
+                %plot(thisNode.pose(1),thisNode.pose(2),'xg','MarkerSize',15,'LineWidth',3);
+                %drawnow
+                
+                motionEdgeIndices = [motionEdgeIndices, findEdgesInAugmentedGraph(obj,G,thisNode,thisObstacle)];
             end
 
-            if(isempty(edgeIndices)) %if no edge is in collision, continue
+            
+            if(isempty(motionEdgeIndices)) %if no edge is in collision, continue
                 edges = [];
                 return
             end
             
             %edgeIdices - all the edges that are in collision with this obstacle 
             %now we extract the edge pointers and save it
-            edges(length(edgeIndices),1) = edgeStruct();
-            for k=1:length(edgeIndices)
-                tempEdgeIndex = edgeIndices(k);
+            edges(length(motionEdgeIndices),1) = edgeStruct();
+            for j=1:length(motionEdgeIndices)
+                tempEdgeIndex = motionEdgeIndices(j);
                 tempEdge = G.graphEdges(tempEdgeIndex);
 
                 tempEdge.cost = inf;
                 tempEdge.withinObstacle = 1;
-
-                edges(k) = tempEdge;
-            end
-            %store the edges data to this obstacle 
-            obstacle.edgesWithin = edges;
-        end
-        
-        %have to complete editing this part
-        function collisionEdges = findEdgesWithinObstacles(obj,G,tree,obstacles)
-            
-            collisionEdges = [];
-            %for i = 1:obj.indexOfLast
-            for i = 1:length(obstacles)
-                edges = findEdgesWithinEachObstacle(obj,G,tree,obstacles{i});
-                collisionEdges = [collisionEdges edges'];
-            end
-        end
                 
-        function modifiedEdges = getModifiedEdges(obj,G,tree,obstacles)
+                edges(j) = tempEdge;
+                
+                %head.vertexData(2) corresponds to the funnel-edge
+                %so should be tail.vertexData(2) (by construction)
+                tempHead = G.graphVertices(tempEdge.parent);
+                tempFunnel = F.funnelEdges(tempHead.vertexData(2));
+                tempFunnel.cost = inf;
+                tempFunnel.withinObstacle = 1;           
+            end
+            
+            %store the edges data to this obstacle
+            thisObstacle.edgesWithin = edges;
+            %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+            %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+            %consider changing storing edges directly to edgeIndices
+            %for saving space and improving runtime performance
+            %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+            %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+        end
+
+        function motionEdgesInCollision = findEdgesInAugmentedGraph(obj,G,thisNode,thisObstacle)
+             
+            s = 0;
+            motionEdgesInCollision = NaN(length(thisNode.inletVertices) + length(thisNode.outletVertices),1);
+            
+            
+            for i = 1:length(thisNode.inletVertices)
+
+                thisInletVertex = G.graphVertices(thisNode.inletVertices(i));
+                
+                %each inlet vertex will have only one out-edge (motion-edge)
+                tempEdgeIndex = thisInletVertex.outEdges;
+                tempEdge = G.graphEdges(tempEdgeIndex);
+                
+                if isempty(tempEdge) %ideally, it shouldn't be empty
+                    %disp('Empty edge encountered!')
+                    continue
+                end
+                
+                %one-more check -- in theory, not required (for debugging)
+                if tempEdge.type == 0 %if continuity edge, 
+                    disp('Bug: Continuity-edge checked!');
+                    continue          %not relevant for collision checking
+                end
+
+                tempHead = G.graphVertices(tempEdge.parent);
+                tempTail = G.graphVertices(tempEdge.child);
+
+                %Collision check to see whether edge is in collision
+                if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
+                    %fprintf('\n\n The edge that was skipped: %d',tempEdge.index);
+                    %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'g','LineWidth',3)
+                    continue
+                end
+                        
+                s = s+1;
+                motionEdgesInCollision(s) = tempEdgeIndex;
+                thisInletVertex.withinObstacle = 1; %not sure when this would become 0 again
+                                                    %have to code it
+            end
+            
+            for i = 1:length(thisNode.outletVertices)
+
+                thisOutletVertex = G.graphVertices(thisNode.outletVertices(i));
+                
+                %each outlet vertex will have only one in-edge (motion-edge)
+                tempEdgeIndex = thisOutletVertex.inEdges;
+                tempEdge = G.graphEdges(tempEdgeIndex);
+                
+                if isempty(tempEdge) %ideally, it shouldn't be empty
+                    %disp('Empty edge encountered!')
+                    continue
+                end
+                
+                %one-more check -- in theory, not required (for debugging)
+                if tempEdge.type == 0 %if continuity edge, 
+                    disp('Bug: Continuity-edge checked!');
+                    continue          %not relevant for collision checking
+                end
+
+                tempHead = G.graphVertices(tempEdge.parent);
+                tempTail = G.graphVertices(tempEdge.child);
+
+                %Collision check to see whether edge is in collision
+                if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
+                    %fprintf('\n\n The edge that was skipped: %d',tempEdge.index);
+                    %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'g','LineWidth',3)
+                    continue
+                end
+                        
+                s = s+1;
+                motionEdgesInCollision(s) = tempEdgeIndex;
+                thisOutletVertex.withinObstacle = 1; %not sure when this would become 0 again
+                                                     %have to code it!
+            end
+            
+            %motionEdgesInCollision = motionEdgesInCollision(1:s)'; %to remove any possible duplicates
+            motionEdgesInCollision = unique(motionEdgesInCollision(1:s))'; %to remove any possible duplicates
+        end
+               
+        function modifiedEdges = getModifiedEdges(obj,F,C,G,tree,obstacles)
             
             if(length(obstacles)<1)
                 modifiedEdges = [];
                 return
             end
             
-            %this is for added obstacles
             if (obstacles{1}.status == 1) %this list comprises of added obstacles
                 %so determine the edges in collision first
-                findNodesWithinObstacles(obj,G,tree,obstacles);
-                modifiedEdges = findEdgesWithinObstacles(obj,G,tree,obstacles);
+                
+                obj.findNodesWithinObstacles(C,tree,obstacles);
+                modifiedEdges = obj.findEdgesWithinObstacles(F,G,tree,obstacles);
                 return
             end
             
-            %this is for deleted obstacles
             modifiedEdges = [];
             for i=1:length(obstacles)
                 modifiedEdges = [modifiedEdges obstacles{i}.edgesWithin'];
@@ -514,13 +581,51 @@ classdef mazeEnvironment < handle
 
                 %If the closest point lies within the edge and as well as at a
                 %distance less than the radius, it implies collision
-                if(liesInBetween(obj,v,w,closestPoint) && (euclidianDist(obj,closestPoint,centre) < radius))
+                if(obj.liesInBetween(v,w,closestPoint) && (obj.euclidianDist(closestPoint,centre) < radius))
                     check = 0;
                     return
                 end
             end
         end
         
+        %returns 1 if edge is free of collision else return 0
+        %edge - (v,w) v <-- parent w <-- child
+        %Collision check of a line and circle
+        function check = edgeCollisionFreeWithThisObstacle(obj,v,w,thisObstacle)
+            
+            check = 1;
+            %v = edgeHead.pose;
+            %w = edgeTail.pose;
+            if(~vertexCollisionFree(obj,w) || ~vertexCollisionFree(obj,v))
+                check = 0;
+                return;
+            end
+
+            if(thisObstacle.status == 0) %if inactive continue
+                return
+            end
+
+            %Accessing the centre and radius from the obstacles file
+            centre = thisObstacle.location;
+            radius = thisObstacle.radius + obj.toleranceLimit; %new addition -- extra padding
+
+            %Checking if the edge (v,w) intersects the circle
+
+            angleSubtend = ((centre(1)-v(1))*(w(1)-v(1)) + (centre(2)-v(2))*(w(2)-v(2)))/(euclidianDist(obj,v,w)^2);
+
+            xProjection = v(1) + angleSubtend*(w(1)-v(1));
+            yProjection = v(2) + angleSubtend*(w(2)-v(2));
+
+            closestPoint = [xProjection, yProjection];
+
+            %If the closest point lies within the edge and as well as at a
+            %distance less than the radius, it implies collision
+            if(obj.liesInBetween(v,w,closestPoint) && (obj.euclidianDist(closestPoint,centre) < radius))
+                check = 0;
+                return
+            end
+        end
+
         function success = funnelCollisionFree(obj,funnel)
             success = 1;
             
@@ -548,6 +653,31 @@ classdef mazeEnvironment < handle
                 end
             end     
         end
+
+        function success = funnelCollisionFreeWithThisObstacle(obj,funnel,thisObstacle)
+            success = 1;
+            
+            traj = funnel.trajectory_workSpace;
+            
+            initialConfig  = traj(:,1);
+            finalConfig = traj(:,end);
+            midConfig = (initialConfig+finalConfig)/2; %computing the approx centre of the trajectory
+            boundingCircleRadius = 1*euclidianDist(obj,initialConfig,finalConfig)/2;
+            
+            if(thisObstacle.status == 0) %if inactive continue
+                return
+            end
+
+            if(boundingCircleCheck(obj,midConfig,boundingCircleRadius,thisObstacle)) %if the funnel is sufficiently far off
+                return                                         %from the obstacle return with 1   
+            end
+
+            if(~funnelCircleCollision(obj,funnel,thisObstacle))
+                success=0;
+                return
+            end
+        end
+
     end
 
     %if we have to declare functions that are required to be 
