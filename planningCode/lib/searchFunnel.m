@@ -230,16 +230,16 @@ classdef searchFunnel < handle
             
             %instantiating an empty struct
             funnelEdge = funnelStruct(); %id would be assigned later
-            funnelEdge.time = funnel.time;
+            funnelEdge.time = funnel.time_instances;
             
             %assigning the trajectory
-            funnelEdge.trajectory_stateSpace = funnel.trajectory_complete; %just for initialisation
+            funnelEdge.trajectory_stateSpace = funnel.trajectory; %just for initialisation
             %shifting the trajectory along the cyclic coordinates
             shiftVector = [desiredConfig 0]; %cyclic coordinates -- x, y and z
             funnelEdge.trajectory_stateSpace = obj.shiftAlongCyclicCoordinates(funnelEdge,shiftVector);
             
             %assigning the invariant sets
-            funnelEdge.invariantSet_stateSpace = funnel.RofA_complete;
+            funnelEdge.invariantSet_stateSpace = funnel.invarianceCertificates;
 
             %computing projections onto configuration space and workspace for later use
             %project the funnel in state-space to C-space
