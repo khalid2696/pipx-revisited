@@ -99,11 +99,10 @@ classdef forestEnvironment < handle
             end
             
             tempKDTree = obj.obstacleTree;
-            range = 1.05*obj.sensorRadius; %trying to make up for circleRadius
-            %range = obj.sensorRadius + obj.toleranceLimit;
+            %range = 1.05*obj.sensorRadius; %trying to make up for circleRadius
+            range = obj.sensorRadius + obj.toleranceLimit;
 
-            obstaclesInRange = tempKDTree.kdFindWithinRangePayload(range, robotLocation);
-            
+            obstaclesInRange = tempKDTree.kdFindWithinRangePayload(range, robotLocation);            
             
             for i=1:length(obstaclesInRange)
                 tempObstacle = obstaclesInRange{i};

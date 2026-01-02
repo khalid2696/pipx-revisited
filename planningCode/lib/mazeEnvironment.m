@@ -143,13 +143,16 @@ classdef mazeEnvironment < handle
         
         function exploredObstacles = senseObstacles(obj,robotLocation)
             
-            tempKDTree = obj.obstacleTree;
-            range = 1.15*obj.sensorRadius; %trying to make up for circleRadius
-            obstaclesInRange = tempKDTree.kdFindWithinRangePayload(range, robotLocation);
-            
-            %n = length(obstaclesInRange);
             exploredObstacles = {};
-            %count = 0;
+            if obj.numObstacles == 0
+                return %return if obstacle-free
+            end
+
+            tempKDTree = obj.obstacleTree;
+            %range = 1.15*obj.sensorRadius; %trying to make up for circleRadius
+            range = obj.sensorRadius + obj.toleranceLimit;
+
+            obstaclesInRange = tempKDTree.kdFindWithinRangePayload(range, robotLocation);
             
             for i=1:length(obstaclesInRange)
                 tempObstacle = obstaclesInRange{i};
