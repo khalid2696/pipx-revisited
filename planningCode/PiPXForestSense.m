@@ -34,7 +34,7 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 300; %300 and 350
+prePlanningIterationLimit = 100; %300 and 350
 totalIterationLimit = 450; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
 
@@ -51,10 +51,9 @@ envUB = 50;
 obstacleSizeRange = [1 3]; %radius of circular obstacles
 robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
 
-W = forestEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1); 
+W = forestEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,'sensing'); 
 %obstacle class:  epsilon - tolerance
-%mode - 1 for sensing, 2 for
-%dynamic addition/deletion
+%mode: 'sensing' or 'dynamic' (addition and deletion)
 
 distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
@@ -90,7 +89,7 @@ planner.setupPlot()
 %--------------------------------%
 workspaceCenter = (W.envLB + W.envUB)/2;
 fixedDistance = 40;
-randTheta = rand()*pi;
+randTheta = rand()*2*pi;
 
 startPose = [workspaceCenter + fixedDistance/2*cos(randTheta), workspaceCenter + fixedDistance/2*sin(randTheta)];  
 goalPose  = [workspaceCenter - fixedDistance/2*cos(randTheta), workspaceCenter - fixedDistance/2*sin(randTheta)];  

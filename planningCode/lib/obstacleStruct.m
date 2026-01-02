@@ -51,7 +51,7 @@ classdef obstacleStruct < handle
             obj.index = id;
             obj.location = location;
             obj.status = 1; %by default if an obstacle is initialised
-                            %we assume its status is inactive
+                            %we assume its status is active
             
             %by default the obstacles come in at t=0 and leave at t=inf               
             obj.timeIn = 0;

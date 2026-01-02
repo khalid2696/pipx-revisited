@@ -34,16 +34,20 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 250; %300 and 350
+prePlanningIterationLimit = 150; %300 and 350
 totalIterationLimit = 450; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
 
 planningFrequency = 1;
-robotMovementFrequency = 5; %decreasing this parameter increases the robot speed!
+robotMovementFrequency = 3; %decreasing this parameter increases the robot speed!
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 0; %15
+    numTreeObstacles = 30; %15
+end
+
+if ~exist('obstacleDynamicity', 'var') 
+    obstacleDynamicity = 10; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end
 
 envLB = 0;
@@ -51,10 +55,8 @@ envUB = 50;
 obstacleSizeRange = [1 3]; %radius of circular obstacles
 robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
 
-%W = forestEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1); 
-W = mazeEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1,'sensing');
+W = forestEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,'dynamic',obstacleDynamicity); 
 %obstacle class:  epsilon - tolerance
-%type - 1, 2 (different maze spaces)
 %mode: 'sensing' or 'dynamic' (addition and deletion)
 
 distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
@@ -90,7 +92,7 @@ planner.setupPlot()
 %random start and goal locations around a circle of fixed distance (for experiments)
 %--------------------------------%
 workspaceCenter = (W.envLB + W.envUB)/2;
-fixedDistance = 45;
+fixedDistance = 40;
 randTheta = rand()*pi;
 
 startPose = [workspaceCenter + fixedDistance/2*cos(randTheta), workspaceCenter + fixedDistance/2*sin(randTheta)];  
@@ -108,12 +110,12 @@ goalPose = round(goalPose * funnelLibraryResolution) / funnelLibraryResolution;
 
 
 %initially adding obstacles
-%W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
+W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
                                                       
 %W.initialiseObstacleTree();
-W.senseObstacles(startPose);
+%W.senseObstacles(startPose);
 
-if(~W.vertexCollisionFree(goalPose) || ~W.vertexCollisionFree(startPose))
+if(~W.vertexCollisionFree(goalPose))
     error('Goal inside the obstacles. No path exists!')
 end
 
@@ -261,6 +263,8 @@ if drawFlag
     title('Funnel-tree and shortest Funnel-path to goal')
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
+
+%return
 
 %-----------------------------------------------------------%
 %% start of robot motion and online re-planning phase

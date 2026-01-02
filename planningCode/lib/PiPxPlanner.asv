@@ -150,13 +150,9 @@ classdef PiPxPlanner < handle
             if strcmpi(W.mode, 'sensing') 
                 exploredObstacles = W.senseObstacles(C.currentRobotNode.pose); %sense from the middle
             elseif strcmpi(W.mode, 'dynamic')
-                numChangedObstacles = ceil(W.numObstacles * W.dynamicity/100);
-                deletedObstacles = W.removeRandomObstacles(F,C, numChangedObstacles)
-                addedObstacles = W.addRandomObstacles(C.currentRobotNode.pose, numChangedObstacles)
+                addedObstacles = W.addRandomObstacles(C.currentRobotNode.pose)
+                deletedObstacles = W.removeRandomObstacles(F,C)
             end
-       
-            obj.setupPlot();
-            W.drawAllObstacles();
 
             keyboard
 

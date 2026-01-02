@@ -26,9 +26,11 @@ classdef forestEnvironment < handle
         envLB
         envUB
         numObstacles %useful for keeping track of num of active obstacles
+        dynamicity %percentage of obstacles changing in location and size
         toleranceLimit
         sensorRadius %sensor radius of the robot
         sizeRange %size range of circular obstacles
+        mode %options: 'sensing' or 'dynamic' (addition and deletion)
         
         %list of obstacles with obstacleStruct datatype
         obstacles
@@ -40,7 +42,7 @@ classdef forestEnvironment < handle
 
     methods
         %constructor class - initialises with the position, size and an unique id
-        function obj = forestEnvironment(envLB,envUB,sensorRadius,sizeRange,epsilon,type)
+        function obj = forestEnvironment(envLB,envUB,sensorRadius,sizeRange,epsilon,mode,vargin)
             
             obj.envLB = envLB;
             obj.envUB = envUB;
@@ -50,17 +52,17 @@ classdef forestEnvironment < handle
             obj.sensorRadius = sensorRadius; %14
             obj.toleranceLimit = epsilon/2; %extra-padding       
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
+            obj.mode = mode;
 
-            if nargin<4 %type - 2 #addition/deletion of obstacles
-                return
+            if strcmpi(obj.mode, 'sensing')
+                obj.dynamicity = 0; %no obstacles get deleted
+            else
+                obj.dynamicity = vargin(1);
+                return %no need of having a kDTree of obstacles (for dynamic environment)
             end
             
-            if type == 1 %forest with sensing
-                distFunct = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function
-                obj.obstacleTree = KDTree(2, distFunct); %initialise the tree, 2 - num of dimensions
-                
-                %obj.initialiseObstacleTree();
-            end
+            distFunct = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function
+            obj.obstacleTree = KDTree(2, distFunct); %initialise the tree, 2 - num of dimensions
         end
         
         %whenever some changes happen to the underlying data structure
@@ -78,17 +80,21 @@ classdef forestEnvironment < handle
         end
         
         function obj = initialiseObstacleTree(obj)
-            
+
             for i=1:obj.indexOfLast
                 thisObstacle = obj.obstacles{i};
-                thisObstacle.status = 0; %at the start, all the obstacles are unexplored
+                
+                if strcmpi(obj.mode, 'sensing')
+                    thisObstacle.status = 0; %at the start, all the obstacles are unexplored
+                else
+                    thisObstacle.status = 1; %at the start, all the obstacles explored (in dynamic environment)
+                end
                 
                 %add to the obstacle kdTree
                 tempKDnode = KDTreeNode(thisObstacle.location); %changing it to pose instead of position
                 tempKDnode.payload = thisObstacle;
                 obj.obstacleTree.kdInsert(tempKDnode);
-            end
-            
+            end  
         end
 
         function exploredObstacles = senseObstacles(obj,robotLocation)
@@ -117,70 +123,63 @@ classdef forestEnvironment < handle
             
         end
         
-        function addedObstacles = addDynamicObstacles(obj,n,startPose,goalPose) %n - number of obstacles
+        function addedObstacles = addDynamicObstacles(obj,numObstacles,robotPose,goalPose,varargin) %n - number of obstacles
             
-            addedObstacles = cell(n,1);
+            addedObstacles = cell(numObstacles,1);
 
-            i = 1;
-            while i<=n
-                location = rand(1,2).*(obj.envUB - obj.envLB) + obj.envLB;
+            count = 1;
+            while count<=numObstacles
+                
+                if isempty(varargin) %if location is not specified
+                    location = rand(1,2).*(obj.envUB - obj.envLB) + obj.envLB;
+                else
+                    randRadius = rand()*obj.sensorRadius;
+                    randTheta = rand()*2*pi;
+                    location = [robotPose(1) + randRadius*cos(randTheta), robotPose(2) + randRadius*sin(randTheta)];  
+                end
+                
                 size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
 
                 if (euclidianDist(obj,location,goalPose) < size+obj.toleranceLimit) || ...
-                        (euclidianDist(obj,location,startPose) < size+obj.toleranceLimit)
+                        (euclidianDist(obj,location,robotPose) < size+obj.toleranceLimit)
                     continue %explicitly avoid obstacles occluding start or goal location
                 end
 
                 %initialise an obstacle and add it to the list
                 randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-                addObstacle(obj,randomObstacle);
-                addedObstacles{i} = randomObstacle;
-                i = i+1;
+                obj.addObstacle(randomObstacle);
+                addedObstacles{count} = randomObstacle;
+                count = count+1;
             end
  
         end
         
-        function addedObstacles = addRandomObstacles(obj,n,centre,sizeRange) %n - number of obstacles
+        function addedObstacles = addRandomObstacles(obj,centre,n) %n - number of obstacles
             
+            if nargin < 3
+                n = round(obj.numObstacles * obj.dynamicity/100);
+            end
+
             addedObstacles = cell(n,1);
-            offset = obj.sensorRadius/2;
-            
-            if(nargin == 2)
-                centre = rand(n,2).*(obj.envUB - obj.envLB) + obj.envLB;
-                sizeRange = obj.sizeRange;
-                % for i=1:n
-                %     location = centre(i,:);
-                %     size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand(); 
-                % 
-                %     %initialise an obstacle and add it to the list
-                %     randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-                %     addObstacle(obj,randomObstacle);
-                %     addedObstacles{i} = randomObstacle;
-                % end
-                % 
-                % return
-            end
-                
-            if (nargin == 3)    %implies doesn't include the size range
-                sizeRange = obj.sizeRange;
-            end
-            
+            %offset = obj.sensorRadius/2; %making sure that obstacles don't get added on the robot itself
+            offset = obj.toleranceLimit + obj.sizeRange(2); %making sure that obstacles don't get added on the robot itself
+
             for i=1:n
                 %assign random locations and size
-                r = (obj.sensorRadius-offset)*rand() + offset;
-                theta  = 2*pi*rand();
-                location = [centre(1)+r*cos(theta) centre(2)+r*sin(theta)];
-                size = sizeRange(1) + (sizeRange(2) - sizeRange(1))*rand();
+                randRadius = (obj.sensorRadius-offset)*rand() + offset;
+                randTheta  = 2*pi*rand();
+                location = [centre(1)+randRadius*cos(randTheta) centre(2)+randRadius*sin(randTheta)];
+                size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
 
                 %initialise an obstacle and add it to the list
                 randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-                addObstacle(obj,randomObstacle);
+                obj.addObstacle(randomObstacle);
                 addedObstacles{i} = randomObstacle;
             end     
         end
         
         
-        function obj = removeObstacle(obj,F,G,obstacle)
+        function obj = removeThisObstacle(obj,F,C,obstacle)
             
             if(obj.numObstacles < 1 || obstacle.status == 0)
                 return %no obstacle to remove or if obstacle has already been removed
@@ -198,8 +197,8 @@ classdef forestEnvironment < handle
             for i=1:length(tempEdges)
                 thisEdge = tempEdges(i);
                 
-                head = G.graphVertices(thisEdge.parent);
-                tail = G.graphVertices(thisEdge.child);
+                head = C.graphVertices(thisEdge.parent);
+                tail = C.graphVertices(thisEdge.child);
                 newCost = euclidianDist(obj,head.pose,tail.pose);
                 
                 tempEdges(i).withinObstacle = 0;
@@ -214,19 +213,23 @@ classdef forestEnvironment < handle
         end
         
 
-        function deletedObstacles = removeRandomObstacles(obj,F,G,n)
+        function deletedObstacles = removeRandomObstacles(obj,F,C,n)
+            
+            if nargin < 4
+                n = ceil(obj.numObstacles * obj.dynamicity/100);
+            end
             
             deletedObstacles = cell(n,1);
-            i = 0;
-            while i<n
+            count = 0;
+            while count<n
                 index = randi([1 obj.indexOfLast]);
                 tempObstacle = obj.obstacles{index};
                 if(tempObstacle.status == 0) 
                     continue %if the obstacle is inactive continue
                 end
-                removeObstacle(obj,F,G,tempObstacle);
-                i = i+1;
-                deletedObstacles{i} = tempObstacle;
+                removeThisObstacle(obj,F,C,tempObstacle);
+                count = count+1;
+                deletedObstacles{count} = tempObstacle;
             end
             
         end
@@ -411,7 +414,6 @@ classdef forestEnvironment < handle
                                                      %have to code it!
             end
             
-            %motionEdgesInCollision = motionEdgesInCollision(1:s)'; %to remove any possible duplicates
             motionEdgesInCollision = unique(motionEdgesInCollision(1:s))'; %to remove any possible duplicates
         end
         
