@@ -161,7 +161,10 @@ classdef PiPxPlanner < handle
             keyboard
 
             modifiedEdges = W.getModifiedEdges(F,C,G,T,exploredObstacles);
-            
+            %W.getModifiedEdges(F,C,G,T,exploredObstacles,'addition'); -> default
+            %W.getModifiedEdges(F,C,G,T,exploredObstacles,'deletion');
+
+
             if (isempty(modifiedEdges))
                 return
             end

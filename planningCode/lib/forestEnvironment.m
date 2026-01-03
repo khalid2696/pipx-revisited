@@ -157,7 +157,7 @@ classdef forestEnvironment < handle
         function addedObstacles = addRandomObstacles(obj,centre,n) %n - number of obstacles
             
             % if nargin < 3
-            %     n = round(obj.numObstacles * obj.dynamicity/100);
+            %     n = round(obj.indexOfLast * obj.dynamicity/100);
             % end
 
             addedObstacles = cell(n,1);
@@ -424,25 +424,33 @@ classdef forestEnvironment < handle
         end
         
         
-        function modifiedEdges = getModifiedEdges(obj,F,C,G,tree,obstacles)
+        function modifiedEdges = getModifiedEdges(obj,F,C,G,tree,obstacles,type)
             
             if(length(obstacles)<1)
                 modifiedEdges = [];
                 return
             end
+
+            if nargin < 7
+                type = 'addition';
+            end
             
-            if (obstacles{1}.status == 1) %this list comprises of added obstacles
+            if strcmpi(type,'addition')
+            %if (obstacles{1}.status == 1) %this list comprises of added obstacles
                 %so determine the edges in collision first
-                
-                findNodesWithinObstacles(obj,C,tree,obstacles);
-                modifiedEdges = findEdgesWithinObstacles(obj,F,G,tree,obstacles);
+                obj.findNodesWithinObstacles(C,tree,obstacles);
+                modifiedEdges = obj.findEdgesWithinObstacles(F,G,tree,obstacles);
                 return
             end
             
+            %this list would comprise of deleted obstacles, so just return
+            %the edges pre-stored within the removed obstacles
             modifiedEdges = [];
             for i=1:length(obstacles)
                 modifiedEdges = [modifiedEdges obstacles{i}.edgesWithin'];
             end
+            modifiedEdges = unique(modifiedEdges); %removing duplicates
+
         end
         
         %plotting functions
