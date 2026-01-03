@@ -156,19 +156,19 @@ classdef forestEnvironment < handle
         
         function addedObstacles = addRandomObstacles(obj,centre,n) %n - number of obstacles
             
-            if nargin < 3
-                n = round(obj.numObstacles * obj.dynamicity/100);
-            end
+            % if nargin < 3
+            %     n = round(obj.numObstacles * obj.dynamicity/100);
+            % end
 
             addedObstacles = cell(n,1);
             %offset = obj.sensorRadius/2; %making sure that obstacles don't get added on the robot itself
             offset = obj.toleranceLimit + obj.sizeRange(2); %making sure that obstacles don't get added on the robot itself
 
             for i=1:n
-                %assign random locations and size
+                %assign random locations and size within sensor radius
                 randRadius = (obj.sensorRadius-offset)*rand() + offset;
                 randTheta  = 2*pi*rand();
-                location = [centre(1)+randRadius*cos(randTheta) centre(2)+randRadius*sin(randTheta)];
+                location = [centre(1)+randRadius*cos(randTheta), centre(2)+randRadius*sin(randTheta)];
                 size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
 
                 %initialise an obstacle and add it to the list
@@ -198,26 +198,32 @@ classdef forestEnvironment < handle
                 thisEdge = tempEdges(i);
                 
                 head = C.graphVertices(thisEdge.parent);
-                tail = C.graphVertices(thisEdge.child);
-                newCost = euclidianDist(obj,head.pose,tail.pose);
+                %tail = C.graphVertices(thisEdge.child);
+                %newCost = euclidianDist(obj,head.pose,tail.pose);
                 
-                tempEdges(i).withinObstacle = 0;
-                tempEdges(i).cost = newCost;
+                thisEdge.withinObstacle = 0;
+                thisEdge.cost = thisEdge.nominalCost; %reset to the original non-infinite cost
+
+                %tempEdges(i).withinObstacle = 0;
+                %tempEdges(i).cost = tempEdges(i).nominalCost;
                 
                 %head.vertexData(2) corresponds to the funnel-edge
                 %so should be tail.vertexData(2) (by construction)
                 thisFunnel = F.funnelEdges(head.vertexData(2));
-                thisFunnel.cost = newCost;
+                thisFunnel.cost = thisFunnel.nominalCost; %reset to the original non-infinite cost
                 thisFunnel.withinObstacle = 0;
+
+                disp(thisFunnel)
+                disp(thisEdge)
             end      
         end
         
 
         function deletedObstacles = removeRandomObstacles(obj,F,C,n)
             
-            if nargin < 4
-                n = ceil(obj.numObstacles * obj.dynamicity/100);
-            end
+            % if nargin < 4
+            %     n = ceil(obj.numObstacles * obj.dynamicity/100);
+            % end
             
             deletedObstacles = cell(n,1);
             count = 0;
@@ -227,7 +233,7 @@ classdef forestEnvironment < handle
                 if(tempObstacle.status == 0) 
                     continue %if the obstacle is inactive continue
                 end
-                removeThisObstacle(obj,F,C,tempObstacle);
+                obj.removeThisObstacle(F,C,tempObstacle);
                 count = count+1;
                 deletedObstacles{count} = tempObstacle;
             end
