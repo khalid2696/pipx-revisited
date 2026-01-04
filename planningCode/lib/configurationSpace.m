@@ -291,9 +291,15 @@ classdef configurationSpace < handle
             edges = NaN(3*obj.numNodes,2);
             for i=6:3:3*obj.numNodes
                 tempNode = obj.graphNodes(i/3); %starting from 2, because 1 is goal node which doesn't have a parent 
-                if(isnan(tempNode.parent))
+                
+                if isinf(tempNode.cost) || tempNode.withinObstacle == 1
                     continue
                 end
+
+                if isnan(tempNode.parent)
+                    continue
+                end
+
                 edges(i-2,:) = obj.graphNodes(tempNode.parent).pose; % edge starts
                 edges(i-1,:) = tempNode.pose; % edge ends
             end 

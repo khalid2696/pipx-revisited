@@ -140,8 +140,8 @@ classdef forestEnvironment < handle
                 
                 size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
 
-                if (euclidianDist(obj,location,goalPose) < size+obj.toleranceLimit) || ...
-                        (euclidianDist(obj,location,robotPose) < size+obj.toleranceLimit)
+                if (obj.euclidianDist(location,goalPose) < size+obj.toleranceLimit) || ...
+                        (obj.euclidianDist(location,robotPose) < size+obj.toleranceLimit)
                     continue %explicitly avoid obstacles occluding start or goal location
                 end
 
@@ -151,10 +151,31 @@ classdef forestEnvironment < handle
                 addedObstacles{count} = randomObstacle;
                 count = count+1;
             end
+            
+            %make all the obstacles 
+            if strcmpi(obj.mode, 'dynamic')
+
+                % make m<=N obstacles inactive at random
+                %at random make (numObstacles * obj.dynamicity/100)
+                %obstacles active (status = 0)
+
+                %Options: 0. none 1. all obstacles, 2. half of the obtacles (preferred), 
+                % 3. number of obstacles that would change
+                numInactiveObstacles = 0;
+                %numInactiveObstacles = obj.indexOfLast;
+                %numInactiveObstacles = ceil(obj.indexOfLast/2);
+                %numInactiveObstacles = numObstacles - ceil(numObstacles * obj.dynamicity/100);
+                randomIndices = randperm(numObstacles, numInactiveObstacles);
+
+                for i=1:length(randomIndices)
+                    obj.obstacles{i}.status = 0;
+                end
+
+            end
  
         end
         
-        function addedObstacles = addRandomObstacles(obj,centre,n) %n - number of obstacles
+        function addedObstacles = addRandomObstacles(obj,robotPose,goalPose,n) %n - number of obstacles
             
             % if nargin < 3
             %     n = round(obj.indexOfLast * obj.dynamicity/100);
@@ -167,9 +188,16 @@ classdef forestEnvironment < handle
             for i=1:n
                 %assign random locations and size within sensor radius
                 randRadius = (obj.sensorRadius-offset)*rand() + offset;
+                %randRadius = (3*obj.sensorRadius-offset)*rand() + offset;
                 randTheta  = 2*pi*rand();
-                location = [centre(1)+randRadius*cos(randTheta), centre(2)+randRadius*sin(randTheta)];
+                location = [robotPose(1)+randRadius*cos(randTheta), robotPose(2)+randRadius*sin(randTheta)];
+
                 size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
+
+                if (obj.euclidianDist(location,goalPose) < size+obj.toleranceLimit) || ...
+                        (obj.euclidianDist(location,robotPose) < size+obj.toleranceLimit)
+                    continue %explicitly avoid obstacles occluding start or goal location
+                end
 
                 %initialise an obstacle and add it to the list
                 randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
@@ -179,7 +207,7 @@ classdef forestEnvironment < handle
         end
         
         
-        function obj = removeThisObstacle(obj,F,C,obstacle)
+        function obj = removeThisObstacle(obj,F,G,obstacle)
             
             if(obj.numObstacles < 1 || obstacle.status == 0)
                 return %no obstacle to remove or if obstacle has already been removed
@@ -197,7 +225,7 @@ classdef forestEnvironment < handle
             for i=1:length(tempEdges)
                 thisEdge = tempEdges(i);
                 
-                head = C.graphVertices(thisEdge.parent);
+                head = G.graphVertices(thisEdge.parent);
                 %tail = C.graphVertices(thisEdge.child);
                 %newCost = euclidianDist(obj,head.pose,tail.pose);
                 
@@ -212,14 +240,11 @@ classdef forestEnvironment < handle
                 thisFunnel = F.funnelEdges(head.vertexData(2));
                 thisFunnel.cost = thisFunnel.nominalCost; %reset to the original non-infinite cost
                 thisFunnel.withinObstacle = 0;
-
-                disp(thisFunnel)
-                disp(thisEdge)
             end      
         end
         
 
-        function deletedObstacles = removeRandomObstacles(obj,F,C,n)
+        function deletedObstacles = removeRandomObstacles(obj,F,G,n)
             
             % if nargin < 4
             %     n = ceil(obj.numObstacles * obj.dynamicity/100);
@@ -227,13 +252,15 @@ classdef forestEnvironment < handle
             
             deletedObstacles = cell(n,1);
             count = 0;
-            while count<n
+            while count < min(n,obj.numObstacles) 
                 index = randi([1 obj.indexOfLast]);
                 tempObstacle = obj.obstacles{index};
+                
                 if(tempObstacle.status == 0) 
-                    continue %if the obstacle is inactive continue
+                   continue %if the obstacle is inactive continue
                 end
-                obj.removeThisObstacle(F,C,tempObstacle);
+                
+                obj.removeThisObstacle(F,G,tempObstacle);
                 count = count+1;
                 deletedObstacles{count} = tempObstacle;
             end
@@ -245,6 +272,11 @@ classdef forestEnvironment < handle
             
             collisionNodes = [];
              for i = 1:length(obstacles)
+
+                if isempty(obstacles{i}) %just in case
+                    continue
+                end
+
                 nodes = findNodesWithinEachObstacle(obj,C,tree,obstacles{i});   
                 collisionNodes = [collisionNodes nodes'];
             end
@@ -252,7 +284,7 @@ classdef forestEnvironment < handle
         
         
         function nodes = findNodesWithinEachObstacle(obj,C,tree,obstacle)
-                
+
             if obstacle.status == 0 
                 nodes = {};
                 return %if the obstacle is not active continue
@@ -276,6 +308,11 @@ classdef forestEnvironment < handle
             collisionEdges = [];
             %for i = 1:obj.indexOfLast
             for i = 1:length(obstacles)
+
+                if isempty(obstacles{i}) %just in case
+                    continue
+                end
+
                 edges = findEdgesWithinEachObstacle(obj,F,G,tree,obstacles{i});
                 collisionEdges = [collisionEdges edges'];
             end
@@ -426,7 +463,7 @@ classdef forestEnvironment < handle
         
         function modifiedEdges = getModifiedEdges(obj,F,C,G,tree,obstacles,type)
             
-            if(length(obstacles)<1)
+            if isempty(obstacles)
                 modifiedEdges = [];
                 return
             end

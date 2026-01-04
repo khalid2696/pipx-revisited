@@ -43,7 +43,7 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 30; %15
+    numTreeObstacles = 5; %15
 end
 
 if ~exist('obstacleDynamicity', 'var') 
@@ -173,6 +173,7 @@ if drawFlag
     drawnow
 end
 
+%keyboard
 %% -----------------------------------------------------------%
 % Pre-planning phase of generating a roadmap of funnels
 %-----------------------------------------------------------%
@@ -291,8 +292,10 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     %plotting replanned funnel-path as robot moves
     if drawFlag
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
-            %figure; hold on; axis equal
-            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+            planner.setupPlot(); %C.drawSearchGraph(); 
+            C.drawSearchTree(); 
+            W.drawAllObstacles(); 
+            %W.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
             %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
             % 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
@@ -307,13 +310,13 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     end
 
     %sense obstacles
-    while mod(iteration,sensingFrequency) == 0
+    if mod(iteration,sensingFrequency) == 0
         planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
-        break
+        %break
     end
 
     %move the robot
-    while mod(iteration,robotMovementFrequency) == 0
+    if mod(iteration,robotMovementFrequency) == 0
         
         %robot-motion
         disp(' '); disp(' ');
@@ -339,11 +342,11 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 traversedPathLength,remainingPathLength);
         end
         
-        break
+        %break
     end
     
     %planning/replanning
-    while mod(iteration,planningFrequency) == 0
+    if mod(iteration,planningFrequency) == 0
         
         while true %run replanning loop till we add a new config and funnel-edges
             flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove,epsilon);    
@@ -353,7 +356,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             end        %flag = True (1) if no new configs were added, False (0) if new configs were added
         end
         
-        break
+        %break
     end
     
     iteration = iteration+1; %updating the iteration count

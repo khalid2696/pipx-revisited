@@ -149,26 +149,33 @@ classdef PiPxPlanner < handle
         
             if strcmpi(W.mode, 'sensing') 
                 exploredObstacles = W.senseObstacles(C.currentRobotNode.pose); %sense from the middle
+                modifiedEdges = W.getModifiedEdges(F,C,G,T,exploredObstacles);
             elseif strcmpi(W.mode, 'dynamic')
                 numChangedObstacles = ceil(W.numObstacles * W.dynamicity/100);
-                deletedObstacles = W.removeRandomObstacles(F,C, numChangedObstacles)
-                addedObstacles = W.addRandomObstacles(C.currentRobotNode.pose, numChangedObstacles)
+
+                if numChangedObstacles == 0
+                    modifiedEdges = [];
+                else
+                    %deletion
+                    deletedObstacles = W.removeRandomObstacles(F,G,numChangedObstacles);
+                    freedUpEdges = W.getModifiedEdges(F,C,G,T,deletedObstacles,'deletion');
+                    %addition
+                    addedObstacles = W.addRandomObstacles(C.currentRobotNode.pose, C.goalNode.pose, numChangedObstacles);
+                    newCollisionEdges = W.getModifiedEdges(F,C,G,T,addedObstacles,'addition');
+                    
+                    modifiedEdges = [freedUpEdges, newCollisionEdges];
+                end
+            else
+                modifiedEdges = [];
             end
        
-            obj.setupPlot();
-            W.drawAllObstacles();
-
-            keyboard
-
-            modifiedEdges = W.getModifiedEdges(F,C,G,T,exploredObstacles);
-            %W.getModifiedEdges(F,C,G,T,exploredObstacles,'addition'); -> default
-            %W.getModifiedEdges(F,C,G,T,exploredObstacles,'deletion');
-
+            %obj.setupPlot();
+            %W.drawAllObstacles();
 
             if (isempty(modifiedEdges))
                 return
             end
-              
+            
             for i=1:length(modifiedEdges)
                 vertexIndex = modifiedEdges(i).parent;
                 vertex = G.graphVertices(vertexIndex);

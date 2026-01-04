@@ -34,7 +34,7 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 100; %300 and 350
+prePlanningIterationLimit = 200; %300 and 350
 totalIterationLimit = 450; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
 
@@ -303,13 +303,13 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     end
 
     %sense obstacles
-    while mod(iteration,sensingFrequency) == 0
+    if mod(iteration,sensingFrequency) == 0
         planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
-        break
+        %break
     end
 
     %move the robot
-    while mod(iteration,robotMovementFrequency) == 0
+    if mod(iteration,robotMovementFrequency) == 0
         
         %robot-motion
         disp(' '); disp(' ');
@@ -335,11 +335,11 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 traversedPathLength,remainingPathLength);
         end
         
-        break
+        %break
     end
     
     %planning/replanning
-    while mod(iteration,planningFrequency) == 0
+    if mod(iteration,planningFrequency) == 0
         
         while true %run replanning loop till we add a new config and funnel-edges
             flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove,epsilon);    
@@ -349,7 +349,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             end        %flag = True (1) if no new configs were added, False (0) if new configs were added
         end
         
-        break
+        %break
     end
     
     iteration = iteration+1; %updating the iteration count
