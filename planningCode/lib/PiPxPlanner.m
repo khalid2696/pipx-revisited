@@ -27,15 +27,22 @@ classdef PiPxPlanner < handle
         envUB
         extendDistance
         resolution
+        drawFlag
     end %end of properties
 
     methods
-        function obj = PiPxPlanner(envLB,envUB,epsilon,resolution) %constructor class
+        function obj = PiPxPlanner(envLB,envUB,epsilon,resolution,drawFlag) %constructor class
             
             obj.envLB = envLB;
             obj.envUB = envUB;
             obj.extendDistance = epsilon;
             obj.resolution = resolution;
+
+            if nargin < 5
+                obj.drawFlag = 0;
+            else
+                obj.drawFlag = drawFlag;
+            end
 
             if(nargin == 0)
             
@@ -132,9 +139,14 @@ classdef PiPxPlanner < handle
             if ~status
                 return
             end
-        
+
             C.findParentInletsAtEachNode(G);
             F.constructShortestFunnelPath(G); 
+            
+            if obj.drawFlag
+                traversingFunnelEdge = F.funnelEdges(C.currentRobotNode.parentFunnelEdge);
+                F.drawFunnel(traversingFunnelEdge,2);
+            end
             
             %move the robot to its parent node
             parentIndex = C.startNode.parent;

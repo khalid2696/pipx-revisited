@@ -70,7 +70,7 @@ F = searchFunnel(funnelLibrary,epsilon,funnelLibraryResolution);
 C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
 
-planner = PiPxPlanner(envLB,envUB,epsilon,funnelLibraryResolution);
+planner = PiPxPlanner(envLB,envUB,epsilon,funnelLibraryResolution,drawFlag);
 planner.setupPlot()
 
 %------------------------------------%
@@ -288,7 +288,27 @@ end
 
 %PiP-X algorithm: Online motion planning/replanning using Funnels
 while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
+
+    %sense obstacles
+    if mod(iteration,sensingFrequency) == 0
+        planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
+        %break
+    end
     
+    %planning/replanning
+    if mod(iteration,planningFrequency) == 0
+        
+        while true %run replanning loop till we add a new config and funnel-edges
+            flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove,epsilon);    
+            
+            if flag == 1   %break out of this re-planning loop if and only if 
+                break  %new configurations were added to the search space
+            end        %flag = True (1) if no new configs were added, False (0) if new configs were added
+        end
+        
+        %break
+    end
+
     %plotting replanned funnel-path as robot moves
     if drawFlag
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
@@ -309,20 +329,23 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         end
     end
 
-    %sense obstacles
-    if mod(iteration,sensingFrequency) == 0
-        planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
-        %break
-    end
-
     %move the robot
     if mod(iteration,robotMovementFrequency) == 0
         
         %robot-motion
         disp(' '); disp(' ');
-        movementSkip = 1; %simulate higher robot-speed by increasing movementSkip parameter
+        movementSkip = 2; %simulate higher robot-speed by increasing movementSkip parameter
         for movement = 1:movementSkip
+
             robotMoveStatus = planner.moveRobot(F,C,G,Q);
+
+            %if goal reached
+            if C.goalCheck(C.startNode.pose)
+                fprintf('<strong>\n\nGoal reached! \n</strong>');
+                plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+                drawnow
+                break
+            end 
         end
         
         %print some status message and update progress variables
@@ -340,20 +363,6 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             fprintf('\n\nRobot moving.... ');
             fprintf('\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
                 traversedPathLength,remainingPathLength);
-        end
-        
-        %break
-    end
-    
-    %planning/replanning
-    if mod(iteration,planningFrequency) == 0
-        
-        while true %run replanning loop till we add a new config and funnel-edges
-            flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove,epsilon);    
-            
-            if flag == 1   %break out of this re-planning loop if and only if 
-                break  %new configurations were added to the search space
-            end        %flag = True (1) if no new configs were added, False (0) if new configs were added
         end
         
         %break

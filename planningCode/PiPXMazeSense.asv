@@ -68,7 +68,7 @@ F = searchFunnel(funnelLibrary,epsilon,funnelLibraryResolution);
 C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
 
-planner = PiPxPlanner(envLB,envUB,epsilon,funnelLibraryResolution,drawFlag);
+planner = PiPxPlanner(envLB,envUB,epsilon,funnelLibraryResolution);
 planner.setupPlot()
 
 %------------------------------------%
@@ -327,16 +327,12 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         disp(' '); disp(' ');
         movementSkip = 3; %simulate higher robot-speed by increasing movementSkip parameter
         for movement = 1:movementSkip
-
             robotMoveStatus = planner.moveRobot(F,C,G,Q);
 
-            %if goal reached
-            if C.goalCheck(C.startNode.pose)
-                fprintf('<strong>\n\nGoal reached! \n</strong>');
-                plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
-                drawnow
-                break
-            end 
+            if drawFlag
+                traversedFunnelEdge = F.funnelEdges(C.currentRobotNode.parentFunnelEdge);
+                F.drawFunnel()
+            end
         end
         
         %print some status message and update progress variables
@@ -355,7 +351,9 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             fprintf('\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
                 traversedPathLength,remainingPathLength);
         end
-    end   
+    end
+
+    
     
     iteration = iteration+1; %updating the iteration count
 
