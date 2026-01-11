@@ -34,8 +34,8 @@ classdef rectangleStruct < handle
         
         %splitting the rectangle into smaller squares for collision
         %checking
-        lowerKnots
-        upperKnots
+        lowerVertices
+        upperVertices
         
         %nodes and the edges that are within this graph 
         %will be updated during runtime
@@ -78,7 +78,7 @@ classdef rectangleStruct < handle
             
             c = obj.location;
             l = obj.length;
-            b= obj.breadth;
+            b = obj.breadth;
             R = rotation(obj,obj.orientation);
             
             w = min(l,b);
@@ -87,8 +87,8 @@ classdef rectangleStruct < handle
             temp1(:,1) = temp; temp1(:,2) = -b/2;
             temp2(:,1) = temp; temp2(:,2) = b/2;
     
-            obj.lowerKnots = c+temp1*R;
-            obj.upperKnots = c+temp2*R;
+            obj.lowerVertices = c+temp1*R;
+            obj.upperVertices = c+temp2*R;
         end
         
         %plotting functions
@@ -119,6 +119,22 @@ classdef rectangleStruct < handle
 
             vertices = c + v*R;
             fill(vertices(:,1),vertices(:,2),[0.5 0.5 0.5],'LineStyle','--','FaceAlpha',0.01)
+            %vertices(end+1,:) = vertices(1,:);
+            %plot(vertices(:,1),vertices(:,2),'--k')
+        end
+
+        function drawWindowRectangle(obj)
+            c = obj.location;
+            l = obj.length;
+            b = obj.breadth;
+            R = obj.rotation(obj.orientation);
+            v = [-l/2 -b/2; 
+                  l/2 -b/2;
+                  l/2  b/2;
+                 -l/2  b/2;]; %vertex co-ordinates in local obstacle frame 
+
+            vertices = c + v*R;
+            fill(vertices(:,1),vertices(:,2),'g','LineStyle','--','FaceAlpha',0.5)
             %vertices(end+1,:) = vertices(1,:);
             %plot(vertices(:,1),vertices(:,2),'--k')
         end

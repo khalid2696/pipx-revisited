@@ -31,12 +31,14 @@ classdef mazeEnvironment < handle
         toleranceLimit
         sensorRadius %sensor radius of the robot
         sizeRange %width range of rectangle obstacles
+        windowPadding %padding to assign windows
         mode %options: 'sensing' or 'dynamic' (addition and deletion)
         
         obstacleTree
         
         rectangles %list of rectangle panels in the maze
         obstacles  %list of obstacles with obstacleStruct datatype
+        windows
      
         %internal use
         indexOfLast
@@ -56,14 +58,15 @@ classdef mazeEnvironment < handle
                  
             obj.sensorRadius = sensorRadius;
             obj.sizeRange = sizeRange;
+            obj.windowPadding = 4;
             obj.toleranceLimit = epsilon/2; %extra-padding
             obj.mode = mode;
             
             distFunct = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function
             obj.obstacleTree = KDTree(2, distFunct); %initialise the tree, 2 - num of dimensions
             
-            initialiseMaze(obj,type);
-            splitRectangles(obj);
+            obj.initialiseMaze(type);
+            obj.splitRectangles();
         end
         
         function obj = initialiseMaze(obj,type)
@@ -112,9 +115,11 @@ classdef mazeEnvironment < handle
                 thisRectangle = obj.rectangles{i};
                 thisRectangle.splitRectangle();
 
-                for j=1:length(thisRectangle.lowerKnots)-1
-                    v1 = thisRectangle.lowerKnots(j,:);
-                    v3 = thisRectangle.upperKnots(j+1,:);
+                prevNumObstacles = obj.indexOfLast;
+
+                for j=1:length(thisRectangle.lowerVertices)-1
+                    v1 = thisRectangle.lowerVertices(j,:);
+                    v3 = thisRectangle.upperVertices(j+1,:);
         
                     c = (v1+v3)/2;
                     r = norm(v1-v3)/2;
@@ -129,8 +134,31 @@ classdef mazeEnvironment < handle
                     tempKDnode.payload = circumscribedObstacle;
                     obj.obstacleTree.kdInsert(tempKDnode);
                 end
+                
+                % demarcate windows if walls are long
+                if thisRectangle.length > 0.4*obj.envUB && thisRectangle.length < 0.7*obj.envUB
+                    randomWindowIndex = randi([prevNumObstacles + obj.windowPadding, obj.indexOfLast - obj.windowPadding]);
+                    obj.assignRandomWindows(randomWindowIndex);
+                end
+
+                % if length is larger, assign one more window
+                if thisRectangle.length > 0.7*obj.envUB
+                    numBricks = obj.indexOfLast - prevNumObstacles;
+                    randomWindowIndex = randi([prevNumObstacles + obj.windowPadding, prevNumObstacles + round(numBricks/2) - floor(obj.windowPadding/2)]);
+                    obj.assignRandomWindows(randomWindowIndex);
+
+                    randomWindowIndex = randi([prevNumObstacles + round(numBricks/2) + floor(obj.windowPadding/2), obj.indexOfLast - obj.windowPadding]);
+                    obj.assignRandomWindows(randomWindowIndex);
+                end
+
             end
-        end  
+        end
+        
+        function obj = assignRandomWindows(obj, randomWindowIndex)
+            %assuming each window comprises of three "bricks"
+            assignedWindow = [obj.obstacles{randomWindowIndex-1} obj.obstacles{randomWindowIndex} obj.obstacles{randomWindowIndex+1}];
+            obj.windows{end+1} = assignedWindow;
+        end
         
         %whenever some changes happen to the underlying data structure
         %it needs to be returned, hence have to include "obj = funcName()"
@@ -482,6 +510,21 @@ classdef mazeEnvironment < handle
                     thisRectangle.drawUnSensedRectangle();
                 end
             end
+            
+            obj.drawWindows()
+        end
+
+        function drawWindows(obj)
+            % draw windows with a different color
+            for i=1:length(obj.windows)
+                thisWindow = obj.windows{i};
+                for j=1:length(thisWindow)
+                    %To access the associated obstacle/brick:
+                    %thisWindow(j), j = 1 to length(window)
+                    thisRectangle = thisWindow(j).rectangleWithin;
+                    thisRectangle.drawWindowRectangle();
+                end
+            end
         end
         
         %Function to draw shaded circular obstacles
@@ -576,10 +619,8 @@ classdef mazeEnvironment < handle
                 %Accessing the centre and radius from the obstacles file
                 centre = thisObstacle.location;
                 radius = thisObstacle.radius;
-                
 
                 %Checking if the edge (v,w) intersects the circle
-                
                 angleSubtend = ((centre(1)-v(1))*(w(1)-v(1)) + (centre(2)-v(2))*(w(2)-v(2)))/(euclidianDist(obj,v,w)^2);
 
                 xProjection = v(1) + angleSubtend*(w(1)-v(1));
