@@ -39,7 +39,7 @@ totalIterationLimit = 450; %Maximum number of iterations %keep it less than 300 
 idleTimeLimit = 5;
 
 planningFrequency = 1;
-robotMovementFrequency = 5; %decreasing this parameter increases the robot speed!
+robotMovementFrequency = 3; %decreasing this parameter increases the robot speed!
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 
@@ -296,12 +296,16 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         while true %run replanning loop till we add a new config and funnel-edges
             flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove,epsilon);    
             
+            % if ~robotMove && flag
+            %     disp('Tried to replan when robot was unable to move!')
+            % end
+            
             if flag == 1   %break out of this re-planning loop if and only if 
                 break  %new configurations were added to the search space
             end        %flag = True (1) if no new configs were added, False (0) if new configs were added
         end
     end
-    
+
     %plotting replanned funnel-path as robot moves
     if drawFlag
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
@@ -319,7 +323,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             end
         end
     end
-
+    
     %move the robot
     if mod(iteration,robotMovementFrequency) == 0
         
