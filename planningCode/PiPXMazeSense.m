@@ -49,7 +49,7 @@ end
 envLB = 0;
 envUB = 50;
 obstacleSizeRange = [1 3]; %radius of circular obstacles
-robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
+robotSensorRadius = 3.2*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
 
 %W = forestEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1); 
 W = mazeEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1,'sensing');

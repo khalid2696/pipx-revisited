@@ -39,8 +39,7 @@ classdef mazeEnvironment < handle
         rectangles %list of rectangle panels in the maze
         obstacles  %list of obstacles with obstacleStruct datatype
         windows
-        sensedWindows %keeps track of indices of whatever windows have already been sensed
-        unsensedWindows
+        sensedWindows %keeps track of indices of whatever windows have a
      
         %internal use
         indexOfLast
@@ -64,9 +63,6 @@ classdef mazeEnvironment < handle
             obj.toleranceLimit = epsilon/2; %extra-padding
             obj.mode = mode;
             
-            obj.sensedWindows = [];
-            obj.unsensedWindows = [];
-
             distFunct = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function
             obj.obstacleTree = KDTree(2, distFunct); %initialise the tree, 2 - num of dimensions
             
@@ -159,11 +155,10 @@ classdef mazeEnvironment < handle
             end
         end
         
-        function obj = assignRandomWindows(obj, chosenWindowIndex)
+        function obj = assignRandomWindows(obj, randomWindowIndex)
             %assuming each window comprises of three "bricks"
-            assignedWindow = [obj.obstacles{chosenWindowIndex-1} obj.obstacles{chosenWindowIndex} obj.obstacles{chosenWindowIndex+1}];
+            assignedWindow = [obj.obstacles{randomWindowIndex-1} obj.obstacles{randomWindowIndex} obj.obstacles{randomWindowIndex+1}];
             obj.windows{end+1} = assignedWindow;
-            obj.unsensedWindows(end+1) = chosenWindowIndex;
         end
         
         %whenever some changes happen to the underlying data structure
@@ -205,7 +200,6 @@ classdef mazeEnvironment < handle
                 tempObstacle.rectangleWithin.status = 1;
             end
             
-            obj.keepTrackSensedWindows();
         end
 
         function obj = keepTrackSensedWindows(obj)
@@ -218,10 +212,9 @@ classdef mazeEnvironment < handle
                     continue;
                 end
 
-                %if center brick is sensed new, mark window as sensed, remove from unsensed list                
+                %if center brick is sensed new, mark window as sensed                
                 if centerBrick.status == 1
                     obj.sensedWindows(end+1) = centerBrick.index;
-                    obj.unsensedWindows(obj.unsensedWindows == centerBrick.index) = [];
                 end
                 
             end
