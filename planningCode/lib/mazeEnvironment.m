@@ -42,6 +42,7 @@ classdef mazeEnvironment < handle
         windows
         sensedWindows %keeps track of indices of whatever windows have already been sensed
         unsensedWindows
+        dynamicity
      
         %internal use
         indexOfLast
@@ -50,7 +51,7 @@ classdef mazeEnvironment < handle
 
     methods
         %constructor class - initialises with the position, size and an unique id
-        function obj = mazeEnvironment(envLB,envUB,sensorRadius,sizeRange,epsilon,type,mode)
+        function obj = mazeEnvironment(envLB,envUB,sensorRadius,sizeRange,epsilon,type,mode,vargin)
             
             obj.environmentType = 'maze';
             obj.envLB = envLB;
@@ -74,6 +75,13 @@ classdef mazeEnvironment < handle
             
             obj.initialiseMaze(type);
             obj.splitRectangles();
+
+            if strcmpi(obj.mode, 'sensing')
+                obj.dynamicity = 0; %no obstacles get deleted
+            else
+                obj.dynamicity = vargin(1);
+                return %no need of having a kDTree of obstacles (for dynamic environment)
+            end
         end
         
         function obj = initialiseMaze(obj,type)
@@ -87,7 +95,7 @@ classdef mazeEnvironment < handle
 
                     rectangleList = [0.2 0.7 0.55 0.05 0 ;
                                      0.5 0.7 0.25 0.05 90;
-                                     0.3 0.3 0.3 0.05 90;
+                                     0.3 0.3 0.25 0.05 90;
                                      0.5 0.3 0.45 0.05 0;
                                      0.75 0.6 0.8 0.05 90;];
                 case 2

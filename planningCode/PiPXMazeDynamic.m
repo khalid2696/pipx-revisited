@@ -42,8 +42,8 @@ planningFrequency = 1;
 robotMovementFrequency = 3; %decreasing this parameter increases the robot speed!
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
-if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 0; %15
+if ~exist('obstacleDynamicity', 'var') %25%, 50%, 75%
+    obstacleDynamicity = 0; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end
 
 envLB = 0;
@@ -51,8 +51,7 @@ envUB = 50;
 obstacleSizeRange = [1 3]; %radius of circular obstacles
 robotSensorRadius = 3.2*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
 
-%W = forestEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1); 
-W = mazeEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1,'dynamic');
+W = mazeEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1,'dynamic',obstacleDynamicity);
 %obstacle class:  epsilon - tolerance
 %type - 1, 2 (different maze spaces)
 %mode: 'sensing' or 'dynamic' (addition and deletion)
@@ -106,11 +105,6 @@ goalPose  = [workspaceCenter - fixedDistance/2*cos(randTheta), workspaceCenter -
 startPose = round(startPose * funnelLibraryResolution) / funnelLibraryResolution;
 goalPose = round(goalPose * funnelLibraryResolution) / funnelLibraryResolution;
 
-
-%initially adding obstacles
-%W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
-                                                      
-%W.initialiseObstacleTree();
 W.senseObstacles(startPose);
 
 if(~W.vertexCollisionFree(goalPose) || ~W.vertexCollisionFree(startPose))

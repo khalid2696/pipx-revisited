@@ -105,12 +105,7 @@ goalPose  = [workspaceCenter - fixedDistance/2*cos(randTheta), workspaceCenter -
 %round off to nearest integer (resolution of the motion planner)
 startPose = round(startPose * funnelLibraryResolution) / funnelLibraryResolution;
 goalPose = round(goalPose * funnelLibraryResolution) / funnelLibraryResolution;
-
-
-%initially adding obstacles
-%W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
                                                       
-%W.initialiseObstacleTree();
 W.senseObstacles(startPose);
 
 if(~W.vertexCollisionFree(goalPose) || ~W.vertexCollisionFree(startPose))
