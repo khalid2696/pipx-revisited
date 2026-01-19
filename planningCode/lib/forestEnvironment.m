@@ -23,6 +23,8 @@
 %Class definition for the random forest environment with collision-checking routines
 classdef forestEnvironment < handle
     properties     
+        
+        environmentType
         envLB
         envUB
         numObstacles %useful for keeping track of num of active obstacles
@@ -44,6 +46,7 @@ classdef forestEnvironment < handle
         %constructor class - initialises with the position, size and an unique id
         function obj = forestEnvironment(envLB,envUB,sensorRadius,sizeRange,epsilon,mode,vargin)
             
+            obj.environmentType = 'forest';
             obj.envLB = envLB;
             obj.envUB = envUB;
             obj.numObstacles = 0;

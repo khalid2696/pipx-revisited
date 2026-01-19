@@ -162,7 +162,7 @@ classdef PiPxPlanner < handle
             if strcmpi(W.mode, 'sensing') 
                 exploredObstacles = W.senseObstacles(C.currentRobotNode.pose); %sense from the middle
                 modifiedEdges = W.getModifiedEdges(F,C,G,T,exploredObstacles);
-            elseif strcmpi(W.mode, 'dynamic')
+            elseif strcmpi(W.environmentType, 'forest') && strcmpi(W.mode, 'dynamic') 
                 numChangedObstacles = ceil(W.numObstacles * W.dynamicity/100);
 
                 if numChangedObstacles == 0
@@ -177,6 +177,8 @@ classdef PiPxPlanner < handle
                     
                     modifiedEdges = [freedUpEdges, newCollisionEdges];
                 end
+            elseif strcmpi(W.environmentType, 'maze') && strcmpi(W.mode, 'dynamic')
+                modifiedEdges = [];
             else
                 modifiedEdges = [];
             end

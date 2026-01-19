@@ -24,6 +24,7 @@
 classdef mazeEnvironment < handle
     properties
         
+        environmentType
         envLB
         envUB
         numRectangles
@@ -51,6 +52,7 @@ classdef mazeEnvironment < handle
         %constructor class - initialises with the position, size and an unique id
         function obj = mazeEnvironment(envLB,envUB,sensorRadius,sizeRange,epsilon,type,mode)
             
+            obj.environmentType = 'maze';
             obj.envLB = envLB;
             obj.envUB = envUB;
             
