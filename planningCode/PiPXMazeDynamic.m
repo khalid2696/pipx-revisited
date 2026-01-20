@@ -43,7 +43,7 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('obstacleDynamicity', 'var') %25%, 50%, 75%
-    obstacleDynamicity = 0; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
+    obstacleDynamicity = 75; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end
 
 envLB = 0;
@@ -303,7 +303,8 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     %plotting replanned funnel-path as robot moves
     if drawFlag
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
-            %figure; hold on; axis equal
+
+            planner.setupPlot(); %C.drawSearchTree();
             W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
             %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...

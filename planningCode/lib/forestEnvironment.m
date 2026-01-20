@@ -480,6 +480,7 @@ classdef forestEnvironment < handle
                 %so determine the edges in collision first
                 obj.findNodesWithinObstacles(C,tree,obstacles);
                 modifiedEdges = obj.findEdgesWithinObstacles(F,G,tree,obstacles);
+                modifiedEdges = unique(modifiedEdges); %removing duplicates
                 return
             end
             

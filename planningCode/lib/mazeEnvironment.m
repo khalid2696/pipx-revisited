@@ -279,14 +279,113 @@ classdef mazeEnvironment < handle
         %     end     
         % end
         
-        function obj = removeObstacle(obj,C,obstacle)
+        % function obj = removeObstacle(obj,C,obstacle)
+        % 
+        %     if(obj.numObstacles < 1 || obstacle.status == 0)
+        %         return %no obstacle to remove or if obstacle has already been removed
+        %     end
+        % 
+        %     obstacle.status = 0;
+        %     obj.numObstacles = obj.numObstacles-1; %decrement the total #obstacles by 1
+        % 
+        %     tempNodes = obstacle.nodesWithin;
+        %     for i=1:length(tempNodes)
+        %         tempNodes{i}.withinObstacle = 0;
+        %     end
+        % 
+        %     tempEdges = obstacle.edgesWithin;
+        %     for i=1:length(tempEdges)
+        %         thisEdge = tempEdges(i);
+        % 
+        %         head = C.graphNodes(thisEdge.parent);
+        %         tail = C.graphNodes(thisEdge.child);
+        %         newCost = euclidianDist(obj,head.pose,tail.pose);
+        % 
+        %         tempEdges(i).withinObstacle = 0;
+        %         tempEdges(i).cost = newCost;
+        %     end
+        % 
+        %     obstacle.rectangleWithin.drawDeletedRectangle();
+        %     obstacle.rectangleWithin.status = 0;
+        % 
+        % end
+        
+        % function deletedObstacles = removeRandomObstacles(obj,C,n,robotLocation)
+        % 
+        %     range = 1.15*obj.sensorRadius; %trying to make up for circleRadius
+        % 
+        %     tempKDTree = obj.obstacleTree;
+        %     obstaclesInRange = tempKDTree.kdFindWithinRangePayload(range, robotLocation);
+        % 
+        %     N = min(n,length(obstaclesInRange));
+        %     deletedObstacles = cell(N,1);
+        % 
+        %     i = 0;
+        %     while i<N
+        %         index = randi([1 length(obstaclesInRange)]);
+        %         tempObstacle = obstaclesInRange{index};
+        %         if(tempObstacle.status == 0) 
+        %             continue %if the obstacle is inactive continue
+        %         end
+        %         removeObstacle(obj,C,tempObstacle);
+        %         i = i+1;
+        %         deletedObstacles{i} = tempObstacle;
+        %     end
+        % 
+        % end     
+    
+        %closing "wall-windows" at random
+        function addedObstacles = addRandomObstacles(obj,robotPose,goalPose,n) %n - number of obstacles
+
+            addedObstacles = cell(3*n,1); %length of each window is 3 "bricks"
+            indices = randperm(length(obj.sensedWindows),n);
+
+            for i=1:3:3*n %length of each window is 3 "bricks"
+      
+                randomWindowCenterIndex = obj.sensedWindows(indices((i-1)/3+1));
+
+                for j=0:2 %length of each window is 3 "bricks"
+                    tempObstacle = obj.obstacles{randomWindowCenterIndex-1+j};
+                    tempObstacle.status = 1; %make it active
+                    tempObstacle.rectangleWithin.status = 1;
+
+                    addedObstacles{i+j} = tempObstacle;
+                end
+            end     
+        end
+
+        function deletedObstacles = removeRandomObstacles(obj,F,G,n)
+            
+            deletedObstacles = cell(3*n,1); %length of each window is 3 "bricks"
+            indices = randperm(length(obj.sensedWindows),n);
+
+            for i=1:3:3*n %length of each window is 3 "bricks"
+
+                randomWindowCenterIndex = obj.sensedWindows(indices((i-1)/3+1));
+                
+                for j=-1:1
+                    tempObstacle = obj.obstacles{randomWindowCenterIndex-j};
+                    obj.removeThisObstacle(F,G,tempObstacle);
+                
+                    deletedObstacles{i} = obj.obstacles{randomWindowCenterIndex-1};
+                end
+
+                deletedObstacles{i} = obj.obstacles{randomWindowCenterIndex-1};
+                deletedObstacles{i+1} = obj.obstacles{randomWindowCenterIndex};
+                deletedObstacles{i+2} = obj.obstacles{randomWindowCenterIndex+1};
+
+            end
+        end
+
+        function obj = removeThisObstacle(obj,F,G,obstacle)
             
             if(obj.numObstacles < 1 || obstacle.status == 0)
                 return %no obstacle to remove or if obstacle has already been removed
             end
             
             obstacle.status = 0;
-            obj.numObstacles = obj.numObstacles-1; %decrement the total #obstacles by 1
+            obstacle.rectangleWithin.status = 0;
+            %obj.numObstacles = obj.numObstacles-1; %decrement the total #obstacles by 1
             
             tempNodes = obstacle.nodesWithin;
             for i=1:length(tempNodes)
@@ -297,42 +396,21 @@ classdef mazeEnvironment < handle
             for i=1:length(tempEdges)
                 thisEdge = tempEdges(i);
                 
-                head = C.graphNodes(thisEdge.parent);
-                tail = C.graphNodes(thisEdge.child);
-                newCost = euclidianDist(obj,head.pose,tail.pose);
+                head = G.graphVertices(thisEdge.parent);
                 
-                tempEdges(i).withinObstacle = 0;
-                tempEdges(i).cost = newCost;
-            end
-            
-            obstacle.rectangleWithin.drawDeletedRectangle();
-            obstacle.rectangleWithin.status = 0;
-            
+                thisEdge.withinObstacle = 0;
+                thisEdge.cost = thisEdge.nominalCost; %reset to the original non-infinite cost
+                
+                %head.vertexData(2) corresponds to the funnel-edge
+                %so should be tail.vertexData(2) (by construction)
+                thisFunnel = F.funnelEdges(head.vertexData(2));
+                thisFunnel.cost = thisFunnel.nominalCost; %reset to the original non-infinite cost
+                thisFunnel.withinObstacle = 0;
+            end      
         end
-        
-        function deletedObstacles = removeRandomObstacles(obj,C,n,robotLocation)
-            
-            range = 1.15*obj.sensorRadius; %trying to make up for circleRadius
-            
-            tempKDTree = obj.obstacleTree;
-            obstaclesInRange = tempKDTree.kdFindWithinRangePayload(range, robotLocation);
-            
-            N = min(n,length(obstaclesInRange));
-            deletedObstacles = cell(N,1);
-            
-            i = 0;
-            while i<N
-                index = randi([1 length(obstaclesInRange)]);
-                tempObstacle = obstaclesInRange{index};
-                if(tempObstacle.status == 0) 
-                    continue %if the obstacle is inactive continue
-                end
-                removeObstacle(obj,C,tempObstacle);
-                i = i+1;
-                deletedObstacles{i} = tempObstacle;
-            end
-            
-        end     
+
+        %NEW FUNCTIONS -- TO BE EDITED
+        %------------------------------------------------------%
         
         %functions to determine which nodes and edges are within obstacles
         function findNodesWithinObstacles(obj,C,tree,obstacles)
@@ -510,26 +588,35 @@ classdef mazeEnvironment < handle
             %motionEdgesInCollision = motionEdgesInCollision(1:s)'; %to remove any possible duplicates
             motionEdgesInCollision = unique(motionEdgesInCollision(1:s))'; %to remove any possible duplicates
         end
-               
-        function modifiedEdges = getModifiedEdges(obj,F,C,G,tree,obstacles)
+
+        function modifiedEdges = getModifiedEdges(obj,F,C,G,tree,obstacles,type)
             
-            if(length(obstacles)<1)
+            if isempty(obstacles)
                 modifiedEdges = [];
                 return
             end
+
+            if nargin < 7
+                type = 'addition';
+            end
             
-            if (obstacles{1}.status == 1) %this list comprises of added obstacles
+            if strcmpi(type,'addition')
+            %if (obstacles{1}.status == 1) %this list comprises of added obstacles
                 %so determine the edges in collision first
-                
                 obj.findNodesWithinObstacles(C,tree,obstacles);
                 modifiedEdges = obj.findEdgesWithinObstacles(F,G,tree,obstacles);
+                modifiedEdges = unique(modifiedEdges); %removing duplicates
                 return
             end
             
+            %this list would comprise of deleted obstacles, so just return
+            %the edges pre-stored within the removed obstacles
             modifiedEdges = [];
             for i=1:length(obstacles)
                 modifiedEdges = [modifiedEdges obstacles{i}.edgesWithin'];
             end
+            modifiedEdges = unique(modifiedEdges); %removing duplicates
+
         end
         
         %plotting functions
@@ -547,7 +634,7 @@ classdef mazeEnvironment < handle
                 end
             end
             
-            obj.drawWindows()
+            %obj.drawWindows()
         end
 
         function drawWindows(obj)

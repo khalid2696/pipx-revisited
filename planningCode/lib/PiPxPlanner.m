@@ -157,7 +157,7 @@ classdef PiPxPlanner < handle
         
         %-------------------------------------------------------------------------%
         %Environment dynamicity (as sensed by the robot) related function
-        function makeDynamicChangesToGraph(obj,F,C,G,Q,W,T)   
+        function makeDynamicChangesToGraph(obj,F,C,G,Q,W,T,varargin)   
         
             if strcmpi(W.mode, 'sensing') 
                 exploredObstacles = W.senseObstacles(C.currentRobotNode.pose); %sense from the middle
@@ -179,24 +179,26 @@ classdef PiPxPlanner < handle
                 end
             elseif strcmpi(W.environmentType, 'maze') && strcmpi(W.mode, 'dynamic')
                 exploredObstacles = W.senseObstacles(C.currentRobotNode.pose); %sense from the robot location
-                modifiedEdges = W.getModifiedEdges(F,C,G,T,exploredObstacles)
+                modifiedEdges = W.getModifiedEdges(F,C,G,T,exploredObstacles);
 
                 numChangedWindows = round(length(W.sensedWindows) * W.dynamicity/100);
                 if numChangedWindows ~= 0
                     %deletion - open the windows
                     deletedObstacles = W.removeRandomObstacles(F,G,numChangedWindows);
                     freedUpEdges = W.getModifiedEdges(F,C,G,T,deletedObstacles,'deletion');
+                    
                     %addition - close windows
                     addedObstacles = W.addRandomObstacles(C.currentRobotNode.pose, C.goalNode.pose, numChangedWindows);
                     newCollisionEdges = W.getModifiedEdges(F,C,G,T,addedObstacles,'addition');
                     
                     %will have to remove duplicates
-                    modifiedEdges = [modifiedEdges freedUpEdges, newCollisionEdges];
+                    modifiedEdges = [modifiedEdges, freedUpEdges, newCollisionEdges];
                 end
-
             else
                 modifiedEdges = [];
             end
+
+            modifiedEdges = unique(modifiedEdges); %removing duplicates for computation speed-up
 
             if (isempty(modifiedEdges))
                 return
