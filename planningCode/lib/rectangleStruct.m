@@ -118,7 +118,7 @@ classdef rectangleStruct < handle
                  -l/2  b/2;]; %vertex co-ordinates in local obstacle frame 
 
             vertices = c + v*R;
-            fill(vertices(:,1),vertices(:,2),[0.5 0.5 0.5],'LineStyle','--','FaceAlpha',0.01)
+            fill(vertices(:,1),vertices(:,2),[1 1 1],'LineStyle','--','FaceAlpha',0.1) %fill with white
             %vertices(end+1,:) = vertices(1,:);
             %plot(vertices(:,1),vertices(:,2),'--k')
         end
@@ -134,7 +134,8 @@ classdef rectangleStruct < handle
                  -l/2  b/2;]; %vertex co-ordinates in local obstacle frame 
 
             vertices = c + v*R;
-            fill(vertices(:,1),vertices(:,2),'g','LineStyle','--','FaceAlpha',0.5)
+            %fill(vertices(:,1),vertices(:,2),'g','LineStyle','--','FaceAlpha',0.5)
+            fill(vertices(:,1),vertices(:,2),[1 1 1],'LineStyle','--') %fill with white
             %vertices(end+1,:) = vertices(1,:);
             %plot(vertices(:,1),vertices(:,2),'--k')
         end

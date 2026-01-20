@@ -634,7 +634,8 @@ classdef mazeEnvironment < handle
                 end
             end
             
-            %obj.drawWindows()
+            %draw open windows
+            obj.drawWindows()
         end
 
         function drawWindows(obj)
@@ -645,7 +646,9 @@ classdef mazeEnvironment < handle
                     %To access the associated obstacle/brick:
                     %thisWindow(j), j = 1 to length(window)
                     thisRectangle = thisWindow(j).rectangleWithin;
-                    thisRectangle.drawWindowRectangle();
+                    if thisRectangle.status == 0
+                        thisRectangle.drawWindowRectangle();
+                    end
                 end
             end
         end
@@ -694,9 +697,7 @@ classdef mazeEnvironment < handle
         end
         
 
-
-        %Checking whether point lies within a circle
-        
+        %Checking whether point lies within a circle 
         function check = vertexCollisionFree(obj,v)
 
             check = 1;

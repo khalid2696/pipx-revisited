@@ -281,7 +281,15 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
 
     %sense obstacles
     if mod(iteration,sensingFrequency) == 0
-        planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
+        
+        % Half the times, open the windows in the maze walls
+        % and in the other half, close them 
+        if mod(iteration,2*sensingFrequency) == 0
+            planner.makeDynamicChangesToGraph(F,C,G,Q,W,T,'windows-open');
+        else
+            planner.makeDynamicChangesToGraph(F,C,G,Q,W,T,'windows-close');
+        end
+
     end
     
     %planning/replanning
@@ -304,7 +312,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     if drawFlag
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
 
-            planner.setupPlot(); %C.drawSearchTree();
+            %planner.setupPlot(); %C.drawSearchTree();
             W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
             %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
@@ -333,6 +341,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             if C.goalCheck(C.startNode.pose)
                 fprintf('<strong>\n\nGoal reached! \n</strong>');
                 plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+                W.drawAllObstacles();
                 drawnow
                 break
             end 
@@ -362,6 +371,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     if C.goalCheck(C.startNode.pose)
         fprintf('<strong>\n\nGoal reached! \n</strong>');
         plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+        W.drawAllObstacles();
         drawnow
         break
     end   

@@ -534,6 +534,10 @@ classdef forestEnvironment < handle
             th = 0:pi/50:2*pi;
             xunit = r * cos(th) + c(1);
             yunit = r * sin(th) + c(2);
+            fill(xunit,yunit,[1 1 1], 'EdgeColor', 'none'); %fill with white
+            
+            fill(xunit,yunit,[1 1 1], 'EdgeColor', 'none','FaceAlpha',0.05); %fill with white
+            %Plot just the outline
             plot(xunit, yunit,'--k','LineWidth',1.1);
         end
         

@@ -337,6 +337,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             if C.goalCheck(C.startNode.pose)
                 fprintf('<strong>\n\nGoal reached! \n</strong>');
                 plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+                W.drawAllObstacles();
                 drawnow
                 break
             end 
@@ -370,6 +371,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     if C.goalCheck(C.startNode.pose)
         fprintf('<strong>\n\nGoal reached! \n</strong>');
         plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+        W.drawAllObstacles();
         drawnow
         break
     end   

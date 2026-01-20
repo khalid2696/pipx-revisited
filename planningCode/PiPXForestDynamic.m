@@ -312,8 +312,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     %plotting replanned funnel-path as robot moves
     if drawFlag
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
-            planner.setupPlot(); %C.drawSearchGraph(); 
-            C.drawSearchTree(); 
+            %planner.setupPlot(); C.drawSearchTree();  
             W.drawAllObstacles(); 
             %W.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
@@ -343,6 +342,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             if C.goalCheck(C.startNode.pose)
                 fprintf('<strong>\n\nGoal reached! \n</strong>');
                 plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+                W.drawAllObstacles();
                 drawnow
                 break
             end 
@@ -374,6 +374,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     if C.goalCheck(C.startNode.pose)
         fprintf('<strong>\n\nGoal reached! \n</strong>');
         plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+        W.drawAllObstacles();
         drawnow
         break
     end   
