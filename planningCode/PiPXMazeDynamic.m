@@ -307,25 +307,6 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             end        %flag = True (1) if no new configs were added, False (0) if new configs were added
         end
     end
-
-    %plotting replanned funnel-path as robot moves
-    if drawFlag
-         if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
-
-            %planner.setupPlot(); %C.drawSearchTree();
-            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
-            F.drawGoalBranch(); %C.drawPathToGoal();
-            %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
-            % 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
-            drawnow
-            
-            if videoFlag
-                %Capture the current figure as a frame and writes it video file
-                F = getframe(gcf);
-                writeVideo(writerObj, F);
-            end
-        end
-    end
     
     %move the robot
     if mod(iteration,robotMovementFrequency) == 0
@@ -363,7 +344,26 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             fprintf('\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
                 traversedPathLength,remainingPathLength);
         end
-    end   
+    end
+
+    %plotting replanned funnel-path as robot moves
+    if drawFlag
+         if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
+
+            %planner.setupPlot(); %C.drawSearchTree();
+            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+            F.drawGoalBranch(); %C.drawPathToGoal();
+            %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
+            % 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+            drawnow
+            
+            if videoFlag
+                %Capture the current figure as a frame and writes it video file
+                F = getframe(gcf);
+                writeVideo(writerObj, F);
+            end
+        end
+    end
     
     iteration = iteration+1; %updating the iteration count
 
