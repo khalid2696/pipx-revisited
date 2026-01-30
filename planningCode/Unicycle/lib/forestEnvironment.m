@@ -25,8 +25,10 @@ classdef forestEnvironment < handle
     properties     
         
         environmentType
-        envLB
-        envUB
+        envLB_x
+        envUB_x
+        envLB_y
+        envUB_y
         numObstacles %useful for keeping track of num of active obstacles
         dynamicity %percentage of obstacles changing in location and size
         toleranceLimit
@@ -35,6 +37,7 @@ classdef forestEnvironment < handle
         mode %options: 'sensing' or 'dynamic' (addition and deletion)
         
         %list of obstacles with obstacleStruct datatype
+        boundingRectangles
         obstacles
         obstacleTree
      
@@ -44,16 +47,16 @@ classdef forestEnvironment < handle
 
     methods
         %constructor class - initialises with the position, size and an unique id
-        function obj = forestEnvironment(envLB,envUB,sensorRadius,sizeRange,epsilon,mode,vargin)
+        function obj = forestEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,sensorRadius,epsilon,sizeRange,mode,vargin)
             
             obj.environmentType = 'forest';
-            obj.envLB = envLB;
-            obj.envUB = envUB;
+            obj.envLB_x = envLB_x; obj.envUB_x = envUB_x;
+            obj.envLB_y = envLB_y; obj.envUB_y = envUB_y;
             obj.numObstacles = 0;
             obj.indexOfLast = 0;
 
             obj.sensorRadius = sensorRadius; %14
-            obj.toleranceLimit = epsilon/2; %extra-padding       
+            obj.toleranceLimit = epsilon/2; %extra-padding -      
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
             obj.mode = mode;
 
@@ -128,53 +131,62 @@ classdef forestEnvironment < handle
         
         function addedObstacles = addDynamicObstacles(obj,numObstacles,robotPose,goalPose,varargin) %n - number of obstacles
             
-            addedObstacles = cell(numObstacles,1);
+            addedObstacles = cell(3*numObstacles,1); %assuming each car is represented as 3 bounding-circle obstacles
 
             count = 1;
             while count<=numObstacles
                 
                 if isempty(varargin) %if location is not specified
-                    location = rand(1,2).*(obj.envUB - obj.envLB) + obj.envLB;
+                    location = zeros(1,2);
+                    location(1) = round(rand()*(obj.envUB_x - obj.envLB_x) + obj.envLB_x); %rounding off because car-obstacles can exist only in the lanes
+                    location(2) = rand()*(obj.envUB_y - obj.envLB_y) + obj.envLB_y;
                 else
                     randRadius = rand()*obj.sensorRadius;
                     randTheta = rand()*2*pi;
                     location = [robotPose(1) + randRadius*cos(randTheta), robotPose(2) + randRadius*sin(randTheta)];  
                 end
                 
-                size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
+                radius = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
 
-                if (obj.euclidianDist(location,goalPose) < size+obj.toleranceLimit) || ...
-                        (obj.euclidianDist(location,robotPose) < size+obj.toleranceLimit)
+                if (obj.euclidianDist(location,goalPose) < radius+obj.toleranceLimit) || ...
+                        (obj.euclidianDist(location,robotPose) < radius+obj.toleranceLimit)
                     continue %explicitly avoid obstacles occluding start or goal location
                 end
+                
+                width = radius*sqrt(2); length = 3*width;
+                obj.boundingRectangles{count} = rectangleStruct(count, location, [width length], 0);
 
+                rectangleObstacleLocation_x = location(1);
+                rectangleObstacleLocation_y = [location(2) - width, location(2), location(2) + width];
                 %initialise an obstacle and add it to the list
-                randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-                obj.addObstacle(randomObstacle);
-                addedObstacles{count} = randomObstacle;
+                for i=1:3 %
+                    tempLocation = [rectangleObstacleLocation_x rectangleObstacleLocation_y(i)];
+                    randomObstacle = obstacleStruct(obj.indexOfLast+1,tempLocation,radius);
+                    obj.addObstacle(randomObstacle);
+                    addedObstacles{count+i-1} = randomObstacle;
+                end
                 count = count+1;
             end
             
-            %make all the obstacles 
-            if strcmpi(obj.mode, 'dynamic')
-
-                % make m<=N obstacles inactive at random
-                %at random make (numObstacles * obj.dynamicity/100)
-                %obstacles active (status = 0)
-
-                %Options: 0. none 1. all obstacles, 2. half of the obtacles (preferred), 
-                % 3. number of obstacles that would change
-                numInactiveObstacles = 0;
-                %numInactiveObstacles = obj.indexOfLast;
-                %numInactiveObstacles = ceil(obj.indexOfLast/2);
-                %numInactiveObstacles = numObstacles - ceil(numObstacles * obj.dynamicity/100);
-                randomIndices = randperm(numObstacles, numInactiveObstacles);
-
-                for i=1:length(randomIndices)
-                    obj.obstacles{i}.status = 0;
-                end
-
-            end
+            % Not relevant for this system experiments
+            % if strcmpi(obj.mode, 'dynamic')
+            % 
+            %     % make m<=N obstacles inactive at random
+            %     %at random make (numObstacles * obj.dynamicity/100)
+            %     %obstacles active (status = 0)
+            % 
+            %     %Options: 0. none 1. all obstacles, 2. half of the obtacles (preferred), 
+            %     % 3. number of obstacles that would change
+            %     numInactiveObstacles = 0;
+            %     %numInactiveObstacles = obj.indexOfLast;
+            %     %numInactiveObstacles = ceil(obj.indexOfLast/2);
+            %     %numInactiveObstacles = numObstacles - ceil(numObstacles * obj.dynamicity/100);
+            %     randomIndices = randperm(numObstacles, numInactiveObstacles);
+            % 
+            %     for i=1:length(randomIndices)
+            %         obj.obstacles{i}.status = 0;
+            %     end
+            % end
  
         end
         
@@ -499,12 +511,23 @@ classdef forestEnvironment < handle
         %function to draw all obstacles
         function drawAllObstacles(obj)            
             
-            for i=1:obj.indexOfLast
-                thisObstacle = obj.obstacles{i};
-                if(thisObstacle.status == 0)
-                    obj.drawDeletedObstacle(thisObstacle);
-                else %plot inactive obstacles with dashed circles
-                    obj.drawActiveObstacle(thisObstacle);
+            %if you want to plot the bounding circle-obstacles
+            % for i=1:obj.indexOfLast
+            %     thisObstacle = obj.obstacles{i};
+            %     if(thisObstacle.status == 0)
+            %         obj.drawDeletedObstacle(thisObstacle);
+            %     else %plot inactive obstacles with dashed circles
+            %         obj.drawActiveObstacle(thisObstacle);
+            %     end
+            % end
+
+            %if you want to plot recangular car-obstacles
+            for i=1:3:obj.indexOfLast
+                thisRectangleObstacle = obj.boundingRectangles{ceil(i/3)};
+                if(obj.obstacles{i}.status == 1 || obj.obstacles{i+1}.status == 1 || obj.obstacles{i+2}.status == 1)
+                    thisRectangleObstacle.drawSensedRectangle()
+                else %plot inactive obstacles with dashed lines
+                    thisRectangleObstacle.drawUnSensedRectangle()
                 end
             end
         end

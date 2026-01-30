@@ -23,18 +23,20 @@
 %Defining a class to store the functions related to configuration space
 classdef PiPxPlanner < handle
     properties
-        envLB
-        envUB
+        envLB_x
+        envUB_x
+        envLB_y
+        envUB_y
         extendDistance
         resolution
         drawFlag
     end %end of properties
 
     methods
-        function obj = PiPxPlanner(envLB,envUB,epsilon,resolution,drawFlag) %constructor class
+        function obj = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,epsilon,resolution,drawFlag) %constructor class
             
-            obj.envLB = envLB;
-            obj.envUB = envUB;
+            obj.envLB_x = envLB_x - 0.5; obj.envUB_x = envUB_x + 0.5; %adding/subtracting 0.5 to better visualize road-lanes
+            obj.envLB_y = envLB_y; obj.envUB_y = envUB_y;
             obj.extendDistance = epsilon;
             obj.resolution = resolution;
 
@@ -255,13 +257,15 @@ classdef PiPxPlanner < handle
         %-------------------------------------------------------------------------%
         %Plotting functions
         function setupPlot(obj)
-            figure
-            clf
+            figure; clf;
             axis equal
-            xlim([obj.envLB obj.envUB])
-            ylim([obj.envLB obj.envUB])
+            xlim([obj.envLB_x obj.envUB_x])
+            ylim([obj.envLB_y obj.envUB_y])
             hold on
-            rectangle('Position',[obj.envLB obj.envLB obj.envUB obj.envUB])
+            rectangle('Position',[obj.envLB_x, obj.envLB_y, obj.envUB_x - obj.envLB_x, obj.envUB_y - obj.envLB_y]) %lower-left corner, width, height
+            for i = obj.envLB_x:1:obj.envUB_x
+                xline(i,'--k');
+            end
         end
         
         %-------------------------------------------------------------------------%

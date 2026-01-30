@@ -94,8 +94,8 @@ classdef configurationSpace < handle
                     r = W.sensorRadius*rand() + W.toleranceLimit; %providing some extra look-ahead
                 else %sample at random from the configuration space
                     %r = 2*W.sensorRadius*rand() + W.toleranceLimit; 
-                    xSample = (W.envUB - W.envLB)*rand() + W.envLB;
-                    ySample = (W.envUB - W.envLB)*rand() + W.envLB;
+                    xSample = (W.envUB_x - W.envLB_x)*rand() + W.envLB_x;
+                    ySample = (W.envUB_y - W.envLB_y)*rand() + W.envLB_y;
                     sample = [xSample ySample];
                     return
                 end
@@ -107,7 +107,7 @@ classdef configurationSpace < handle
             end
 
             if(~startFound)
-                bias = 0.85; %0.9
+                bias = 0.8; %0.9
             else
                 bias = 1;
             end
@@ -115,8 +115,8 @@ classdef configurationSpace < handle
             prob = rand();
             if prob < bias
                 %random sampling of nodes
-                xSample = (W.envUB - W.envLB)*rand() + W.envLB;
-                ySample = (W.envUB - W.envLB)*rand() + W.envLB;
+                xSample = (W.envUB_x - W.envLB_x)*rand() + W.envLB_x;
+                ySample = (W.envUB_y - W.envLB_y)*rand() + W.envLB_y;
                 sample = [xSample ySample];
             else
                 sample = start;

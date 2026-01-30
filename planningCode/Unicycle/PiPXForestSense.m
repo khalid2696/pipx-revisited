@@ -33,9 +33,9 @@ videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
-epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 200; %300 and 350
-totalIterationLimit = 450; %Maximum number of iterations %keep it less than 300 always!
+epsilon = 3;          %extend-distance
+prePlanningIterationLimit = 100; %300 and 350
+totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
 
 planningFrequency = 1;
@@ -43,15 +43,15 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 30; %15
+    numTreeObstacles = 5; %15
 end
 
-envLB = 0;
-envUB = 50;
-obstacleSizeRange = [1 3]; %radius of circular obstacles
+envLB_x = -2; envUB_x = 2;
+envLB_y = 0; envUB_y = 50;
+obstacleSizeRange = 0.45*[1 1]; %radius of circular obstacles
 robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
 
-W = forestEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,'sensing'); 
+W = forestEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,epsilon,obstacleSizeRange,'sensing'); 
 %obstacle class:  epsilon - tolerance
 %mode: 'sensing' or 'dynamic' (addition and deletion)
 
@@ -66,7 +66,7 @@ F = searchFunnel(funnelLibrary,epsilon,funnelLibraryResolution);
 C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
 
-planner = PiPxPlanner(envLB,envUB,epsilon,funnelLibraryResolution,drawFlag);
+planner = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,epsilon,funnelLibraryResolution,drawFlag);
 planner.setupPlot()
 
 %------------------------------------%
@@ -78,27 +78,11 @@ planner.setupPlot()
 % startPose = [problemx(1) problemy(1)];
 % goalPose = [problemx(2) problemy(2)];
 
-%--------------------------------%
-%random start and goal locations
-%--------------------------------%
-%startPose = rand([1 2])*(W.envUB-envLB) + W.envLB;
-%goalPose = rand([1 2])*(W.envUB-envLB) + W.envLB;
-
-%--------------------------------%
-%random start and goal locations around a circle of fixed distance (for experiments)
-%--------------------------------%
-workspaceCenter = (W.envLB + W.envUB)/2;
-fixedDistance = 40;
-randTheta = rand()*2*pi;
-
-startPose = [workspaceCenter + fixedDistance/2*cos(randTheta), workspaceCenter + fixedDistance/2*sin(randTheta)];  
-goalPose  = [workspaceCenter - fixedDistance/2*cos(randTheta), workspaceCenter - fixedDistance/2*sin(randTheta)];  
-
 %------------------------------------------------%
 %fixed start and goal locations (for dev purposes)
 %------------------------------------------------%
-%startPose = [5.4,4.7];
-%goalPose = [45.6,44.8];
+startPose = [0, 5];
+goalPose =  [0, 45];
 
 %round off to nearest integer (resolution of the motion planner)
 startPose = round(startPose * funnelLibraryResolution) / funnelLibraryResolution;
