@@ -69,6 +69,12 @@ G = searchGraph(); %augmented graph data structure to store F and C
 planner = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,epsilon,funnelLibraryResolution,drawFlag);
 planner.setupPlot()
 
+%----------------------------------------------------------------------%
+%fixed start and goal locations (begin and end of the road respectively)
+%----------------------------------------------------------------------%
+startPose = [(envLB_x+envUB_x)/2, envLB_y+5];
+goalPose =  [(envLB_x+envUB_x)/2, envUB_y-5];
+
 %------------------------------------%
 %user-input start and goal locations
 %------------------------------------%
@@ -77,12 +83,6 @@ planner.setupPlot()
 % 
 % startPose = [problemx(1) problemy(1)];
 % goalPose = [problemx(2) problemy(2)];
-
-%------------------------------------------------%
-%fixed start and goal locations (for dev purposes)
-%------------------------------------------------%
-startPose = [0, 5];
-goalPose =  [0, 45];
 
 %round off to nearest integer (resolution of the motion planner)
 startPose = round(startPose * funnelLibraryResolution) / funnelLibraryResolution;
@@ -312,29 +312,32 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
 
             %if goal reached
             if C.goalCheck(C.startNode.pose)
+                traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
+                remainingPathLength = C.startNode.cost;
+                fprintf('\n\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
+                    traversedPathLength,remainingPathLength);
                 fprintf('<strong>\n\nGoal reached! \n</strong>');
                 plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
                 W.drawAllObstacles();
                 drawnow
                 break
-            end 
-        end
-        
-        %print some status message and update progress variables
-        if ~robotMoveStatus
-        %if(isempty(C.startNode) || isinf(C.startNode.cost))
-            C.startNode = C.previousRobotNode; F.startNode = C.startNode;
-            idleTime = idleTime + 1; robotMove = 0;
-            fprintf(['\nNo path exists currently -- Staying at the same position! ' ...
-                     '\nWaiting for sampling new configurations!']);
-            fprintf('\nRobot idle for %d time-steps\n',idleTime);
-        else
-            traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
-            remainingPathLength = C.startNode.cost;
-            idleTime = 0; robotMove = 1;
-            fprintf('\n\nRobot moving.... ');
-            fprintf('\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
-                traversedPathLength,remainingPathLength);
+            end
+
+            %print some status message and update progress variables
+            if ~robotMoveStatus
+                C.startNode = C.previousRobotNode; F.startNode = C.startNode;
+                idleTime = idleTime + 1; robotMove = 0;
+                fprintf(['\nNo path exists currently -- Staying at the same position! ' ...
+                         '\nWaiting for sampling new configurations!']);
+                fprintf('\nRobot idle for %d time-steps\n',idleTime);
+            else
+                traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
+                remainingPathLength = C.startNode.cost;
+                idleTime = 0; robotMove = 1;
+                fprintf('\n\nRobot moving.... ');
+                fprintf('\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
+                    traversedPathLength,remainingPathLength);
+            end
         end
         
         %break

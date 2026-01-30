@@ -317,29 +317,32 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
 
             %if goal reached
             if C.goalCheck(C.startNode.pose)
+                traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
+                remainingPathLength = C.startNode.cost;
+                fprintf('\n\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
+                    traversedPathLength,remainingPathLength);
                 fprintf('<strong>\n\nGoal reached! \n</strong>');
                 plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
                 W.drawAllObstacles();
                 drawnow
                 break
-            end 
-        end
-        
-        %print some status message and update progress variables
-        if ~robotMoveStatus
-        %if(isempty(C.startNode) || isinf(C.startNode.cost))
-            C.startNode = C.previousRobotNode; F.startNode = C.startNode;
-            idleTime = idleTime + 1; robotMove = 0;
-            fprintf(['\nNo path exists currently -- Staying at the same position! ' ...
-                     '\nWaiting for sampling new configurations!']);
-            fprintf('\nRobot idle for %d time-steps\n',idleTime);
-        else
-            traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
-            remainingPathLength = C.startNode.cost;
-            idleTime = 0; robotMove = 1;
-            fprintf('\n\nRobot moving.... ');
-            fprintf('\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
-                traversedPathLength,remainingPathLength);
+            end
+
+            %print some status message and update progress variables
+            if ~robotMoveStatus
+                C.startNode = C.previousRobotNode; F.startNode = C.startNode;
+                idleTime = idleTime + 1; robotMove = 0;
+                fprintf(['\nNo path exists currently -- Staying at the same position! ' ...
+                         '\nWaiting for sampling new configurations!']);
+                fprintf('\nRobot idle for %d time-steps\n',idleTime);
+            else
+                traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
+                remainingPathLength = C.startNode.cost;
+                idleTime = 0; robotMove = 1;
+                fprintf('\n\nRobot moving.... ');
+                fprintf('\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
+                    traversedPathLength,remainingPathLength);
+            end
         end
         
         %break
