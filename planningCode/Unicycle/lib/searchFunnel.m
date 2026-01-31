@@ -109,7 +109,7 @@ classdef searchFunnel < handle
             N = length(neighbors);
             flag = 0;
             %maxNeighborsAllowed = 12;
-            delta = 1;
+            delta = 0.5;
 
             if (N < 1) %if no neighbor return
                 flag = 1;

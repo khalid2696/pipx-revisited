@@ -72,7 +72,7 @@ classdef PiPxPlanner < handle
 
         function flag = generateFunnelRRG(obj,F,C,G,W,T,startFound,robotMove,epsilon)
 
-            newNodePose = C.expandSearchGraph(T,W,startFound,robotMove,epsilon);
+            newNodePose = C.expandSearchGraph(T,W,startFound,robotMove,epsilon,F.resolution);
             
             %plot(newNodePose(1),newNodePose(2), 'xb','MarkerSize',7,'LineWidth',1.4)
             %drawnow

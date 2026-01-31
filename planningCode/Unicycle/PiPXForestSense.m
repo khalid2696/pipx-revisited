@@ -291,7 +291,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         while true %run replanning loop till we add a new config and funnel-edges
             flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove,epsilon);    
             
-            if flag == 1   %break out of this re-planning loop if and only if 
+            if flag == 0   %break out of this re-planning loop if and only if 
                 break  %new configurations were added to the search space
             end        %flag = True (1) if no new configs were added, False (0) if new configs were added
         end
@@ -323,14 +323,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 break
             end
 
-            %print some status message and update progress variables
-            if ~robotMoveStatus
-                C.startNode = C.previousRobotNode; F.startNode = C.startNode;
-                idleTime = idleTime + 1; robotMove = 0;
-                fprintf(['\nNo path exists currently -- Staying at the same position! ' ...
-                         '\nWaiting for sampling new configurations!']);
-                fprintf('\nRobot idle for %d time-steps\n',idleTime);
-            else
+            if robotMoveStatus
                 traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
                 remainingPathLength = C.startNode.cost;
                 idleTime = 0; robotMove = 1;
@@ -339,8 +332,16 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                     traversedPathLength,remainingPathLength);
             end
         end
+
+        %print some status message and update progress variables
+        if ~robotMoveStatus
+            C.startNode = C.previousRobotNode; F.startNode = C.startNode;
+            idleTime = idleTime + 1; robotMove = 0;
+            fprintf(['\nNo path exists currently -- Staying at the same position! ' ...
+                     '\nWaiting for sampling new configurations!']);
+            fprintf('\nRobot idle for %d time-steps\n',idleTime);
+        end
         
-        %break
     end
     
     %plotting replanned funnel-path as robot moves

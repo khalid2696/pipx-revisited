@@ -43,11 +43,11 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 5; %15
+    numTreeObstacles = 10; %15
 end
 
 if ~exist('obstacleDynamicity', 'var') 
-    obstacleDynamicity = 10; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
+    obstacleDynamicity = 25; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end
 
 envLB = 0;
@@ -292,7 +292,17 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     %sense obstacles
     if mod(iteration,sensingFrequency) == 0
         planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
-        %break
+        
+        if drawFlag
+            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+            drawnow
+            
+            if videoFlag
+                %Capture the current figure as a frame and writes it video file
+                F = getframe(gcf);
+                writeVideo(writerObj, F);
+            end
+        end
     end
     
     %planning/replanning
@@ -301,7 +311,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         while true %run replanning loop till we add a new config and funnel-edges
             flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove,epsilon);    
             
-            if flag == 1   %break out of this re-planning loop if and only if 
+            if flag == 0   %break out of this re-planning loop if and only if 
                 break  %new configurations were added to the search space
             end        %flag = True (1) if no new configs were added, False (0) if new configs were added
         end
@@ -332,14 +342,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 break
             end
 
-            %print some status message and update progress variables
-            if ~robotMoveStatus
-                C.startNode = C.previousRobotNode; F.startNode = C.startNode;
-                idleTime = idleTime + 1; robotMove = 0;
-                fprintf(['\nNo path exists currently -- Staying at the same position! ' ...
-                         '\nWaiting for sampling new configurations!']);
-                fprintf('\nRobot idle for %d time-steps\n',idleTime);
-            else
+            if robotMoveStatus
                 traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
                 remainingPathLength = C.startNode.cost;
                 idleTime = 0; robotMove = 1;
@@ -349,14 +352,22 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             end
         end
 
+        %print some status message and update progress variables
+        if ~robotMoveStatus
+            C.startNode = C.previousRobotNode; F.startNode = C.startNode;
+            idleTime = idleTime + 1; robotMove = 0;
+            fprintf(['\nNo path exists currently -- Staying at the same position! ' ...
+                     '\nWaiting for sampling new configurations!']);
+            fprintf('\nRobot idle for %d time-steps\n',idleTime);
+        end
+
     end
 
     %plotting replanned funnel-path as robot moves
     if drawFlag
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
             %planner.setupPlot(); C.drawSearchTree();  
-            W.drawAllObstacles(); 
-            %W.drawSensorRadius(C.startNode.pose);
+            W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
             %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
             % 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);

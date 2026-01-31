@@ -126,7 +126,7 @@ classdef configurationSpace < handle
         
         %function to extrapolate to a new configuration from the nearest neighbor in
         %the existing RRG
-        function newNodePose = expandSearchGraph(obj,T,W,startFound,robotMove,epsilon)
+        function newNodePose = expandSearchGraph(obj,T,W,startFound,robotMove,epsilon,resolution)
             
             %sampling a point at random
             sampledPoint = obj.sampleNode(W,startFound,robotMove);
@@ -142,9 +142,13 @@ classdef configurationSpace < handle
                 newNodePose(1) = (1-t)*nearestNode.pose(1) + t*sampledPoint(1);
                 newNodePose(2) = (1-t)*nearestNode.pose(2) + t*sampledPoint(2);
             end
-        
+            
+            %saturating the newNodePose to be within the workspace limits
+            newNodePose(1) = min(max(newNodePose(1), W.envLB), W.envUB);
+            newNodePose(2) = min(max(newNodePose(2), W.envLB), W.envUB);
+
             %round off to nearest integer (resolution of the motion planner)
-            resolution = 1; %higher this resolution, finer the motion plan
+            %resolution = 1; %higher this resolution, finer the motion plan
             newNodePose = round(newNodePose * resolution) / resolution;
         end
 

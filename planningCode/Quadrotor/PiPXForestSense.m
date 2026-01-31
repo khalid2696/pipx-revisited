@@ -288,6 +288,17 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     %sense obstacles
     if mod(iteration,sensingFrequency) == 0
         planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
+
+        if drawFlag
+            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+            drawnow
+            
+            if videoFlag
+                %Capture the current figure as a frame and writes it video file
+                F = getframe(gcf);
+                writeVideo(writerObj, F);
+            end
+        end
     end
     
     %planning/replanning
@@ -328,14 +339,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 break
             end
 
-            %print some status message and update progress variables
-            if ~robotMoveStatus
-                C.startNode = C.previousRobotNode; F.startNode = C.startNode;
-                idleTime = idleTime + 1; robotMove = 0;
-                fprintf(['\nNo path exists currently -- Staying at the same position! ' ...
-                         '\nWaiting for sampling new configurations!']);
-                fprintf('\nRobot idle for %d time-steps\n',idleTime);
-            else
+            if robotMoveStatus
                 traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
                 remainingPathLength = C.startNode.cost;
                 idleTime = 0; robotMove = 1;
@@ -344,15 +348,23 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                     traversedPathLength,remainingPathLength);
             end
         end
+
+        %print some status message and update progress variables
+        if ~robotMoveStatus
+            C.startNode = C.previousRobotNode; F.startNode = C.startNode;
+            idleTime = idleTime + 1; robotMove = 0;
+            fprintf(['\nNo path exists currently -- Staying at the same position! ' ...
+                     '\nWaiting for sampling new configurations!']);
+            fprintf('\nRobot idle for %d time-steps\n',idleTime);
+        end
         
-        %break
     end
     
     %plotting replanned funnel-path as robot moves
     if drawFlag
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
             %figure; hold on; axis equal
-            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+            W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
             %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
             % 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
