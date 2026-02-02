@@ -106,12 +106,11 @@ classdef searchFunnel < handle
         %constructing the funnel network
         function flag = constructFunnelNetwork(obj,T,C,W,newNode,potentialNeighbors)
 
-            N = length(potentialNeighbors);
             flag = 0;
             %maxNeighborsAllowed = 12;
             delta = 0.5;
 
-            if (N < 1) %if no neighbor return
+            if (length(potentialNeighbors) < 1) %if no neighbor return
                 flag = 1;
                 return
             end
@@ -124,7 +123,7 @@ classdef searchFunnel < handle
 
             prevEdgeCount = obj.numFunnelEdges;
             
-            for i=1:N
+            for i=1:length(potentialNeighbors)
                 thisNeighbor = potentialNeighbors{i};
 
                 if thisNeighbor.withinObstacle

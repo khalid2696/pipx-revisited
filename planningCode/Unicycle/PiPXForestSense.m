@@ -34,7 +34,7 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 extendDistance = 4;          %extend-distance along one direction
-prePlanningIterationLimit = 100; %300 and 350
+prePlanningIterationLimit = 125; %300 and 350
 totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
 

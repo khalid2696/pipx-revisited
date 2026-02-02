@@ -57,7 +57,7 @@ classdef forestEnvironment < handle
 
             obj.sensorRadius = sensorRadius; %14
             %obj.toleranceLimit = epsilon/2; %extra-padding
-            obj.toleranceLimit = 0.75;
+            obj.toleranceLimit = 1;
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
             obj.mode = mode;
 
@@ -191,36 +191,32 @@ classdef forestEnvironment < handle
  
         end
         
-        function addedObstacles = addRandomObstacles(obj,robotPose,goalPose,n) %n - number of obstacles
-            
-            % if nargin < 3
-            %     n = round(obj.indexOfLast * obj.dynamicity/100);
-            % end
-
-            addedObstacles = cell(n,1);
-            %offset = obj.sensorRadius/2; %making sure that obstacles don't get added on the robot itself
-            offset = obj.toleranceLimit + obj.sizeRange(2); %making sure that obstacles don't get added on the robot itself
-
-            for i=1:n
-                %assign random locations and size within sensor radius
-                randRadius = (obj.sensorRadius-offset)*rand() + offset;
-                %randRadius = (3*obj.sensorRadius-offset)*rand() + offset;
-                randTheta  = 2*pi*rand();
-                location = [robotPose(1)+randRadius*cos(randTheta), robotPose(2)+randRadius*sin(randTheta)];
-
-                size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
-
-                if (obj.euclidianDist(location,goalPose) < size+obj.sensorRadius/2) || ...
-                        (obj.euclidianDist(location,robotPose) < size+obj.sensorRadius/2)
-                    continue %explicitly avoid obstacles occluding start or goal location
-                end
-
-                %initialise an obstacle and add it to the list
-                randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-                obj.addObstacle(randomObstacle);
-                addedObstacles{i} = randomObstacle;
-            end     
-        end
+        % function addedObstacles = addRandomObstacles(obj,robotPose,goalPose,n) %n - number of obstacles
+        % 
+        %     addedObstacles = cell(n,1);
+        %     %offset = obj.sensorRadius/2; %making sure that obstacles don't get added on the robot itself
+        %     offset = obj.toleranceLimit + obj.sizeRange(2); %making sure that obstacles don't get added on the robot itself
+        % 
+        %     for i=1:n
+        %         %assign random locations and size within sensor radius
+        %         randRadius = (obj.sensorRadius-offset)*rand() + offset;
+        %         %randRadius = (3*obj.sensorRadius-offset)*rand() + offset;
+        %         randTheta  = 2*pi*rand();
+        %         location = [robotPose(1)+randRadius*cos(randTheta), robotPose(2)+randRadius*sin(randTheta)];
+        % 
+        %         size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
+        % 
+        %         if (obj.euclidianDist(location,goalPose) < size+obj.sensorRadius/2) || ...
+        %                 (obj.euclidianDist(location,robotPose) < size+obj.sensorRadius/2)
+        %             continue %explicitly avoid obstacles occluding start or goal location
+        %         end
+        % 
+        %         %initialise an obstacle and add it to the list
+        %         randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
+        %         obj.addObstacle(randomObstacle);
+        %         addedObstacles{i} = randomObstacle;
+        %     end     
+        % end
         
         
         function obj = removeThisObstacle(obj,F,G,obstacle)
@@ -356,6 +352,10 @@ classdef forestEnvironment < handle
                 
                 %plot(thisNode.pose(1),thisNode.pose(2),'xg','MarkerSize',15,'LineWidth',3);
                 %drawnow
+
+                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+                % Can implement lane-based obstacle check here (if required)
+                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
                 
                 motionEdgeIndices = [motionEdgeIndices, findEdgesInAugmentedGraph(obj,G,thisNode,thisObstacle)];
             end
