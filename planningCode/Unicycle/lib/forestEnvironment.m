@@ -57,7 +57,7 @@ classdef forestEnvironment < handle
 
             obj.sensorRadius = sensorRadius; %14
             %obj.toleranceLimit = epsilon/2; %extra-padding
-            obj.toleranceLimit = 1;
+            obj.toleranceLimit = 0.75;
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
             obj.mode = mode;
 
@@ -150,7 +150,7 @@ classdef forestEnvironment < handle
                 radius = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
 
                 if (obj.euclidianDist(location,goalPose) < radius+obj.sensorRadius/2) || ...
-                        (obj.euclidianDist(location,robotPose) < radius+obj.sensorRadius/2)
+                        (obj.euclidianDist(location,robotPose) < radius+obj.sensorRadius)
                     continue %explicitly avoid obstacles occluding start or goal location
                 end
                 

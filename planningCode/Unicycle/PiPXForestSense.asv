@@ -48,7 +48,7 @@ end
 
 envLB_x = -2; envUB_x = 2;
 envLB_y = 0; envUB_y = 75;
-obstacleSizeRange = 0.4*[1 1]; %radius of circular obstacles
+obstacleSizeRange = 0.45*[1 1]; %radius of circular obstacles
 robotSensorRadius = 3*extendDistance; %assuming robot can sense obstacles in 3 times the max move distance
 
 W = forestEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,extendDistance,obstacleSizeRange,'sensing'); 
@@ -250,8 +250,6 @@ end
 %% start of robot motion and online re-planning phase
 %-----------------------------------------------------------%
 
-robotMove = 1;
-
 if drawFlag
     planner.setupPlot()
     F.drawGoalBranch(); W.drawAllObstacles();
@@ -293,7 +291,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         while true %run replanning loop till we add a new config and funnel-edges
             flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove);    
             
-            if flag == 0 %|| robotMoveStatus  %break out of this re-planning loop if and only if 
+            if flag == 0 || robotMoveStatus  %break out of this re-planning loop if and only if 
                 break  %new configurations were added to the search space or robot had a solution funnel-path to traverse
             end        %flag = True (1) if no new configs were added, False (0) if new configs were added
         end
@@ -328,7 +326,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             if robotMoveStatus
                 traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
                 remainingPathLength = C.startNode.cost;
-                idleTime = 0;
+                idleTime = 0; robotMove = 1;
                 fprintf('\n\nRobot moving.... ');
                 fprintf('\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
                     traversedPathLength,remainingPathLength);
@@ -338,7 +336,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         %print some status message and update progress variables
         if ~robotMoveStatus
             C.startNode = C.previousRobotNode; F.startNode = C.startNode;
-            idleTime = idleTime + 1;
+            idleTime = idleTime + 1; robotMove = 0;
             fprintf(['\nNo path exists currently -- Staying at the same position! ' ...
                      '\nWaiting for sampling new configurations!']);
             fprintf('\nRobot idle for %d time-steps\n',idleTime);

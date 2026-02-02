@@ -92,7 +92,7 @@ classdef PiPxPlanner < handle
             end
             
             %Find the neighbors within an r-Ball
-            [neighbors, flag] = obj.findNeighborsInRBall(T,newNodePose);
+            [potentialNeighbors, flag] = obj.findNeighborsInRBall(T,newNodePose);
          
             if flag %if no neighbors found, continue with the next sampling
                 return
@@ -101,7 +101,7 @@ classdef PiPxPlanner < handle
             thisNode = nodeStruct(C.numNodes+1,newNodePose);
 
             %add the the new sampled node to existing funnel-network 
-            flag = F.constructFunnelNetwork(T,C,W,thisNode,neighbors);
+            flag = F.constructFunnelNetwork(T,C,W,thisNode,potentialNeighbors);
             
             if flag %if no new edges were added, continue with the next sampling
                 return
@@ -115,14 +115,14 @@ classdef PiPxPlanner < handle
             %nearestNeighbor = C.graphNodes(end).pose; %using the neighbors of the previous node
             %[neighbors, flag] = obj.findNeighborsInRBall(T,nearestNeighbor);
             
-            [neighbors, flag] = obj.findNeighborsInRBall(T,startPose);
+            [potentialNeighbors, flag] = obj.findNeighborsInRBall(T,startPose);
 
             if flag %if no neighbors found, exit
                 return
             end
             
             startNode = nodeStruct(C.numNodes+1,startPose);
-            flag = F.constructFunnelNetwork(T,C,W,startNode,neighbors);
+            flag = F.constructFunnelNetwork(T,C,W,startNode,potentialNeighbors);
             
             if flag %if no funnel-edges were added, exit
                 return

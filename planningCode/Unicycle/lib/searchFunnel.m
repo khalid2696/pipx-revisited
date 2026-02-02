@@ -104,9 +104,9 @@ classdef searchFunnel < handle
         end
 
         %constructing the funnel network
-        function flag = constructFunnelNetwork(obj,T,C,W,newNode,neighbors)
+        function flag = constructFunnelNetwork(obj,T,C,W,newNode,potentialNeighbors)
 
-            N = length(neighbors);
+            N = length(potentialNeighbors);
             flag = 0;
             %maxNeighborsAllowed = 12;
             delta = 0.5;
@@ -125,7 +125,7 @@ classdef searchFunnel < handle
             prevEdgeCount = obj.numFunnelEdges;
             
             for i=1:N
-                thisNeighbor = neighbors{i};
+                thisNeighbor = potentialNeighbors{i};
 
                 if thisNeighbor.withinObstacle
                     continue
@@ -134,6 +134,19 @@ classdef searchFunnel < handle
                 %if it's "too small" of a distance (delta), continue
                 if obj.euclidianDist(thisNeighbor.pose,newNode.pose) < delta
                     %disp('A "small-hop" neighbor encountered.. discarding it!')
+                    continue
+                end
+
+                %OPTIONAL: implementing basic sanity checks to prune infeasible
+                %steering requirements -- warning: highly system dependant!
+                
+                %1. lateral slide along x is not possible
+                if newNode.pose(2) == thisNeighbor.pose(2) %position along y
+                    continue
+                end
+
+                %2. at max can shift only two lanes (risky though) in one maneuver
+                if abs(newNode.pose(1) - thisNeighbor.pose(1)) > 2
                     continue
                 end
                 
@@ -148,6 +161,10 @@ classdef searchFunnel < handle
 
                 %outFunnel for newNode/ inFunnel for neighborNode 
                 funnelEdge = obj.steer(newNode,thisNeighbor.pose);
+
+                if isempty(funnelEdge) %if cannot be steered (invalid or infeasible maneuver)
+                    continue
+                end
 
                 if ~W.funnelCollisionFree(funnelEdge) %|| ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
                     continue
@@ -185,6 +202,10 @@ classdef searchFunnel < handle
                 end
 
                 funnelEdge = obj.steer(thisNeighbor,newNode.pose);
+
+                if isempty(funnelEdge) %if cannot be steered (invalid or infeasible maneuver)
+                    continue
+                end
 
                 if ~W.funnelCollisionFree(funnelEdge) %|| ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
                     continue
@@ -227,6 +248,11 @@ classdef searchFunnel < handle
             %shiftVector = [parentNode.pose 0]; %start point -- x, y and z
 
             funnel = obj.findFunnel(desiredConfig, parentNode.pose);
+
+            if isempty(funnel)
+                funnelEdge = [];
+                return
+            end
             
             %instantiating an empty struct
             funnelEdge = funnelStruct(); %id would be assigned later
@@ -260,8 +286,13 @@ classdef searchFunnel < handle
             [~, closestYIndex] = min(abs(obj.configYArray - deltaQ(2)));
             
             dictionaryKey = [obj.configXArray(closestXIndex), obj.configYArray(closestYIndex)];
-        
-            funnel = obj.funnelLibrary(num2str(dictionaryKey));
+            
+            if isKey(obj.funnelLibrary, num2str(dictionaryKey))
+                funnel = obj.funnelLibrary(num2str(dictionaryKey));
+            else
+                funnel = []; %if key not found, return an empty val
+            end
+            %funnel = obj.funnelLibrary(num2str(dictionaryKey));
         end 
 
         %new functions added (Jul '24)
