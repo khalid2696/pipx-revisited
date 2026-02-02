@@ -59,7 +59,7 @@ classdef searchFunnel < handle
             obj.funnelLibrary = library;
             obj.extendDistance = extendDistance;
             
-            obj.resolution = 1/libraryResolution;
+            obj.resolution = libraryResolution;
             
             % Previous implementation
             % if strcmp(libraryResolution,'dense') %1-Sparse %0.5-Nominal %0.25-Dense
@@ -70,8 +70,8 @@ classdef searchFunnel < handle
             %     obj.resolution = 0.5;
             % end
         
-            obj.configXArray = -obj.extendDistance:obj.resolution:obj.extendDistance;
-            obj.configYArray = -obj.extendDistance:obj.resolution:obj.extendDistance;
+            obj.configXArray = -obj.extendDistance:1/obj.resolution(1):obj.extendDistance;
+            obj.configYArray = -obj.extendDistance:1/obj.resolution(2):obj.extendDistance;
 
             obj.CspaceDimensionIndices = 1:12;     %12-state system
             obj.CspaceDimensionIndices = [1 2 3];  %x-y-z configuration space

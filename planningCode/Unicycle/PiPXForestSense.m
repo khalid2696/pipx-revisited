@@ -33,7 +33,7 @@ videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
-epsilon = 3;          %extend-distance
+extendDistance = 4;          %extend-distance along one direction
 prePlanningIterationLimit = 100; %300 and 350
 totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
@@ -43,30 +43,31 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 7; %15
+    numTreeObstacles = 5; %7
 end
 
 envLB_x = -2; envUB_x = 2;
-envLB_y = 0; envUB_y = 50;
+envLB_y = 0; envUB_y = 75;
 obstacleSizeRange = 0.45*[1 1]; %radius of circular obstacles
-robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
+robotSensorRadius = 3*extendDistance; %assuming robot can sense obstacles in 3 times the max move distance
 
-W = forestEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,epsilon,obstacleSizeRange,'sensing'); 
-%obstacle class:  epsilon - tolerance
-%mode: 'sensing' or 'dynamic' (addition and deletion)
+W = forestEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,extendDistance,obstacleSizeRange,'sensing'); 
+%obstacle class: %mode: 'sensing'
 
 distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
+%distanceWeightMatrix = eye(2);
+%distanceFunction = @(vectorA, vectorB) sqrt(((vectorA - vectorB)'*distanceWeightMatrix*(vectorA - vectorB))); %distance function (for kDTree)
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
 
 load('./precomputedFunnelLibrary/library.mat');
 %resolution of the pre-computed funnel library
-funnelLibraryResolution = 1; %higher this resolution, finer the motion plan
-F = searchFunnel(funnelLibrary,epsilon,funnelLibraryResolution);
+funnelLibraryResolution = [1 2]; %lower this resolution, finer the motion plan
+F = searchFunnel(funnelLibrary,extendDistance,funnelLibraryResolution);
 
 C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
 
-planner = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,epsilon,funnelLibraryResolution,drawFlag);
+planner = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,extendDistance,funnelLibraryResolution,drawFlag);
 planner.setupPlot()
 
 %----------------------------------------------------------------------%
@@ -85,9 +86,10 @@ goalPose =  [(envLB_x+envUB_x)/2, envUB_y-5];
 % goalPose = [problemx(2) problemy(2)];
 
 %round off to nearest integer (resolution of the motion planner)
-startPose = round(startPose * funnelLibraryResolution) / funnelLibraryResolution;
-goalPose = round(goalPose * funnelLibraryResolution) / funnelLibraryResolution;
-
+temp = startPose ./ funnelLibraryResolution;
+startPose = round(temp) .* funnelLibraryResolution;
+temp = goalPose ./ funnelLibraryResolution;
+goalPose = round(temp) .* funnelLibraryResolution;
 
 %initially adding obstacles
 W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
@@ -160,7 +162,7 @@ progressBar = waitbar(0, 'Funnel RRG construction progress');
 
 while iteration < prePlanningIterationLimit %&& ~startFound
     
-    flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove,epsilon);    
+    flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove);    
     
     if ~flag %if new configurations were added to the search space
         iteration = iteration+1; %updating the iteration count
@@ -244,8 +246,6 @@ if drawFlag
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
 
-%return
-
 %-----------------------------------------------------------%
 %% start of robot motion and online re-planning phase
 %-----------------------------------------------------------%
@@ -289,10 +289,10 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     if mod(iteration,planningFrequency) == 0
         
         while true %run replanning loop till we add a new config and funnel-edges
-            flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove,epsilon);    
+            flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove);    
             
-            if flag == 0   %break out of this re-planning loop if and only if 
-                break  %new configurations were added to the search space
+            if flag == 0 || robotMoveStatus  %break out of this re-planning loop if and only if 
+                break  %new configurations were added to the search space or robot had a solution funnel-path to traverse
             end        %flag = True (1) if no new configs were added, False (0) if new configs were added
         end
         

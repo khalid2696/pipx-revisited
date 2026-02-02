@@ -27,6 +27,8 @@ classdef PiPxPlanner < handle
         envUB
         extendDistance
         resolution
+        CspaceDimensionality
+        initial_rBall_radius
         drawFlag
     end %end of properties
 
@@ -37,6 +39,8 @@ classdef PiPxPlanner < handle
             obj.envUB = envUB;
             obj.extendDistance = epsilon;
             obj.resolution = resolution;
+            obj.CspaceDimensionality = 2; %xy-planning
+            obj.initial_rBall_radius = 50; %used for the shrinking rBall radius compute
 
             if nargin < 5
                 obj.drawFlag = 0;
@@ -241,11 +245,10 @@ classdef PiPxPlanner < handle
         function r = rBall(obj,iteration)
             
             %Shrinking rate from RRT* paper
-            %epsilon = 4.5; 
-            r0 = 50; d = 2; iteration = iteration+1;
-            epsilon = obj.extendDistance * d^(1/d); %L_infinity-norm to L2-norm
+            r0 = obj.initial_rBall_radius; iteration = iteration+1;
+            epsilon = obj.extendDistance * obj.CspaceDimensionality^(1/obj.CspaceDimensionality); %L_infinity-norm to L2-norm
             
-            r = min(r0*(log(iteration)/(iteration))^(1/d), epsilon);
+            r = min(r0*(log(iteration)/(iteration))^(1/obj.CspaceDimensionality), epsilon);
             r = max(r, 1/obj.resolution);
             
             %rBall radius is saturated by max extend distance (UB) and

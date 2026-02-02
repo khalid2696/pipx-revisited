@@ -29,16 +29,20 @@ classdef PiPxPlanner < handle
         envUB_y
         extendDistance
         resolution
+        CspaceDimensionality
+        initial_rBall_radius
         drawFlag
     end %end of properties
 
     methods
-        function obj = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,epsilon,resolution,drawFlag) %constructor class
+        function obj = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,extendDistance,resolution,drawFlag) %constructor class
             
             obj.envLB_x = envLB_x - 0.5; obj.envUB_x = envUB_x + 0.5; %adding/subtracting 0.5 to better visualize road-lanes
             obj.envLB_y = envLB_y; obj.envUB_y = envUB_y;
-            obj.extendDistance = epsilon;
+            obj.extendDistance = extendDistance;
             obj.resolution = resolution;
+            obj.CspaceDimensionality = 2; %xy-planning
+            obj.initial_rBall_radius = 50; %used for the shrinking rBall radius compute
 
             if nargin < 5
                 obj.drawFlag = 0;
@@ -72,8 +76,12 @@ classdef PiPxPlanner < handle
             % obj.goalNode  = []; %will be updated in runtime
         end
 
-        function flag = generateFunnelRRG(obj,F,C,G,W,T,startFound,robotMove,epsilon)
-
+        function flag = generateFunnelRRG(obj,F,C,G,W,T,startFound,robotMove)
+            
+            %epsilon = obj.extendDistance*obj.CspaceDimensionality^(1/obj.CspaceDimensionality); %L2-norm of the extend distance (xy-planning)
+            epsilon = obj.extendDistance; %using a conservative epsilon (extendDistance) for expanding the searchFunnel
+                                          %note that although, in principle, we should be able to
+                                          %use the previous line epsilon (upper bound value) as well
             newNodePose = C.expandSearchGraph(T,W,startFound,robotMove,epsilon,F.resolution);
             
             %plot(newNodePose(1),newNodePose(2), 'xb','MarkerSize',7,'LineWidth',1.4)
@@ -242,13 +250,12 @@ classdef PiPxPlanner < handle
         %Shrinking r-Ball
         function r = rBall(obj,iteration)
             
-            %Shrinking rate from RRT* paper
-            %epsilon = 4.5; 
-            r0 = 50; d = 2; iteration = iteration+1;
-            epsilon = obj.extendDistance * d^(1/d); %L_infinity-norm to L2-norm
+            %Shrinking rate from RRT* paper 
+            r0 = obj.initial_rBall_radius; iteration = iteration+1;
+            epsilon = obj.extendDistance * obj.CspaceDimensionality^(1/obj.CspaceDimensionality); %L_infinity-norm to L2-norm conversion
             
-            r = min(r0*(log(iteration)/(iteration))^(1/d), epsilon);
-            r = max(r, 1/obj.resolution);
+            r = min(r0*(log(iteration)/(iteration))^(1/obj.CspaceDimensionality), epsilon); %upper saturation
+            r = max(r, max(obj.resolution)); %max or min           %lower saturation
             
             %rBall radius is saturated by max extend distance (UB) and
             %resolution of the funnelLibrary (LB)

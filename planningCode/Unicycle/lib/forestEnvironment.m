@@ -57,7 +57,7 @@ classdef forestEnvironment < handle
 
             obj.sensorRadius = sensorRadius; %14
             %obj.toleranceLimit = epsilon/2; %extra-padding
-            obj.toleranceLimit = 0.75;
+            obj.toleranceLimit = 1;
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
             obj.mode = mode;
 
@@ -488,8 +488,7 @@ classdef forestEnvironment < handle
                 type = 'addition';
             end
             
-            if strcmpi(type,'addition')
-            %if (obstacles{1}.status == 1) %this list comprises of added obstacles
+            if strcmpi(type,'addition') %this list comprises of added obstacles
                 %so determine the edges in collision first
                 obj.findNodesWithinObstacles(C,tree,obstacles);
                 modifiedEdges = obj.findEdgesWithinObstacles(F,G,tree,obstacles);
