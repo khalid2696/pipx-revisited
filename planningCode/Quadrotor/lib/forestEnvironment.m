@@ -601,11 +601,11 @@ classdef forestEnvironment < handle
                 %Accessing the centre and radius from the obstacles file
                 centre = thisObstacle.location;
                 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
-                radius = thisObstacle.radius + obj.toleranceLimit; %new addition -- extra padding
+                %radius = thisObstacle.radius + obj.toleranceLimit; %new addition -- extra padding
+                radius = thisObstacle.radius;
                 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
 
                 %Checking if the edge (v,w) intersects the circle
-                
                 angleSubtend = ((centre(1)-v(1))*(w(1)-v(1)) + (centre(2)-v(2))*(w(2)-v(2)))/(euclidianDist(obj,v,w)^2);
 
                 xProjection = v(1) + angleSubtend*(w(1)-v(1));
@@ -615,7 +615,6 @@ classdef forestEnvironment < handle
 
                 %If the closest point lies within the edge and as well as at a
                 %distance less than the radius, it implies collision
-                %if((euclidianDist(obj,closestPoint,centre) < radius))
                 if(liesInBetween(obj,v,w,closestPoint) && (euclidianDist(obj,closestPoint,centre) < radius))
                     check = 0;
                     return
