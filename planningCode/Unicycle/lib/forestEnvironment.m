@@ -57,7 +57,7 @@ classdef forestEnvironment < handle
 
             obj.sensorRadius = sensorRadius; %14
             %obj.toleranceLimit = epsilon/2; %extra-padding
-            obj.toleranceLimit = 1;
+            obj.toleranceLimit = 2;
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
             obj.mode = mode;
 
@@ -150,7 +150,7 @@ classdef forestEnvironment < handle
                 radius = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
 
                 if (obj.euclidianDist(location,goalPose) < radius+obj.sensorRadius/2) || ...
-                        (obj.euclidianDist(location,robotPose) < radius+obj.sensorRadius)
+                        (obj.euclidianDist(location,robotPose) < radius+obj.sensorRadius/2)
                     continue %explicitly avoid obstacles occluding start or goal location
                 end
                 
@@ -219,65 +219,65 @@ classdef forestEnvironment < handle
         % end
         
         
-        function obj = removeThisObstacle(obj,F,G,obstacle)
-            
-            if(obj.numObstacles < 1 || obstacle.status == 0)
-                return %no obstacle to remove or if obstacle has already been removed
-            end
-            
-            obstacle.status = 0;
-            obj.numObstacles = obj.numObstacles-1; %decrement the total #obstacles by 1
-            
-            tempNodes = obstacle.nodesWithin;
-            for i=1:length(tempNodes)
-                tempNodes{i}.withinObstacle = 0;
-            end
-            
-            tempEdges = obstacle.edgesWithin;
-            for i=1:length(tempEdges)
-                thisEdge = tempEdges(i);
-                
-                head = G.graphVertices(thisEdge.parent);
-                %tail = C.graphVertices(thisEdge.child);
-                %newCost = euclidianDist(obj,head.pose,tail.pose);
-                
-                thisEdge.withinObstacle = 0;
-                thisEdge.cost = thisEdge.nominalCost; %reset to the original non-infinite cost
-
-                %tempEdges(i).withinObstacle = 0;
-                %tempEdges(i).cost = tempEdges(i).nominalCost;
-                
-                %head.vertexData(2) corresponds to the funnel-edge
-                %so should be tail.vertexData(2) (by construction)
-                thisFunnel = F.funnelEdges(head.vertexData(2));
-                thisFunnel.cost = thisFunnel.nominalCost; %reset to the original non-infinite cost
-                thisFunnel.withinObstacle = 0;
-            end      
-        end
-        
-
-        function deletedObstacles = removeRandomObstacles(obj,F,G,n)
-            
-            % if nargin < 4
-            %     n = ceil(obj.numObstacles * obj.dynamicity/100);
-            % end
-            
-            deletedObstacles = cell(n,1);
-            count = 0;
-            while count < min(n,obj.numObstacles) 
-                index = randi([1 obj.indexOfLast]);
-                tempObstacle = obj.obstacles{index};
-                
-                if(tempObstacle.status == 0) 
-                   continue %if the obstacle is inactive continue
-                end
-                
-                obj.removeThisObstacle(F,G,tempObstacle);
-                count = count+1;
-                deletedObstacles{count} = tempObstacle;
-            end
-            
-        end
+        % function obj = removeThisObstacle(obj,F,G,obstacle)
+        % 
+        %     if(obj.numObstacles < 1 || obstacle.status == 0)
+        %         return %no obstacle to remove or if obstacle has already been removed
+        %     end
+        % 
+        %     obstacle.status = 0;
+        %     obj.numObstacles = obj.numObstacles-1; %decrement the total #obstacles by 1
+        % 
+        %     tempNodes = obstacle.nodesWithin;
+        %     for i=1:length(tempNodes)
+        %         tempNodes{i}.withinObstacle = 0;
+        %     end
+        % 
+        %     tempEdges = obstacle.edgesWithin;
+        %     for i=1:length(tempEdges)
+        %         thisEdge = tempEdges(i);
+        % 
+        %         head = G.graphVertices(thisEdge.parent);
+        %         %tail = C.graphVertices(thisEdge.child);
+        %         %newCost = euclidianDist(obj,head.pose,tail.pose);
+        % 
+        %         thisEdge.withinObstacle = 0;
+        %         thisEdge.cost = thisEdge.nominalCost; %reset to the original non-infinite cost
+        % 
+        %         %tempEdges(i).withinObstacle = 0;
+        %         %tempEdges(i).cost = tempEdges(i).nominalCost;
+        % 
+        %         %head.vertexData(2) corresponds to the funnel-edge
+        %         %so should be tail.vertexData(2) (by construction)
+        %         thisFunnel = F.funnelEdges(head.vertexData(2));
+        %         thisFunnel.cost = thisFunnel.nominalCost; %reset to the original non-infinite cost
+        %         thisFunnel.withinObstacle = 0;
+        %     end      
+        % end
+        % 
+        % 
+        % function deletedObstacles = removeRandomObstacles(obj,F,G,n)
+        % 
+        %     % if nargin < 4
+        %     %     n = ceil(obj.numObstacles * obj.dynamicity/100);
+        %     % end
+        % 
+        %     deletedObstacles = cell(n,1);
+        %     count = 0;
+        %     while count < min(n,obj.numObstacles) 
+        %         index = randi([1 obj.indexOfLast]);
+        %         tempObstacle = obj.obstacles{index};
+        % 
+        %         if(tempObstacle.status == 0) 
+        %            continue %if the obstacle is inactive continue
+        %         end
+        % 
+        %         obj.removeThisObstacle(F,G,tempObstacle);
+        %         count = count+1;
+        %         deletedObstacles{count} = tempObstacle;
+        %     end
+        % 
+        % end
         
         %functions to determine which nodes and edges are within obstacles
         function collisionNodes = findNodesWithinObstacles(obj,C,tree,obstacles)
@@ -350,14 +350,10 @@ classdef forestEnvironment < handle
                 %fprintf('\n\nNode number: %d',i);
                 %fprintf('\nNode index: %d',thisNode.index);
                 
-                %plot(thisNode.pose(1),thisNode.pose(2),'xg','MarkerSize',15,'LineWidth',3);
-                %drawnow
-
-                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
-                % Can implement lane-based obstacle check here (if required)
-                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+                % plot(thisNode.pose(1),thisNode.pose(2),'xg','MarkerSize',15,'LineWidth',3);
+                % drawnow
                 
-                motionEdgeIndices = [motionEdgeIndices, findEdgesInAugmentedGraph(obj,G,thisNode,thisObstacle)];
+                motionEdgeIndices = [motionEdgeIndices, obj.findEdgesInAugmentedGraph(G,thisNode,thisObstacle)];
             end
 
             
@@ -425,6 +421,16 @@ classdef forestEnvironment < handle
                 tempHead = G.graphVertices(tempEdge.parent);
                 tempTail = G.graphVertices(tempEdge.child);
 
+                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+                %Lane-based collision checking (very specific to the road-like workspace) 
+                %if edge is not in the same lane (x-position) as the other car-obstacle
+                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+                if tempHead.pose(1) == tempTail.pose(1) && tempHead.pose(1) ~= thisObstacle.location(1)
+                    %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'m','LineWidth',3);
+                    %drawnow
+                    continue
+                end
+
                 %Collision check to see whether edge is in collision
                 if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
                     %fprintf('\n\n The edge that was skipped: %d',tempEdge.index);
@@ -459,6 +465,16 @@ classdef forestEnvironment < handle
 
                 tempHead = G.graphVertices(tempEdge.parent);
                 tempTail = G.graphVertices(tempEdge.child);
+
+                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+                %Lane-based collision checking (very specific to the road-like workspace) 
+                %if edge is not in the same lane (x-position) as the other car-obstacle
+                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+                if tempHead.pose(1) == tempTail.pose(1) && tempHead.pose(1) ~= thisObstacle.location(1)
+                    %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'m','LineWidth',3);
+                    %drawnow
+                    continue
+                end
 
                 %Collision check to see whether edge is in collision
                 if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
@@ -624,7 +640,8 @@ classdef forestEnvironment < handle
                 %Accessing the centre and radius from the obstacles file
                 centre = thisObstacle.location;
                 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
-                radius = thisObstacle.radius + obj.toleranceLimit; %new addition -- extra padding
+                %radius = thisObstacle.radius + obj.toleranceLimit; %new addition -- extra padding
+                radius = thisObstacle.radius;
                 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
 
                 %Checking if the edge (v,w) intersects the circle
