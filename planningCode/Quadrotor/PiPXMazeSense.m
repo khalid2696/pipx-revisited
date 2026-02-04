@@ -262,19 +262,25 @@ end
 %% start of robot motion and online re-planning phase
 %-----------------------------------------------------------%
 
+if videoFlag
+    writerObj = VideoWriter('sample_run.avi');
+    writerObj.FrameRate = 1; % Sets the frame rate to 30 frames per second
+    writerObj.Quality = 100;   % Sets the video quality (0-100)
+    open(writerObj);
+end
+
 if drawFlag
     planner.setupPlot()
     F.drawGoalBranch(); W.drawAllObstacles();
     title('Robot motion along the solution funnel-path')
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
     drawnow
-end
 
-if videoFlag
-    writerObj = VideoWriter('myVideo.mp4', 'Motion JPEG AVI');
-    writerObj.FrameRate = 30; % Sets the frame rate to 30 frames per second
-    writerObj.Quality = 90;   % Sets the video quality (0-100)
-    open(writerObj);
+    if videoFlag
+        %Capture the current figure as a frame and writes it video file
+        frame = getframe(gcf);
+        writeVideo(writerObj, frame);
+    end
 end
 
 %PiP-X algorithm: Online motion planning/replanning using Funnels
@@ -290,8 +296,8 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             
             if videoFlag
                 %Capture the current figure as a frame and writes it video file
-                F = getframe(gcf);
-                writeVideo(writerObj, F);
+                frame = getframe(gcf);
+                writeVideo(writerObj, frame);
             end
         end
     end
@@ -368,8 +374,8 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             
             if videoFlag
                 %Capture the current figure as a frame and writes it video file
-                F = getframe(gcf);
-                writeVideo(writerObj, F);
+                frame = getframe(gcf);
+                writeVideo(writerObj, frame);
             end
         end
     end

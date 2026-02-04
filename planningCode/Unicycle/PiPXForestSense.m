@@ -42,8 +42,8 @@ planningFrequency = 1;
 robotMovementFrequency = 3; %decreasing this parameter increases the robot speed!
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
-if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 15; %7
+if ~exist('numCarObstacles', 'var') 
+    numCarObstacles = 10; %7
 end
 
 envLB_x = -2; envUB_x = 2;
@@ -92,7 +92,7 @@ temp = goalPose ./ funnelLibraryResolution;
 goalPose = round(temp) .* funnelLibraryResolution;
 
 %initially adding obstacles
-W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
+W.addDynamicObstacles(numCarObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
                                                       
 W.initialiseObstacleTree();
 W.senseObstacles(startPose);
@@ -252,20 +252,28 @@ end
 
 robotMove = 1;
 
+if videoFlag
+    writerObj = VideoWriter('sample_run.avi');
+    writerObj.FrameRate = 2; % Sets the frame rate to 30 frames per second
+    writerObj.Quality = 100;   % Sets the video quality (0-100)
+    open(writerObj);
+end
+
 if drawFlag
     planner.setupPlot()
     F.drawGoalBranch(); W.drawAllObstacles();
     title('Robot motion along the solution funnel-path')
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
     drawnow
+
+    if videoFlag
+        %Capture the current figure as a frame and writes it video file
+        set(gcf, 'Position', [100, 100, 1920, 1080]);
+        frame = getframe(gcf);
+        writeVideo(writerObj, frame);
+    end
 end
 
-if videoFlag
-    writerObj = VideoWriter('myVideo.mp4', 'Motion JPEG AVI');
-    writerObj.FrameRate = 30; % Sets the frame rate to 30 frames per second
-    writerObj.Quality = 90;   % Sets the video quality (0-100)
-    open(writerObj);
-end
 
 %PiP-X algorithm: Online motion planning/replanning using Funnels
 while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
@@ -276,14 +284,19 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
         
         if drawFlag
+            if videoFlag %get new frames, if writing onto a video
+                planner.setupPlot();
+            end
+
             W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
             drawnow
             
-            if videoFlag
-                %Capture the current figure as a frame and writes it video file
-                F = getframe(gcf);
-                writeVideo(writerObj, F);
-            end
+            % if videoFlag
+            %     %Capture the current figure as a frame and writes it video file
+            %     set(gcf, 'Position', [100, 100, 1920, 1080]);
+            %     frame = getframe(gcf);
+            %     writeVideo(writerObj, frame);
+            % end
         end
     end
     
@@ -319,9 +332,12 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 fprintf('\n\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
                     traversedPathLength,remainingPathLength);
                 fprintf('<strong>\n\nGoal reached! \n</strong>');
-                plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
-                W.drawAllObstacles();
-                drawnow
+                if drawFlag
+                    plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+                    W.drawAllObstacles();
+                    drawnow
+                end
+
                 break
             end
 
@@ -358,8 +374,9 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             
             if videoFlag
                 %Capture the current figure as a frame and writes it video file
-                F = getframe(gcf);
-                writeVideo(writerObj, F);
+                set(gcf, 'Position', [100, 100, 1920, 1080]);
+                frame = getframe(gcf);
+                writeVideo(writerObj, frame);
             end
         end
     end
@@ -369,9 +386,12 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     %if goal reached
     if C.goalCheck(C.startNode.pose)
         fprintf('<strong>\n\nGoal reached! \n</strong>');
-        plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
-        W.drawAllObstacles();
-        drawnow
+        if drawFlag
+            plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+            W.drawAllObstacles();
+            drawnow
+        end
+        
         break
     end   
     
@@ -393,6 +413,7 @@ end
 if videoFlag
     close(writerObj);
     disp('Video created successfully!');
+    close all
 end
 
 %-----------------------------------------------------------%

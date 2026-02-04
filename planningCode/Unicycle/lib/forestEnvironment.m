@@ -57,7 +57,7 @@ classdef forestEnvironment < handle
 
             obj.sensorRadius = sensorRadius; %14
             %obj.toleranceLimit = epsilon/2; %extra-padding
-            obj.toleranceLimit = 2;
+            obj.toleranceLimit = 1.5;
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
             obj.mode = mode;
 
