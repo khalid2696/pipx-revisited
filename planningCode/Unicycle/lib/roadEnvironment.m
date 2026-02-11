@@ -20,61 +20,46 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-%Class definition for the maze environment with collision-checking routines
-classdef mazeEnvironment < handle
-    properties
+%Class definition for the random forest environment with collision-checking routines
+classdef roadEnvironment < handle
+    properties     
         
         environmentType
-        envLB
-        envUB
-        numRectangles
+        envLB_x
+        envUB_x
+        envLB_y
+        envUB_y
         numObstacles %useful for keeping track of num of active obstacles
+        dynamicity %percentage of obstacles changing in location and size
         toleranceLimit
         sensorRadius %sensor radius of the robot
-        sizeRange %width range of rectangle obstacles
-        windowPadding %padding to assign windows
+        sizeRange %size range of circular obstacles
         mode %options: 'sensing' or 'dynamic' (addition and deletion)
         
+        %list of obstacles with obstacleStruct datatype
+        boundingRectangles
+        obstacles
         obstacleTree
-        
-        rectangles %list of rectangle panels in the maze
-        obstacles  %list of obstacles with obstacleStruct datatype
-        windows
-        sensedWindows %keeps track of indices of whatever windows have already been sensed
-        unsensedWindows
-        dynamicity
      
         %internal use
-        indexOfLast
-        
+        indexOfLast        
     end
 
     methods
         %constructor class - initialises with the position, size and an unique id
-        function obj = mazeEnvironment(envLB,envUB,sensorRadius,sizeRange,epsilon,type,mode,vargin)
+        function obj = roadEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,sensorRadius,epsilon,sizeRange,mode,vargin)
             
-            obj.environmentType = 'maze';
-            obj.envLB = envLB;
-            obj.envUB = envUB;
-            
-            obj.numRectangles = 0;
+            obj.environmentType = 'forest';
+            obj.envLB_x = envLB_x; obj.envUB_x = envUB_x;
+            obj.envLB_y = envLB_y; obj.envUB_y = envUB_y;
             obj.numObstacles = 0;
             obj.indexOfLast = 0;
-                 
-            obj.sensorRadius = sensorRadius;
-            obj.sizeRange = sizeRange;
-            obj.windowPadding = 4;
-            obj.toleranceLimit = epsilon/2; %extra-padding
-            obj.mode = mode;
-            
-            obj.sensedWindows = [];
-            obj.unsensedWindows = [];
 
-            distFunct = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function
-            obj.obstacleTree = KDTree(2, distFunct); %initialise the tree, 2 - num of dimensions
-            
-            obj.initialiseMaze(type);
-            obj.splitRectangles();
+            obj.sensorRadius = sensorRadius; %14
+            %obj.toleranceLimit = epsilon/2; %extra-padding
+            obj.toleranceLimit = 1.5;
+            obj.sizeRange = sizeRange; %specify the size range of circular obstacles
+            obj.mode = mode;
 
             if strcmpi(obj.mode, 'sensing')
                 obj.dynamicity = 0; %no obstacles get deleted
@@ -82,98 +67,9 @@ classdef mazeEnvironment < handle
                 obj.dynamicity = vargin(1);
                 return %no need of having a kDTree of obstacles (for dynamic environment)
             end
-        end
-        
-        function obj = initialiseMaze(obj,type)
-            switch type
-                case 1
-                    % rectangleList = [0.2 0.8 0.55 0.05 0 ;
-                    %                  0.8 0.6 0.8 0.05 90;
-                    %                  0.5 0.75 0.25 0.05 90;
-                    %                  0.5 0.3 0.55 0.05 0;
-                    %                  0.2 0.3 0.4 0.05 90;];
-
-                    rectangleList = [0.2 0.7 0.55 0.05 0 ;
-                                     0.5 0.7 0.25 0.05 90;
-                                     0.3 0.3 0.25 0.05 90;
-                                     0.5 0.3 0.45 0.05 0;
-                                     0.75 0.6 0.8 0.05 90;];
-                case 2
-                    rectangleList =[0.1 0.15 0.2 0.05 0 ;
-                                    0.2 0.35 0.5 0.05 90;
-                                    0.4 0.55 0.4 0.05 0;
-                                    0.35 0.8 0.5 0.05 0;
-                                    0.6 0.9 0.2 0.05 90;
-                                    0.8 0.5 0.6 0.05 90;
-                                    0.6 0.15 0.35 0.05 90;
-                                    0.7 0.3 0.2 0.05 0;];
-            end
             
-            %scaling the dimensions and positions
-            rectangleList(:,1:2) = rectangleList(:,1:2).*(obj.envUB-obj.envLB) + obj.envLB;
-            rectangleList(:,3:4) = rectangleList(:,3:4).*(obj.envUB-obj.envLB);
-            
-            for i=1:length(rectangleList)
-                location = rectangleList(i,1:2);
-                size = rectangleList(i,3:4);
-                theta = rectangleList(i,5);
-                
-                thisRectangle = rectangleStruct(obj.numRectangles+1, location, size, theta);
-                obj.rectangles{i} = thisRectangle;
-                obj.numRectangles = obj.numRectangles+1;
-            end
-        end 
-        
-        function obj = splitRectangles(obj)
-            
-            for i=1:obj.numRectangles
-                thisRectangle = obj.rectangles{i};
-                thisRectangle.splitRectangle();
-
-                prevNumObstacles = obj.indexOfLast;
-
-                for j=1:length(thisRectangle.lowerVertices)-1
-                    v1 = thisRectangle.lowerVertices(j,:);
-                    v3 = thisRectangle.upperVertices(j+1,:);
-        
-                    c = (v1+v3)/2;
-                    r = norm(v1-v3)/2;
-                    tempSquare = rectangleStruct(obj.numObstacles+1,c,[r*sqrt(2) r*sqrt(2)],0);
-                    
-                    circumscribedObstacle = obstacleStruct(NaN,c,r);
-                    circumscribedObstacle.rectangleWithin = tempSquare;
-                    circumscribedObstacle.status = 0; %by default unexplored
-                    
-                    obj.addObstacle(circumscribedObstacle);
-                    tempKDnode = KDTreeNode(circumscribedObstacle.location); %changing it to pose instead of position
-                    tempKDnode.payload = circumscribedObstacle;
-                    obj.obstacleTree.kdInsert(tempKDnode);
-                end
-                
-                % demarcate windows if walls are long
-                if thisRectangle.length > 0.4*obj.envUB && thisRectangle.length < 0.7*obj.envUB
-                    randomWindowIndex = randi([prevNumObstacles + obj.windowPadding, obj.indexOfLast - obj.windowPadding]);
-                    obj.assignRandomWindows(randomWindowIndex);
-                end
-
-                % if length is larger, assign one more window
-                if thisRectangle.length > 0.7*obj.envUB
-                    numBricks = obj.indexOfLast - prevNumObstacles;
-                    randomWindowIndex = randi([prevNumObstacles + obj.windowPadding, prevNumObstacles + round(numBricks/2) - floor(obj.windowPadding/2)]);
-                    obj.assignRandomWindows(randomWindowIndex);
-
-                    randomWindowIndex = randi([prevNumObstacles + round(numBricks/2) + floor(obj.windowPadding/2), obj.indexOfLast - obj.windowPadding]);
-                    obj.assignRandomWindows(randomWindowIndex);
-                end
-
-            end
-        end
-        
-        function obj = assignRandomWindows(obj, chosenWindowIndex)
-            %assuming each window comprises of three "bricks"
-            assignedWindow = [obj.obstacles{chosenWindowIndex-1} obj.obstacles{chosenWindowIndex} obj.obstacles{chosenWindowIndex+1}];
-            obj.windows{end+1} = assignedWindow;
-            obj.unsensedWindows(end+1) = chosenWindowIndex;
+            distFunct = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function
+            obj.obstacleTree = KDTree(2, distFunct); %initialise the tree, 2 - num of dimensions
         end
         
         %whenever some changes happen to the underlying data structure
@@ -190,18 +86,36 @@ classdef mazeEnvironment < handle
             obj.numObstacles = obj.numObstacles+1; %increment the total #obstacles by 1
         end
         
+        function obj = initialiseObstacleTree(obj)
+
+            for i=1:obj.indexOfLast
+                thisObstacle = obj.obstacles{i};
+                
+                if strcmpi(obj.mode, 'sensing')
+                    thisObstacle.status = 0; %at the start, all the obstacles are unexplored
+                else
+                    thisObstacle.status = 1; %at the start, all the obstacles explored (in dynamic environment)
+                end
+                
+                %add to the obstacle kdTree
+                tempKDnode = KDTreeNode(thisObstacle.location); %changing it to pose instead of position
+                tempKDnode.payload = thisObstacle;
+                obj.obstacleTree.kdInsert(tempKDnode);
+            end  
+        end
+
         function exploredObstacles = senseObstacles(obj,robotLocation)
             
             exploredObstacles = {};
             if obj.numObstacles == 0
                 return %return if obstacle-free
             end
-
+            
             tempKDTree = obj.obstacleTree;
-            %range = 1.15*obj.sensorRadius; %trying to make up for circleRadius
+            %range = 1.05*obj.sensorRadius; %trying to make up for circleRadius
             range = obj.sensorRadius + obj.toleranceLimit;
 
-            obstaclesInRange = tempKDTree.kdFindWithinRangePayload(range, robotLocation);
+            obstaclesInRange = tempKDTree.kdFindWithinRangePayload(range, robotLocation);            
             
             for i=1:length(obstaclesInRange)
                 tempObstacle = obstaclesInRange{i};
@@ -212,74 +126,100 @@ classdef mazeEnvironment < handle
                 
                 exploredObstacles{end+1} = tempObstacle;
                 tempObstacle.status = 1;
-                tempObstacle.rectangleWithin.status = 1;
             end
             
-            obj.keepTrackSensedWindows();
-        end
-
-        function obj = keepTrackSensedWindows(obj)
-            for i=1:length(obj.windows)
-                thisWindow = obj.windows{i};
-                centerBrick = thisWindow(floor(length(thisWindow) + 1)/2);
-                
-                %if thisWindow is already in the sensed window list continue
-                if ismember(centerBrick.index, obj.sensedWindows)
-                    continue;
-                end
-
-                %if center brick is sensed new, mark window as sensed, remove from unsensed list                
-                if centerBrick.status == 1
-                    obj.sensedWindows(end+1) = centerBrick.index;
-                    obj.unsensedWindows(obj.unsensedWindows == centerBrick.index) = [];
-                end
-                
-            end
         end
         
-        % Not relevant for maze environment
-        % function addedObstacles = addRandomObstacles(obj,n,centre,sizeRange) %n - number of obstacles                    
+        function addedObstacles = addDynamicObstacles(obj,numObstacles,robotPose,goalPose,varargin) %n - number of obstacles
+            
+            addedObstacles = cell(3*numObstacles,1); %assuming each car is represented as 3 bounding-circle obstacles
+
+            count = 1;
+            while count<=numObstacles
+                
+                if isempty(varargin) %if location is not specified
+                    location = zeros(1,2);
+                    location(1) = round(rand()*(obj.envUB_x - obj.envLB_x) + obj.envLB_x); %rounding off because car-obstacles can exist only in the lanes
+                    location(2) = rand()*(obj.envUB_y - obj.envLB_y) + obj.envLB_y;
+                else
+                    randRadius = rand()*obj.sensorRadius;
+                    randTheta = rand()*2*pi;
+                    location = [robotPose(1) + randRadius*cos(randTheta), robotPose(2) + randRadius*sin(randTheta)];  
+                end
+                
+                radius = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
+
+                if (obj.euclidianDist(location,goalPose) < radius+obj.sensorRadius/2) || ...
+                        (obj.euclidianDist(location,robotPose) < radius+obj.sensorRadius/2)
+                    continue %explicitly avoid obstacles occluding start or goal location
+                end
+                
+                width = radius*sqrt(2); length = 3*width;
+                obj.boundingRectangles{count} = rectangleStruct(count, location, [width length], 0);
+
+                rectangleObstacleLocation_x = location(1);
+                rectangleObstacleLocation_y = [location(2) - width, location(2), location(2) + width];
+                %initialise an obstacle and add it to the list
+                for i=1:3 %
+                    tempLocation = [rectangleObstacleLocation_x rectangleObstacleLocation_y(i)];
+                    randomObstacle = obstacleStruct(obj.indexOfLast+1,tempLocation,radius);
+                    obj.addObstacle(randomObstacle);
+                    addedObstacles{count+i-1} = randomObstacle;
+                end
+                count = count+1;
+            end
+            
+            % Not relevant for this system experiments
+            % if strcmpi(obj.mode, 'dynamic')
+            % 
+            %     % make m<=N obstacles inactive at random
+            %     %at random make (numObstacles * obj.dynamicity/100)
+            %     %obstacles active (status = 0)
+            % 
+            %     %Options: 0. none 1. all obstacles, 2. half of the obtacles (preferred), 
+            %     % 3. number of obstacles that would change
+            %     numInactiveObstacles = 0;
+            %     %numInactiveObstacles = obj.indexOfLast;
+            %     %numInactiveObstacles = ceil(obj.indexOfLast/2);
+            %     %numInactiveObstacles = numObstacles - ceil(numObstacles * obj.dynamicity/100);
+            %     randomIndices = randperm(numObstacles, numInactiveObstacles);
+            % 
+            %     for i=1:length(randomIndices)
+            %         obj.obstacles{i}.status = 0;
+            %     end
+            % end
+ 
+        end
+        
+        % function addedObstacles = addRandomObstacles(obj,robotPose,goalPose,n) %n - number of obstacles
         % 
         %     addedObstacles = cell(n,1);
-        %     offset = obj.sensorRadius/2;
-        % 
-        %     if(nargin == 2)
-        %         %centre = 100*rand([1 2]);   %useful while debugging, where we don't have to
-        %         centre = rand(n,2).*(obj.envUB - obj.envLB) + obj.envLB;
-        %         sizeRange = [2 4]; %specify the range of workspace and size everytime
-        % 
-        %         for i=1:n
-        %             location = centre(i,:);
-        %             size = sizeRange(1) + (sizeRange(2) - sizeRange(1))*rand();
-        % 
-        %             %initialise an obstacle and add it to the list
-        %             randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-        %             addObstacle(obj,randomObstacle);
-        %             addedObstacles{i} = randomObstacle;
-        %         end
-        % 
-        %         return
-        %     end
-        % 
-        %     if (nargin == 3)    %implies doesn't include the size range
-        %         sizeRange = [2 4];
-        %     end
+        %     %offset = obj.sensorRadius/2; %making sure that obstacles don't get added on the robot itself
+        %     offset = obj.toleranceLimit + obj.sizeRange(2); %making sure that obstacles don't get added on the robot itself
         % 
         %     for i=1:n
-        %         %assign random locations and size
-        %         r = (obj.sensorRadius-offset)*rand() + offset;
-        %         theta  = 2*pi*rand();
-        %         location = [centre(1)+r*cos(theta) centre(2)+r*sin(theta)];
-        %         size = sizeRange(1) + (sizeRange(2) - sizeRange(1))*rand();
+        %         %assign random locations and size within sensor radius
+        %         randRadius = (obj.sensorRadius-offset)*rand() + offset;
+        %         %randRadius = (3*obj.sensorRadius-offset)*rand() + offset;
+        %         randTheta  = 2*pi*rand();
+        %         location = [robotPose(1)+randRadius*cos(randTheta), robotPose(2)+randRadius*sin(randTheta)];
+        % 
+        %         size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
+        % 
+        %         if (obj.euclidianDist(location,goalPose) < size+obj.sensorRadius/2) || ...
+        %                 (obj.euclidianDist(location,robotPose) < size+obj.sensorRadius/2)
+        %             continue %explicitly avoid obstacles occluding start or goal location
+        %         end
         % 
         %         %initialise an obstacle and add it to the list
         %         randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-        %         addObstacle(obj,randomObstacle);
+        %         obj.addObstacle(randomObstacle);
         %         addedObstacles{i} = randomObstacle;
         %     end     
         % end
         
-        % function obj = removeObstacle(obj,C,obstacle)
+        
+        % function obj = removeThisObstacle(obj,F,G,obstacle)
         % 
         %     if(obj.numObstacles < 1 || obstacle.status == 0)
         %         return %no obstacle to remove or if obstacle has already been removed
@@ -297,137 +237,73 @@ classdef mazeEnvironment < handle
         %     for i=1:length(tempEdges)
         %         thisEdge = tempEdges(i);
         % 
-        %         head = C.graphNodes(thisEdge.parent);
-        %         tail = C.graphNodes(thisEdge.child);
-        %         newCost = euclidianDist(obj,head.pose,tail.pose);
+        %         head = G.graphVertices(thisEdge.parent);
+        %         %tail = C.graphVertices(thisEdge.child);
+        %         %newCost = euclidianDist(obj,head.pose,tail.pose);
         % 
-        %         tempEdges(i).withinObstacle = 0;
-        %         tempEdges(i).cost = newCost;
+        %         thisEdge.withinObstacle = 0;
+        %         thisEdge.cost = thisEdge.nominalCost; %reset to the original non-infinite cost
+        % 
+        %         %tempEdges(i).withinObstacle = 0;
+        %         %tempEdges(i).cost = tempEdges(i).nominalCost;
+        % 
+        %         %head.vertexData(2) corresponds to the funnel-edge
+        %         %so should be tail.vertexData(2) (by construction)
+        %         thisFunnel = F.funnelEdges(head.vertexData(2));
+        %         thisFunnel.cost = thisFunnel.nominalCost; %reset to the original non-infinite cost
+        %         thisFunnel.withinObstacle = 0;
+        %     end      
+        % end
+        % 
+        % 
+        % function deletedObstacles = removeRandomObstacles(obj,F,G,n)
+        % 
+        %     % if nargin < 4
+        %     %     n = ceil(obj.numObstacles * obj.dynamicity/100);
+        %     % end
+        % 
+        %     deletedObstacles = cell(n,1);
+        %     count = 0;
+        %     while count < min(n,obj.numObstacles) 
+        %         index = randi([1 obj.indexOfLast]);
+        %         tempObstacle = obj.obstacles{index};
+        % 
+        %         if(tempObstacle.status == 0) 
+        %            continue %if the obstacle is inactive continue
+        %         end
+        % 
+        %         obj.removeThisObstacle(F,G,tempObstacle);
+        %         count = count+1;
+        %         deletedObstacles{count} = tempObstacle;
         %     end
-        % 
-        %     obstacle.rectangleWithin.drawDeletedRectangle();
-        %     obstacle.rectangleWithin.status = 0;
         % 
         % end
         
-        % function deletedObstacles = removeRandomObstacles(obj,C,n,robotLocation)
-        % 
-        %     range = 1.15*obj.sensorRadius; %trying to make up for circleRadius
-        % 
-        %     tempKDTree = obj.obstacleTree;
-        %     obstaclesInRange = tempKDTree.kdFindWithinRangePayload(range, robotLocation);
-        % 
-        %     N = min(n,length(obstaclesInRange));
-        %     deletedObstacles = cell(N,1);
-        % 
-        %     i = 0;
-        %     while i<N
-        %         index = randi([1 length(obstaclesInRange)]);
-        %         tempObstacle = obstaclesInRange{index};
-        %         if(tempObstacle.status == 0) 
-        %             continue %if the obstacle is inactive continue
-        %         end
-        %         removeObstacle(obj,C,tempObstacle);
-        %         i = i+1;
-        %         deletedObstacles{i} = tempObstacle;
-        %     end
-        % 
-        % end     
-    
-        %closing "wall-windows" at random
-        function addedObstacles = addRandomObstacles(obj,robotPose,goalPose,n) %n - number of obstacles
-
-            addedObstacles = cell(3*n,1); %length of each window is 3 "bricks"
-            indices = randperm(length(obj.sensedWindows),n);
-
-            for i=1:3:3*n %length of each window is 3 "bricks"
-      
-                randomWindowCenterIndex = obj.sensedWindows(indices((i-1)/3+1));
-
-                for j=0:2 %length of each window is 3 "bricks"
-                    tempObstacle = obj.obstacles{randomWindowCenterIndex-1+j};
-                    tempObstacle.status = 1; %make it active
-                    tempObstacle.rectangleWithin.status = 1;
-
-                    addedObstacles{i+j} = tempObstacle;
-                end
-            end     
-        end
-
-        function deletedObstacles = removeRandomObstacles(obj,F,G,n)
-            
-            deletedObstacles = cell(3*n,1); %length of each window is 3 "bricks"
-            indices = randperm(length(obj.sensedWindows),n);
-
-            for i=1:3:3*n %length of each window is 3 "bricks"
-
-                randomWindowCenterIndex = obj.sensedWindows(indices((i-1)/3+1));
-                
-                for j=-1:1
-                    tempObstacle = obj.obstacles{randomWindowCenterIndex-j};
-                    obj.removeThisObstacle(F,G,tempObstacle);
-                
-                    deletedObstacles{i} = obj.obstacles{randomWindowCenterIndex-1};
-                end
-
-                deletedObstacles{i} = obj.obstacles{randomWindowCenterIndex-1};
-                deletedObstacles{i+1} = obj.obstacles{randomWindowCenterIndex};
-                deletedObstacles{i+2} = obj.obstacles{randomWindowCenterIndex+1};
-
-            end
-        end
-
-        function obj = removeThisObstacle(obj,F,G,obstacle)
-            
-            if(obj.numObstacles < 1 || obstacle.status == 0)
-                return %no obstacle to remove or if obstacle has already been removed
-            end
-            
-            obstacle.status = 0;
-            obstacle.rectangleWithin.status = 0;
-            %obj.numObstacles = obj.numObstacles-1; %decrement the total #obstacles by 1
-            
-            tempNodes = obstacle.nodesWithin;
-            for i=1:length(tempNodes)
-                tempNodes{i}.withinObstacle = 0;
-            end
-            
-            tempEdges = obstacle.edgesWithin;
-            for i=1:length(tempEdges)
-                thisEdge = tempEdges(i);
-                
-                head = G.graphVertices(thisEdge.parent);
-                
-                thisEdge.withinObstacle = 0;
-                thisEdge.cost = thisEdge.nominalCost; %reset to the original non-infinite cost
-                
-                %head.vertexData(2) corresponds to the funnel-edge
-                %so should be tail.vertexData(2) (by construction)
-                thisFunnel = F.funnelEdges(head.vertexData(2));
-                thisFunnel.cost = thisFunnel.nominalCost; %reset to the original non-infinite cost
-                thisFunnel.withinObstacle = 0;
-            end      
-        end
-
-        %NEW FUNCTIONS -- TO BE EDITED
-        %------------------------------------------------------%
-        
         %functions to determine which nodes and edges are within obstacles
-        function findNodesWithinObstacles(obj,C,tree,obstacles)
+        function collisionNodes = findNodesWithinObstacles(obj,C,tree,obstacles)
             
+            collisionNodes = [];
              for i = 1:length(obstacles)
-                obj.findNodesWithinEachObstacle(C,tree,obstacles{i});
+
+                if isempty(obstacles{i}) %just in case
+                    continue
+                end
+
+                nodes = findNodesWithinEachObstacle(obj,C,tree,obstacles{i});   
+                collisionNodes = [collisionNodes nodes'];
             end
         end
+        
+        
+        function nodes = findNodesWithinEachObstacle(obj,C,tree,obstacle)
 
-        function findNodesWithinEachObstacle(obj,C,tree,obstacle)        
             if obstacle.status == 0 
-                %nodes = {};
+                nodes = {};
                 return %if the obstacle is not active continue
             end
 
             centre  = obstacle.location;
-            epsilon = obstacle.radius;
+            epsilon = obstacle.radius; 
 
             nodes = tree.kdFindWithinRangePayload(epsilon,centre);
             obstacle.nodesWithin = nodes;   
@@ -437,16 +313,23 @@ classdef mazeEnvironment < handle
                 tempNode.withinObstacle = 1; %make the within obstacle flag true
             end 
         end
+            
         
         function collisionEdges = findEdgesWithinObstacles(obj,F,G,tree,obstacles)
             
             collisionEdges = [];
             %for i = 1:obj.indexOfLast
             for i = 1:length(obstacles)
-                edges = obj.findEdgesWithinEachObstacle(F,G,tree,obstacles{i});
+
+                if isempty(obstacles{i}) %just in case
+                    continue
+                end
+
+                edges = findEdgesWithinEachObstacle(obj,F,G,tree,obstacles{i});
                 collisionEdges = [collisionEdges edges'];
             end
         end
+        
 
         function edges = findEdgesWithinEachObstacle(obj,F,G,tree,thisObstacle)
                 
@@ -467,10 +350,10 @@ classdef mazeEnvironment < handle
                 %fprintf('\n\nNode number: %d',i);
                 %fprintf('\nNode index: %d',thisNode.index);
                 
-                %plot(thisNode.pose(1),thisNode.pose(2),'xg','MarkerSize',15,'LineWidth',3);
-                %drawnow
+                % plot(thisNode.pose(1),thisNode.pose(2),'xg','MarkerSize',15,'LineWidth',3);
+                % drawnow
                 
-                motionEdgeIndices = [motionEdgeIndices, findEdgesInAugmentedGraph(obj,G,thisNode,thisObstacle)];
+                motionEdgeIndices = [motionEdgeIndices, obj.findEdgesInAugmentedGraph(G,thisNode,thisObstacle)];
             end
 
             
@@ -508,6 +391,7 @@ classdef mazeEnvironment < handle
             %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
             %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
         end
+           
 
         function motionEdgesInCollision = findEdgesInAugmentedGraph(obj,G,thisNode,thisObstacle)
              
@@ -536,6 +420,16 @@ classdef mazeEnvironment < handle
 
                 tempHead = G.graphVertices(tempEdge.parent);
                 tempTail = G.graphVertices(tempEdge.child);
+
+                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+                %Lane-based collision checking (very specific to the road-like workspace) 
+                %if edge is not in the same lane (x-position) as the other car-obstacle
+                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+                if tempHead.pose(1) == tempTail.pose(1) && tempHead.pose(1) ~= thisObstacle.location(1)
+                    %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'m','LineWidth',3);
+                    %drawnow
+                    continue
+                end
 
                 %Collision check to see whether edge is in collision
                 if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
@@ -572,6 +466,16 @@ classdef mazeEnvironment < handle
                 tempHead = G.graphVertices(tempEdge.parent);
                 tempTail = G.graphVertices(tempEdge.child);
 
+                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+                %Lane-based collision checking (very specific to the road-like workspace) 
+                %if edge is not in the same lane (x-position) as the other car-obstacle
+                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+                if tempHead.pose(1) == tempTail.pose(1) && tempHead.pose(1) ~= thisObstacle.location(1)
+                    %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'m','LineWidth',3);
+                    %drawnow
+                    continue
+                end
+
                 %Collision check to see whether edge is in collision
                 if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
                     %fprintf('\n\n The edge that was skipped: %d',tempEdge.index);
@@ -585,10 +489,10 @@ classdef mazeEnvironment < handle
                                                      %have to code it!
             end
             
-            %motionEdgesInCollision = motionEdgesInCollision(1:s)'; %to remove any possible duplicates
             motionEdgesInCollision = unique(motionEdgesInCollision(1:s))'; %to remove any possible duplicates
         end
-
+        
+        
         function modifiedEdges = getModifiedEdges(obj,F,C,G,tree,obstacles,type)
             
             if isempty(obstacles)
@@ -600,8 +504,7 @@ classdef mazeEnvironment < handle
                 type = 'addition';
             end
             
-            if strcmpi(type,'addition')
-            %if (obstacles{1}.status == 1) %this list comprises of added obstacles
+            if strcmpi(type,'addition') %this list comprises of added obstacles
                 %so determine the edges in collision first
                 obj.findNodesWithinObstacles(C,tree,obstacles);
                 modifiedEdges = obj.findEdgesWithinObstacles(F,G,tree,obstacles);
@@ -620,35 +523,32 @@ classdef mazeEnvironment < handle
         end
         
         %plotting functions
-          
+        
         %function to draw all obstacles
-        function drawAllObstacles(obj)
-                     
-            for i=1:obj.numObstacles
-                %drawActiveObstacle(obj,obj.obstacles{i})
-                thisRectangle = obj.obstacles{i}.rectangleWithin;
-                if(thisRectangle.status == 1)
-                    thisRectangle.drawSensedRectangle();
-                else %plot inactive obstacles with dashed circles
-                    thisRectangle.drawUnSensedRectangle();
-                end
-            end
+        function drawAllObstacles(obj)            
             
-            %draw open windows
-            obj.drawWindows()
-        end
+            % visualize the road lanes
+            for i = obj.envLB_x:1:obj.envUB_x
+                xline(i-0.5,'--k');
+            end
 
-        function drawWindows(obj)
-            % draw windows with a different color
-            for i=1:length(obj.windows)
-                thisWindow = obj.windows{i};
-                for j=1:length(thisWindow)
-                    %To access the associated obstacle/brick:
-                    %thisWindow(j), j = 1 to length(window)
-                    thisRectangle = thisWindow(j).rectangleWithin;
-                    if thisRectangle.status == 0
-                        thisRectangle.drawWindowRectangle();
-                    end
+            %if you want to plot the bounding circle-obstacles
+            % for i=1:obj.indexOfLast
+            %     thisObstacle = obj.obstacles{i};
+            %     if(thisObstacle.status == 0)
+            %         obj.drawDeletedObstacle(thisObstacle);
+            %     else %plot inactive obstacles with dashed circles
+            %         obj.drawActiveObstacle(thisObstacle);
+            %     end
+            % end
+
+            %if you want to plot recangular car-obstacles
+            for i=1:3:obj.indexOfLast
+                thisRectangleObstacle = obj.boundingRectangles{ceil(i/3)};
+                if(obj.obstacles{i}.status == 1 || obj.obstacles{i+1}.status == 1 || obj.obstacles{i+2}.status == 1)
+                    thisRectangleObstacle.drawSensedRectangle()
+                else %plot inactive obstacles with dashed lines
+                    thisRectangleObstacle.drawUnSensedRectangle()
                 end
             end
         end
@@ -675,14 +575,14 @@ classdef mazeEnvironment < handle
             c = obstacle.location;
             r = obstacle.radius;
             
-            %hold on
             th = 0:pi/50:2*pi;
             xunit = r * cos(th) + c(1);
             yunit = r * sin(th) + c(2);
-            %plot(c(1),c(2),'xk')
-            %plot(xunit, yunit,'-.w','LineWidth',1.5);
-            fill(xunit,yunit,color,'FaceAlpha',0.95,'edgeColor',color);
-            fill(xunit,yunit,color,'FaceAlpha',0.05,'edgeColor',color);
+            fill(xunit,yunit,[1 1 1], 'EdgeColor', 'none'); %fill with white
+            
+            fill(xunit,yunit,[1 1 1], 'EdgeColor', 'none','FaceAlpha',0.05); %fill with white
+            %Plot just the outline
+            plot(xunit, yunit,'--k','LineWidth',1.1);
         end
         
         %Function to draw circle representing sensor radius
@@ -695,9 +595,11 @@ classdef mazeEnvironment < handle
             plot(c(1),c(2),'xk')
             plot(xunit, yunit,'-.k');
         end
-        
 
-        %Checking whether point lies within a circle 
+        %Collision checking functions
+
+        %Checking whether point lies within a circle
+        
         function check = vertexCollisionFree(obj,v)
 
             check = 1;
@@ -742,9 +644,13 @@ classdef mazeEnvironment < handle
                 
                 %Accessing the centre and radius from the obstacles file
                 centre = thisObstacle.location;
+                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+                %radius = thisObstacle.radius + obj.toleranceLimit; %new addition -- extra padding
                 radius = thisObstacle.radius;
+                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
 
                 %Checking if the edge (v,w) intersects the circle
+                
                 angleSubtend = ((centre(1)-v(1))*(w(1)-v(1)) + (centre(2)-v(2))*(w(2)-v(2)))/(euclidianDist(obj,v,w)^2);
 
                 xProjection = v(1) + angleSubtend*(w(1)-v(1));
@@ -754,7 +660,8 @@ classdef mazeEnvironment < handle
 
                 %If the closest point lies within the edge and as well as at a
                 %distance less than the radius, it implies collision
-                if(obj.liesInBetween(v,w,closestPoint) && (obj.euclidianDist(closestPoint,centre) < radius))
+                %if((euclidianDist(obj,closestPoint,centre) < radius))
+                if(liesInBetween(obj,v,w,closestPoint) && (euclidianDist(obj,closestPoint,centre) < radius))
                     check = 0;
                     return
                 end
@@ -793,12 +700,13 @@ classdef mazeEnvironment < handle
 
             %If the closest point lies within the edge and as well as at a
             %distance less than the radius, it implies collision
-            if(obj.liesInBetween(v,w,closestPoint) && (obj.euclidianDist(closestPoint,centre) < radius))
+            %if((euclidianDist(obj,closestPoint,centre) < radius))
+            if(liesInBetween(obj,v,w,closestPoint) && (euclidianDist(obj,closestPoint,centre) < radius))
                 check = 0;
                 return
             end
         end
-
+        
         function success = funnelCollisionFree(obj,funnel)
             success = 1;
             
@@ -807,8 +715,8 @@ classdef mazeEnvironment < handle
             initialConfig  = traj(:,1);
             finalConfig = traj(:,end);
             midConfig = (initialConfig+finalConfig)/2; %computing the approx centre of the trajectory
-            boundingCircleRadius = 1*euclidianDist(obj,initialConfig,finalConfig)/2;
-                        
+            boundingCircleRadius = 1*euclidianDist(obj,initialConfig,finalConfig)/2; %coefficient: scaling for safety          
+            
             for i = 1:obj.indexOfLast
                
                 thisObstacle = obj.obstacles{i};
@@ -824,9 +732,9 @@ classdef mazeEnvironment < handle
                     success=0;
                     return
                 end
-            end     
+            end
         end
-
+        
         function success = funnelCollisionFreeWithThisObstacle(obj,funnel,thisObstacle)
             success = 1;
             
@@ -850,18 +758,13 @@ classdef mazeEnvironment < handle
                 return
             end
         end
-
+        
     end
+    
 
     %if we have to declare functions that are required to be 
     %private in scope. Can be accessed from only within this class
     methods (Access = private)
-        
-        function R = rotationMatrix(obj,theta)
-            R = [cosd(theta) -sind(theta); 
-                 sind(theta) cosd(theta)];
-        end
-        
         %distance function
         function dist = euclidianDist(obj,v,w)
             dist = sqrt(sum((v - w).^2,2));

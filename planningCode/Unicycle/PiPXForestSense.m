@@ -33,30 +33,29 @@ videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
-extendDistance = 4;          %extend-distance along one direction
-prePlanningIterationLimit = 125; %300 and 350
-totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
+extendDistance = 4;          %extend-distance
+prePlanningIterationLimit = 300; %300 and 350
+totalIterationLimit = 450; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
 
 planningFrequency = 1;
 robotMovementFrequency = 3; %decreasing this parameter increases the robot speed!
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
-if ~exist('numCarObstacles', 'var') 
-    numCarObstacles = 10; %7
+if ~exist('numTreeObstacles', 'var') 
+    numTreeObstacles = 30; %15
 end
 
-envLB_x = -2; envUB_x = 2;
-envLB_y = 0; envUB_y = 75;
-obstacleSizeRange = 0.4*[1 1]; %radius of circular obstacles
+envLB_x = 0; envLB_y = 0;
+envUB_x = 50; envUB_y = 50;
+obstacleSizeRange = [1 3]; %radius of circular obstacles
 robotSensorRadius = 3*extendDistance; %assuming robot can sense obstacles in 3 times the max move distance
 
-W = forestEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,extendDistance,obstacleSizeRange,'sensing'); 
-%obstacle class: %mode: 'sensing'
+W = forestEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,obstacleSizeRange,extendDistance,'sensing'); 
+%obstacle class:  epsilon - tolerance
+%mode: 'sensing' or 'dynamic' (addition and deletion)
 
 distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
-%distanceWeightMatrix = eye(2);
-%distanceFunction = @(vectorA, vectorB) sqrt(((vectorA - vectorB)'*distanceWeightMatrix*(vectorA - vectorB))); %distance function (for kDTree)
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
 
 load('./precomputedFunnelLibrary/library.mat');
@@ -70,12 +69,6 @@ G = searchGraph(); %augmented graph data structure to store F and C
 planner = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,extendDistance,funnelLibraryResolution,drawFlag);
 planner.setupPlot()
 
-%----------------------------------------------------------------------%
-%fixed start and goal locations (begin and end of the road respectively)
-%----------------------------------------------------------------------%
-startPose = [(envLB_x+envUB_x)/2, envLB_y+5];
-goalPose =  [(envLB_x+envUB_x)/2, envUB_y-5];
-
 %------------------------------------%
 %user-input start and goal locations
 %------------------------------------%
@@ -85,6 +78,31 @@ goalPose =  [(envLB_x+envUB_x)/2, envUB_y-5];
 % startPose = [problemx(1) problemy(1)];
 % goalPose = [problemx(2) problemy(2)];
 
+%--------------------------------%
+%random start and goal locations
+%--------------------------------%
+%startPose = rand([1 2])*(W.envUB-envLB) + W.envLB;
+%goalPose = rand([1 2])*(W.envUB-envLB) + W.envLB;
+
+%--------------------------------%
+%random start and goal locations around a circle of fixed distance (for experiments)
+%--------------------------------%
+% workspaceCenter = (W.envLB_x + W.envUB_x)/2;
+% fixedDistance = 40;
+% randTheta = rand()*2*pi;
+% 
+% startPose = [workspaceCenter + fixedDistance/2*cos(randTheta), workspaceCenter + fixedDistance/2*sin(randTheta)];  
+% goalPose  = [workspaceCenter - fixedDistance/2*cos(randTheta), workspaceCenter - fixedDistance/2*sin(randTheta)];  
+
+startPose = [(envLB_x+envUB_x)/2, envLB_y+5];
+goalPose =  [(envLB_x+envUB_x)/2, envUB_y-5];
+
+%------------------------------------------------%
+%fixed start and goal locations (for dev purposes)
+%------------------------------------------------%
+%startPose = [5.4,4.7];
+%goalPose = [45.6,44.8];
+
 %round off to nearest integer (resolution of the motion planner)
 temp = startPose ./ funnelLibraryResolution;
 startPose = round(temp) .* funnelLibraryResolution;
@@ -92,7 +110,7 @@ temp = goalPose ./ funnelLibraryResolution;
 goalPose = round(temp) .* funnelLibraryResolution;
 
 %initially adding obstacles
-W.addDynamicObstacles(numCarObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
+W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
                                                       
 W.initialiseObstacleTree();
 W.senseObstacles(startPose);
@@ -246,15 +264,15 @@ if drawFlag
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
 
+%return
+
 %-----------------------------------------------------------%
 %% start of robot motion and online re-planning phase
 %-----------------------------------------------------------%
 
-robotMove = 1;
-
 if videoFlag
     writerObj = VideoWriter('sample_run.avi');
-    writerObj.FrameRate = 2; % Sets the frame rate to 30 frames per second
+    writerObj.FrameRate = 1; % Sets the frame rate to 30 frames per second
     writerObj.Quality = 100;   % Sets the video quality (0-100)
     open(writerObj);
 end
@@ -268,12 +286,10 @@ if drawFlag
 
     if videoFlag
         %Capture the current figure as a frame and writes it video file
-        set(gcf, 'Position', [100, 100, 1920, 1080]);
         frame = getframe(gcf);
         writeVideo(writerObj, frame);
     end
 end
-
 
 %PiP-X algorithm: Online motion planning/replanning using Funnels
 while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
@@ -282,7 +298,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     %sense obstacles
     if mod(iteration,sensingFrequency) == 0
         planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
-        
+
         if drawFlag
             if videoFlag %get new frames, if writing onto a video
                 planner.setupPlot();
@@ -291,12 +307,11 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
             drawnow
             
-            % if videoFlag
-            %     %Capture the current figure as a frame and writes it video file
-            %     set(gcf, 'Position', [100, 100, 1920, 1080]);
-            %     frame = getframe(gcf);
-            %     writeVideo(writerObj, frame);
-            % end
+            if videoFlag
+                %Capture the current figure as a frame and writes it video file
+                frame = getframe(gcf);
+                writeVideo(writerObj, frame);
+            end
         end
     end
     
@@ -306,8 +321,8 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         while true %run replanning loop till we add a new config and funnel-edges
             flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove);    
             
-            if flag == 0 %|| robotMoveStatus  %break out of this re-planning loop if and only if 
-                break  %new configurations were added to the search space or robot had a solution funnel-path to traverse
+            if flag == 1   %break out of this re-planning loop if and only if 
+                break  %new configurations were added to the search space
             end        %flag = True (1) if no new configs were added, False (0) if new configs were added
         end
         
@@ -332,12 +347,9 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 fprintf('\n\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
                     traversedPathLength,remainingPathLength);
                 fprintf('<strong>\n\nGoal reached! \n</strong>');
-                if drawFlag
-                    plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
-                    W.drawAllObstacles();
-                    drawnow
-                end
-
+                plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+                W.drawAllObstacles();
+                drawnow
                 break
             end
 
@@ -391,7 +403,6 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             W.drawAllObstacles();
             drawnow
         end
-        
         break
     end   
     

@@ -37,7 +37,6 @@ classdef forestEnvironment < handle
         mode %options: 'sensing' or 'dynamic' (addition and deletion)
         
         %list of obstacles with obstacleStruct datatype
-        boundingRectangles
         obstacles
         obstacleTree
      
@@ -47,17 +46,16 @@ classdef forestEnvironment < handle
 
     methods
         %constructor class - initialises with the position, size and an unique id
-        function obj = forestEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,sensorRadius,epsilon,sizeRange,mode,vargin)
+        function obj = forestEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,sensorRadius,sizeRange,epsilon,mode,vargin)
             
             obj.environmentType = 'forest';
-            obj.envLB_x = envLB_x; obj.envUB_x = envUB_x;
-            obj.envLB_y = envLB_y; obj.envUB_y = envUB_y;
+            obj.envLB_x = envLB_x; obj.envLB_y = envLB_y;
+            obj.envUB_x = envUB_x; obj.envUB_y = envUB_y;
             obj.numObstacles = 0;
             obj.indexOfLast = 0;
 
             obj.sensorRadius = sensorRadius; %14
-            %obj.toleranceLimit = epsilon/2; %extra-padding
-            obj.toleranceLimit = 1.5;
+            obj.toleranceLimit = epsilon/2; %extra-padding       
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
             obj.mode = mode;
 
@@ -132,152 +130,147 @@ classdef forestEnvironment < handle
         
         function addedObstacles = addDynamicObstacles(obj,numObstacles,robotPose,goalPose,varargin) %n - number of obstacles
             
-            addedObstacles = cell(3*numObstacles,1); %assuming each car is represented as 3 bounding-circle obstacles
+            addedObstacles = cell(numObstacles,1);
 
             count = 1;
             while count<=numObstacles
                 
                 if isempty(varargin) %if location is not specified
-                    location = zeros(1,2);
-                    location(1) = round(rand()*(obj.envUB_x - obj.envLB_x) + obj.envLB_x); %rounding off because car-obstacles can exist only in the lanes
-                    location(2) = rand()*(obj.envUB_y - obj.envLB_y) + obj.envLB_y;
+                    location = rand(1,2).*(obj.envUB_x - obj.envLB_x) + obj.envLB_x;
                 else
                     randRadius = rand()*obj.sensorRadius;
                     randTheta = rand()*2*pi;
                     location = [robotPose(1) + randRadius*cos(randTheta), robotPose(2) + randRadius*sin(randTheta)];  
                 end
                 
-                radius = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
+                size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
 
-                if (obj.euclidianDist(location,goalPose) < radius+obj.sensorRadius/2) || ...
-                        (obj.euclidianDist(location,robotPose) < radius+obj.sensorRadius/2)
+                if (obj.euclidianDist(location,goalPose) < size+obj.toleranceLimit) || ...
+                        (obj.euclidianDist(location,robotPose) < size+obj.toleranceLimit)
                     continue %explicitly avoid obstacles occluding start or goal location
                 end
-                
-                width = radius*sqrt(2); length = 3*width;
-                obj.boundingRectangles{count} = rectangleStruct(count, location, [width length], 0);
 
-                rectangleObstacleLocation_x = location(1);
-                rectangleObstacleLocation_y = [location(2) - width, location(2), location(2) + width];
                 %initialise an obstacle and add it to the list
-                for i=1:3 %
-                    tempLocation = [rectangleObstacleLocation_x rectangleObstacleLocation_y(i)];
-                    randomObstacle = obstacleStruct(obj.indexOfLast+1,tempLocation,radius);
-                    obj.addObstacle(randomObstacle);
-                    addedObstacles{count+i-1} = randomObstacle;
-                end
+                randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
+                obj.addObstacle(randomObstacle);
+                addedObstacles{count} = randomObstacle;
                 count = count+1;
             end
             
-            % Not relevant for this system experiments
-            % if strcmpi(obj.mode, 'dynamic')
-            % 
-            %     % make m<=N obstacles inactive at random
-            %     %at random make (numObstacles * obj.dynamicity/100)
-            %     %obstacles active (status = 0)
-            % 
-            %     %Options: 0. none 1. all obstacles, 2. half of the obtacles (preferred), 
-            %     % 3. number of obstacles that would change
-            %     numInactiveObstacles = 0;
-            %     %numInactiveObstacles = obj.indexOfLast;
-            %     %numInactiveObstacles = ceil(obj.indexOfLast/2);
-            %     %numInactiveObstacles = numObstacles - ceil(numObstacles * obj.dynamicity/100);
-            %     randomIndices = randperm(numObstacles, numInactiveObstacles);
-            % 
-            %     for i=1:length(randomIndices)
-            %         obj.obstacles{i}.status = 0;
-            %     end
-            % end
+            %make all the obstacles 
+            if strcmpi(obj.mode, 'dynamic')
+
+                % make m<=N obstacles inactive at random
+                %at random make (numObstacles * obj.dynamicity/100)
+                %obstacles active (status = 0)
+
+                %Options: 0. none 1. all obstacles, 2. half of the obtacles (preferred), 
+                % 3. number of obstacles that would change
+                numInactiveObstacles = 0;
+                %numInactiveObstacles = obj.indexOfLast;
+                %numInactiveObstacles = ceil(obj.indexOfLast/2);
+                %numInactiveObstacles = numObstacles - ceil(numObstacles * obj.dynamicity/100);
+                randomIndices = randperm(numObstacles, numInactiveObstacles);
+
+                for i=1:length(randomIndices)
+                    obj.obstacles{i}.status = 0;
+                end
+
+            end
  
         end
         
-        % function addedObstacles = addRandomObstacles(obj,robotPose,goalPose,n) %n - number of obstacles
-        % 
-        %     addedObstacles = cell(n,1);
-        %     %offset = obj.sensorRadius/2; %making sure that obstacles don't get added on the robot itself
-        %     offset = obj.toleranceLimit + obj.sizeRange(2); %making sure that obstacles don't get added on the robot itself
-        % 
-        %     for i=1:n
-        %         %assign random locations and size within sensor radius
-        %         randRadius = (obj.sensorRadius-offset)*rand() + offset;
-        %         %randRadius = (3*obj.sensorRadius-offset)*rand() + offset;
-        %         randTheta  = 2*pi*rand();
-        %         location = [robotPose(1)+randRadius*cos(randTheta), robotPose(2)+randRadius*sin(randTheta)];
-        % 
-        %         size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
-        % 
-        %         if (obj.euclidianDist(location,goalPose) < size+obj.sensorRadius/2) || ...
-        %                 (obj.euclidianDist(location,robotPose) < size+obj.sensorRadius/2)
-        %             continue %explicitly avoid obstacles occluding start or goal location
-        %         end
-        % 
-        %         %initialise an obstacle and add it to the list
-        %         randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-        %         obj.addObstacle(randomObstacle);
-        %         addedObstacles{i} = randomObstacle;
-        %     end     
-        % end
+        function addedObstacles = addRandomObstacles(obj,robotPose,goalPose,n) %n - number of obstacles
+            
+            % if nargin < 3
+            %     n = round(obj.indexOfLast * obj.dynamicity/100);
+            % end
+
+            addedObstacles = cell(n,1);
+            %offset = obj.sensorRadius/2; %making sure that obstacles don't get added on the robot itself
+            offset = obj.toleranceLimit + obj.sizeRange(2); %making sure that obstacles don't get added on the robot itself
+
+            for i=1:n
+                %assign random locations and size within sensor radius
+                randRadius = (obj.sensorRadius-offset)*rand() + offset;
+                %randRadius = (3*obj.sensorRadius-offset)*rand() + offset;
+                randTheta  = 2*pi*rand();
+                location = [robotPose(1)+randRadius*cos(randTheta), robotPose(2)+randRadius*sin(randTheta)];
+
+                size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
+
+                if (obj.euclidianDist(location,goalPose) < size+obj.toleranceLimit) || ...
+                        (obj.euclidianDist(location,robotPose) < size+obj.toleranceLimit)
+                    continue %explicitly avoid obstacles occluding start or goal location
+                end
+
+                %initialise an obstacle and add it to the list
+                randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
+                obj.addObstacle(randomObstacle);
+                addedObstacles{i} = randomObstacle;
+            end     
+        end
         
         
-        % function obj = removeThisObstacle(obj,F,G,obstacle)
-        % 
-        %     if(obj.numObstacles < 1 || obstacle.status == 0)
-        %         return %no obstacle to remove or if obstacle has already been removed
-        %     end
-        % 
-        %     obstacle.status = 0;
-        %     obj.numObstacles = obj.numObstacles-1; %decrement the total #obstacles by 1
-        % 
-        %     tempNodes = obstacle.nodesWithin;
-        %     for i=1:length(tempNodes)
-        %         tempNodes{i}.withinObstacle = 0;
-        %     end
-        % 
-        %     tempEdges = obstacle.edgesWithin;
-        %     for i=1:length(tempEdges)
-        %         thisEdge = tempEdges(i);
-        % 
-        %         head = G.graphVertices(thisEdge.parent);
-        %         %tail = C.graphVertices(thisEdge.child);
-        %         %newCost = euclidianDist(obj,head.pose,tail.pose);
-        % 
-        %         thisEdge.withinObstacle = 0;
-        %         thisEdge.cost = thisEdge.nominalCost; %reset to the original non-infinite cost
-        % 
-        %         %tempEdges(i).withinObstacle = 0;
-        %         %tempEdges(i).cost = tempEdges(i).nominalCost;
-        % 
-        %         %head.vertexData(2) corresponds to the funnel-edge
-        %         %so should be tail.vertexData(2) (by construction)
-        %         thisFunnel = F.funnelEdges(head.vertexData(2));
-        %         thisFunnel.cost = thisFunnel.nominalCost; %reset to the original non-infinite cost
-        %         thisFunnel.withinObstacle = 0;
-        %     end      
-        % end
-        % 
-        % 
-        % function deletedObstacles = removeRandomObstacles(obj,F,G,n)
-        % 
-        %     % if nargin < 4
-        %     %     n = ceil(obj.numObstacles * obj.dynamicity/100);
-        %     % end
-        % 
-        %     deletedObstacles = cell(n,1);
-        %     count = 0;
-        %     while count < min(n,obj.numObstacles) 
-        %         index = randi([1 obj.indexOfLast]);
-        %         tempObstacle = obj.obstacles{index};
-        % 
-        %         if(tempObstacle.status == 0) 
-        %            continue %if the obstacle is inactive continue
-        %         end
-        % 
-        %         obj.removeThisObstacle(F,G,tempObstacle);
-        %         count = count+1;
-        %         deletedObstacles{count} = tempObstacle;
-        %     end
-        % 
-        % end
+        function obj = removeThisObstacle(obj,F,G,obstacle)
+            
+            if(obj.numObstacles < 1 || obstacle.status == 0)
+                return %no obstacle to remove or if obstacle has already been removed
+            end
+            
+            obstacle.status = 0;
+            obj.numObstacles = obj.numObstacles-1; %decrement the total #obstacles by 1
+            
+            tempNodes = obstacle.nodesWithin;
+            for i=1:length(tempNodes)
+                tempNodes{i}.withinObstacle = 0;
+            end
+            
+            tempEdges = obstacle.edgesWithin;
+            for i=1:length(tempEdges)
+                thisEdge = tempEdges(i);
+                
+                head = G.graphVertices(thisEdge.parent);
+                %tail = C.graphVertices(thisEdge.child);
+                %newCost = euclidianDist(obj,head.pose,tail.pose);
+                
+                thisEdge.withinObstacle = 0;
+                thisEdge.cost = thisEdge.nominalCost; %reset to the original non-infinite cost
+
+                %tempEdges(i).withinObstacle = 0;
+                %tempEdges(i).cost = tempEdges(i).nominalCost;
+                
+                %head.vertexData(2) corresponds to the funnel-edge
+                %so should be tail.vertexData(2) (by construction)
+                thisFunnel = F.funnelEdges(head.vertexData(2));
+                thisFunnel.cost = thisFunnel.nominalCost; %reset to the original non-infinite cost
+                thisFunnel.withinObstacle = 0;
+            end      
+        end
+        
+
+        function deletedObstacles = removeRandomObstacles(obj,F,G,n)
+            
+            % if nargin < 4
+            %     n = ceil(obj.numObstacles * obj.dynamicity/100);
+            % end
+            
+            deletedObstacles = cell(n,1);
+            count = 0;
+            while count < min(n,obj.numObstacles) 
+                index = randi([1 obj.indexOfLast]);
+                tempObstacle = obj.obstacles{index};
+                
+                if(tempObstacle.status == 0) 
+                   continue %if the obstacle is inactive continue
+                end
+                
+                obj.removeThisObstacle(F,G,tempObstacle);
+                count = count+1;
+                deletedObstacles{count} = tempObstacle;
+            end
+            
+        end
         
         %functions to determine which nodes and edges are within obstacles
         function collisionNodes = findNodesWithinObstacles(obj,C,tree,obstacles)
@@ -350,10 +343,10 @@ classdef forestEnvironment < handle
                 %fprintf('\n\nNode number: %d',i);
                 %fprintf('\nNode index: %d',thisNode.index);
                 
-                % plot(thisNode.pose(1),thisNode.pose(2),'xg','MarkerSize',15,'LineWidth',3);
-                % drawnow
+                %plot(thisNode.pose(1),thisNode.pose(2),'xg','MarkerSize',15,'LineWidth',3);
+                %drawnow
                 
-                motionEdgeIndices = [motionEdgeIndices, obj.findEdgesInAugmentedGraph(G,thisNode,thisObstacle)];
+                motionEdgeIndices = [motionEdgeIndices, findEdgesInAugmentedGraph(obj,G,thisNode,thisObstacle)];
             end
 
             
@@ -421,16 +414,6 @@ classdef forestEnvironment < handle
                 tempHead = G.graphVertices(tempEdge.parent);
                 tempTail = G.graphVertices(tempEdge.child);
 
-                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
-                %Lane-based collision checking (very specific to the road-like workspace) 
-                %if edge is not in the same lane (x-position) as the other car-obstacle
-                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
-                if tempHead.pose(1) == tempTail.pose(1) && tempHead.pose(1) ~= thisObstacle.location(1)
-                    %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'m','LineWidth',3);
-                    %drawnow
-                    continue
-                end
-
                 %Collision check to see whether edge is in collision
                 if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
                     %fprintf('\n\n The edge that was skipped: %d',tempEdge.index);
@@ -466,16 +449,6 @@ classdef forestEnvironment < handle
                 tempHead = G.graphVertices(tempEdge.parent);
                 tempTail = G.graphVertices(tempEdge.child);
 
-                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
-                %Lane-based collision checking (very specific to the road-like workspace) 
-                %if edge is not in the same lane (x-position) as the other car-obstacle
-                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
-                if tempHead.pose(1) == tempTail.pose(1) && tempHead.pose(1) ~= thisObstacle.location(1)
-                    %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'m','LineWidth',3);
-                    %drawnow
-                    continue
-                end
-
                 %Collision check to see whether edge is in collision
                 if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
                     %fprintf('\n\n The edge that was skipped: %d',tempEdge.index);
@@ -504,7 +477,8 @@ classdef forestEnvironment < handle
                 type = 'addition';
             end
             
-            if strcmpi(type,'addition') %this list comprises of added obstacles
+            if strcmpi(type,'addition')
+            %if (obstacles{1}.status == 1) %this list comprises of added obstacles
                 %so determine the edges in collision first
                 obj.findNodesWithinObstacles(C,tree,obstacles);
                 modifiedEdges = obj.findEdgesWithinObstacles(F,G,tree,obstacles);
@@ -527,23 +501,12 @@ classdef forestEnvironment < handle
         %function to draw all obstacles
         function drawAllObstacles(obj)            
             
-            %if you want to plot the bounding circle-obstacles
-            % for i=1:obj.indexOfLast
-            %     thisObstacle = obj.obstacles{i};
-            %     if(thisObstacle.status == 0)
-            %         obj.drawDeletedObstacle(thisObstacle);
-            %     else %plot inactive obstacles with dashed circles
-            %         obj.drawActiveObstacle(thisObstacle);
-            %     end
-            % end
-
-            %if you want to plot recangular car-obstacles
-            for i=1:3:obj.indexOfLast
-                thisRectangleObstacle = obj.boundingRectangles{ceil(i/3)};
-                if(obj.obstacles{i}.status == 1 || obj.obstacles{i+1}.status == 1 || obj.obstacles{i+2}.status == 1)
-                    thisRectangleObstacle.drawSensedRectangle()
-                else %plot inactive obstacles with dashed lines
-                    thisRectangleObstacle.drawUnSensedRectangle()
+            for i=1:obj.indexOfLast
+                thisObstacle = obj.obstacles{i};
+                if(thisObstacle.status == 0)
+                    obj.drawDeletedObstacle(thisObstacle);
+                else %plot inactive obstacles with dashed circles
+                    obj.drawActiveObstacle(thisObstacle);
                 end
             end
         end
@@ -645,7 +608,6 @@ classdef forestEnvironment < handle
                 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
 
                 %Checking if the edge (v,w) intersects the circle
-                
                 angleSubtend = ((centre(1)-v(1))*(w(1)-v(1)) + (centre(2)-v(2))*(w(2)-v(2)))/(euclidianDist(obj,v,w)^2);
 
                 xProjection = v(1) + angleSubtend*(w(1)-v(1));
@@ -655,7 +617,6 @@ classdef forestEnvironment < handle
 
                 %If the closest point lies within the edge and as well as at a
                 %distance less than the radius, it implies collision
-                %if((euclidianDist(obj,closestPoint,centre) < radius))
                 if(liesInBetween(obj,v,w,closestPoint) && (euclidianDist(obj,closestPoint,centre) < radius))
                     check = 0;
                     return

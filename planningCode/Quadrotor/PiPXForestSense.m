@@ -296,6 +296,10 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
 
         if drawFlag
+            if videoFlag %get new frames, if writing onto a video
+                planner.setupPlot();
+            end
+
             W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
             drawnow
             
@@ -378,6 +382,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             
             if videoFlag
                 %Capture the current figure as a frame and writes it video file
+                set(gcf, 'Position', [100, 100, 1920, 1080]);
                 frame = getframe(gcf);
                 writeVideo(writerObj, frame);
             end
@@ -389,9 +394,11 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     %if goal reached
     if C.goalCheck(C.startNode.pose)
         fprintf('<strong>\n\nGoal reached! \n</strong>');
-        plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
-        W.drawAllObstacles();
-        drawnow
+        if drawFlag
+            plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+            W.drawAllObstacles();
+            drawnow
+        end
         break
     end   
     
@@ -413,6 +420,7 @@ end
 if videoFlag
     close(writerObj);
     disp('Video created successfully!');
+    close all
 end
 
 %-----------------------------------------------------------%
@@ -447,6 +455,8 @@ if drawFlag
     plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
              'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
     C.drawSearchGraph();
+    plot(startPose(1), startPose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
+    plot(goalPose(1), goalPose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
     title('Overall funnel roadmap')
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
     W.drawAllObstacles();

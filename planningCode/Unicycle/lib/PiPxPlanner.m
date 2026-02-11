@@ -270,9 +270,6 @@ classdef PiPxPlanner < handle
             ylim([obj.envLB_y obj.envUB_y])
             hold on
             rectangle('Position',[obj.envLB_x, obj.envLB_y, obj.envUB_x - obj.envLB_x, obj.envUB_y - obj.envLB_y]) %lower-left corner, width, height
-            for i = obj.envLB_x:1:obj.envUB_x
-                xline(i,'--k');
-            end
         end
         
         %-------------------------------------------------------------------------%
