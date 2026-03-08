@@ -142,15 +142,15 @@ classdef configurationSpace < handle
                 newNodePose(1) = (1-t)*nearestNode.pose(1) + t*sampledPoint(1);
                 newNodePose(2) = (1-t)*nearestNode.pose(2) + t*sampledPoint(2);
             end
-            
-            %saturating the newNodePose to be within the workspace limits
-            newNodePose(1) = min(max(newNodePose(1), W.envLB_x), W.envUB_x);
-            newNodePose(2) = min(max(newNodePose(2), W.envLB_y), W.envUB_y);
 
             %round off to the resolution of the motion planner 
             % (necessary due to the use of a pre-computed funnel library)
             temp = newNodePose ./ resolution;
             newNodePose = round(temp) .* resolution;
+
+            %saturating the newNodePose to be within the workspace limits
+            newNodePose(1) = min(max(newNodePose(1), W.envLB_x), W.envUB_x);
+            newNodePose(2) = min(max(newNodePose(2), W.envLB_y), W.envUB_y);
         end
 
         %-------------------------------------------------------------------------%

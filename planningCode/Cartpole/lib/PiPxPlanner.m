@@ -252,8 +252,9 @@ classdef PiPxPlanner < handle
             
             %Shrinking rate from RRT* paper 
             r0 = obj.initial_rBall_radius; iteration = iteration+1;
-            epsilon = obj.extendDistance * obj.CspaceDimensionality^(1/obj.CspaceDimensionality); %L_infinity-norm to L2-norm conversion
-            
+            %epsilon = obj.extendDistance * obj.CspaceDimensionality^(1/obj.CspaceDimensionality); %L_infinity-norm to L2-norm conversion
+            epsilon = obj.extendDistance; %L_infinity_norm
+
             r = min(r0*(log(iteration)/(iteration))^(1/obj.CspaceDimensionality), epsilon); %upper saturation
             r = max(r, max(obj.resolution)); %max or min           %lower saturation
             

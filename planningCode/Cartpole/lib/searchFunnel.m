@@ -139,8 +139,8 @@ classdef searchFunnel < handle
                 %OPTIONAL: implementing basic sanity checks to prune infeasible
                 %steering requirements -- warning: highly system dependant!
                 
-                %1. lateral slide along x is not possible
-                if newNode.pose(2) == thisNeighbor.pose(2) %position along y
+                %1. either x needs to be same or y needs to be same (diagonals are not allowed)
+                if newNode.pose(1) ~= thisNeighbor.pose(1) && newNode.pose(2) ~= thisNeighbor.pose(2)
                     continue
                 end
 
