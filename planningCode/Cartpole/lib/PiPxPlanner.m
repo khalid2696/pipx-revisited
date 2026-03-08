@@ -187,33 +187,33 @@ classdef PiPxPlanner < handle
                     
                     modifiedEdges = [freedUpEdges, newCollisionEdges];
                 end
-            elseif strcmpi(W.environmentType, 'maze') && strcmpi(W.mode, 'dynamic')
-                
-                %sense maze walls from the robot location
-                exploredObstacles = W.senseObstacles(C.currentRobotNode.pose);
-                modifiedEdges = W.getModifiedEdges(F,C,G,T,exploredObstacles);
-                
-                %open and close windows in the maze walls at random
-                numChangedWindows = round(length(W.sensedWindows) * W.dynamicity/100);
-                if numChangedWindows ~= 0
-                    %deletion - open the windows
-                    if strcmpi(varargin(1), 'windows-open') 
-                        deletedObstacles = W.removeRandomObstacles(F,G,numChangedWindows);
-                        freedUpEdges = W.getModifiedEdges(F,C,G,T,deletedObstacles,'deletion');
-                        newCollisionEdges = [];
-                    elseif strcmpi(varargin(1), 'windows-close') 
-                        %addition - close windows
-                        addedObstacles = W.addRandomObstacles(C.currentRobotNode.pose, C.goalNode.pose, numChangedWindows);
-                        newCollisionEdges = W.getModifiedEdges(F,C,G,T,addedObstacles,'addition');
-                        freedUpEdges = [];
-                    else
-                        newCollisionEdges = [];
-                        freedUpEdges = [];
-                    end
-                    
-                    %will have to remove duplicates
-                    modifiedEdges = [modifiedEdges, freedUpEdges, newCollisionEdges];
-                end
+            % elseif strcmpi(W.environmentType, 'maze') && strcmpi(W.mode, 'dynamic')
+            % 
+            %     %sense maze walls from the robot location
+            %     exploredObstacles = W.senseObstacles(C.currentRobotNode.pose);
+            %     modifiedEdges = W.getModifiedEdges(F,C,G,T,exploredObstacles);
+            % 
+            %     %open and close windows in the maze walls at random
+            %     numChangedWindows = round(length(W.sensedWindows) * W.dynamicity/100);
+            %     if numChangedWindows ~= 0
+            %         %deletion - open the windows
+            %         if strcmpi(varargin(1), 'windows-open') 
+            %             deletedObstacles = W.removeRandomObstacles(F,G,numChangedWindows);
+            %             freedUpEdges = W.getModifiedEdges(F,C,G,T,deletedObstacles,'deletion');
+            %             newCollisionEdges = [];
+            %         elseif strcmpi(varargin(1), 'windows-close') 
+            %             %addition - close windows
+            %             addedObstacles = W.addRandomObstacles(C.currentRobotNode.pose, C.goalNode.pose, numChangedWindows);
+            %             newCollisionEdges = W.getModifiedEdges(F,C,G,T,addedObstacles,'addition');
+            %             freedUpEdges = [];
+            %         else
+            %             newCollisionEdges = [];
+            %             freedUpEdges = [];
+            %         end
+            % 
+            %         %will have to remove duplicates
+            %         modifiedEdges = [modifiedEdges, freedUpEdges, newCollisionEdges];
+            %     end
             else
                 modifiedEdges = [];
             end

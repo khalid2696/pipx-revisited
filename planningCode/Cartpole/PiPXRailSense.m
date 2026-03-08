@@ -34,7 +34,7 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 extendDistance = 4;          %extend-distance along one direction
-prePlanningIterationLimit = 100; %300 and 350
+prePlanningIterationLimit = 150; %300 and 350
 totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 0;
 
@@ -43,16 +43,16 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numObstacles', 'var') 
-    numObstacles = 0; %7
+    numObstacles = 3; %7
 end
 
-envLB_x = -5; envUB_x = 30;
+envLB_x = -5; envUB_x = 50;
 envLB_y = -1.5; envUB_y = 1.5;
-obstacleSizeRange = 0.5*[1 1]; %radius of circular obstacles
+obstacleSizeRange = 0.5; %radius of circular obstacles
 robotSensorRadius = 3*extendDistance; %assuming robot can sense obstacles in 3 times the max move distance
 cartPoleLength = 1;
 
-W = roadEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,extendDistance,obstacleSizeRange,'sensing'); 
+W = railEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,cartPoleLength,obstacleSizeRange,'sensing'); 
 %obstacle class: %mode: 'sensing'
 
 distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)

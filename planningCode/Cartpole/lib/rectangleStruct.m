@@ -37,6 +37,7 @@ classdef rectangleStruct < handle
         lowerVertices
         upperVertices
         
+        indicesOfObstaclesWithin
         %nodes and the edges that are within this graph 
         %will be updated during runtime
         %nodesWithin
@@ -56,6 +57,7 @@ classdef rectangleStruct < handle
             obj.location = location;
             obj.status = 0; %by default if an obstacle is initialised
                             %we assume its unsensed yet
+            obj.indicesOfObstaclesWithin = [];
             
             %by default the obstacles come in at t=0 and leave at t=inf               
             obj.timeIn = 0;
