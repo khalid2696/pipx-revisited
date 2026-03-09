@@ -112,7 +112,7 @@ classdef configurationSpace < handle
             end
 
             if(~startFound)
-                bias = 0.95; %very marginal benefit from having start bias
+                bias = 0.9; %very marginal benefit from having start bias
             else
                 bias = 1;
             end

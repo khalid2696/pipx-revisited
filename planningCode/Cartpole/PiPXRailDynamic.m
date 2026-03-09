@@ -34,7 +34,7 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 extendDistance = 4;          %extend-distance along one direction
-prePlanningIterationLimit = 150; %300 and 350
+prePlanningIterationLimit = 100; %300 and 350
 totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 0;
 
@@ -43,14 +43,14 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numObstacles', 'var') 
-    numObstacles = 3; %7
+    numObstacles = 2; %7
 end
 
 if ~exist('obstacleDynamicity', 'var') 
     obstacleDynamicity = 100; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end %by default all obstacles change position and direction
 
-cartPoleLength = 2; envPadding = 0.5;
+cartPoleLength = 1; envPadding = 0.5;
 envLB_x = -5; envUB_x = 50;
 envLB_y = -(cartPoleLength + envPadding); envUB_y = cartPoleLength + envPadding;
 obstacleSizeRange = 0.5; %radius of circular obstacles

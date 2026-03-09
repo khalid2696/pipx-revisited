@@ -111,7 +111,7 @@ classdef PiPxPlanner < handle
 
             plot(thisNode.pose(1),thisNode.pose(2), 'xy','MarkerSize',7,'LineWidth',1.4)
             drawnow
-            keyboard
+            %keyboard
         end
         
         function flag = addStartNodeToFunnelRRG(obj,F,C,G,W,T,startPose)
