@@ -46,11 +46,11 @@ if ~exist('numObstacles', 'var')
     numObstacles = 3; %7
 end
 
+cartPoleLength = 2; envPadding = 0.5;
 envLB_x = -5; envUB_x = 50;
-envLB_y = -1.5; envUB_y = 1.5;
+envLB_y = -(cartPoleLength + envPadding); envUB_y = cartPoleLength + envPadding;
 obstacleSizeRange = 0.5; %radius of circular obstacles
 robotSensorRadius = 3*extendDistance; %assuming robot can sense obstacles in 3 times the max move distance
-cartPoleLength = 1;
 
 W = railEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,cartPoleLength,obstacleSizeRange,'sensing'); 
 %obstacle class: %mode: 'sensing'

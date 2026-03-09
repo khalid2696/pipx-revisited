@@ -70,8 +70,8 @@ classdef searchFunnel < handle
             %     obj.resolution = 0.5;
             % end
         
-            obj.configXArray = -obj.extendDistance:1/obj.resolution(1):obj.extendDistance;
-            obj.configYArray = -obj.extendDistance:1/obj.resolution(2):obj.extendDistance;
+            obj.configXArray = [-3 -2 -1 0 1 2 3];
+            obj.configYArray = [-1 0 1]*libraryResolution(2); %either up or down
 
             obj.CspaceDimensionIndices = 1:12;     %12-state system
             obj.CspaceDimensionIndices = [1 2 3];  %x-y-z configuration space
@@ -108,7 +108,7 @@ classdef searchFunnel < handle
 
             flag = 0;
             %maxNeighborsAllowed = 12; %k-nearest neighbors heuristic
-            delta = 0.5;
+            delta = 0.5; %pruning small-hop neighbors
 
             if (length(potentialNeighbors) < 1) %if no neighbor return
                 flag = 1;
@@ -139,7 +139,7 @@ classdef searchFunnel < handle
                 %OPTIONAL: implementing basic sanity checks to prune infeasible
                 %steering requirements -- warning: highly system dependant!
                 
-                %1. either x needs to be same or y needs to be same (diagonals are not allowed)
+                %1. either x needs to be same or y needs to be same (i.e. "diagonals" are not allowed)
                 if newNode.pose(1) ~= thisNeighbor.pose(1) && newNode.pose(2) ~= thisNeighbor.pose(2)
                     continue
                 end
@@ -201,6 +201,7 @@ classdef searchFunnel < handle
                     continue
                 end
 
+                %inFunnel for newNode/ outFunnel for neighborNode 
                 funnelEdge = obj.steer(thisNeighbor,newNode.pose);
 
                 if isempty(funnelEdge) %if cannot be steered (invalid or infeasible maneuver)
@@ -285,7 +286,7 @@ classdef searchFunnel < handle
             [~, closestXIndex] = min(abs(obj.configXArray - deltaQ(1)));  
             [~, closestYIndex] = min(abs(obj.configYArray - deltaQ(2)));
             
-            dictionaryKey = [obj.configXArray(closestXIndex), obj.configYArray(closestYIndex)];
+            dictionaryKey = [obj.configXArray(closestXIndex), obj.configYArray(closestYIndex)]
             
             if isKey(obj.funnelLibrary, num2str(dictionaryKey))
                 funnel = obj.funnelLibrary(num2str(dictionaryKey));

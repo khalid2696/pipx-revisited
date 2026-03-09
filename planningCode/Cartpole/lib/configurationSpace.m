@@ -88,6 +88,8 @@ classdef configurationSpace < handle
         function sample = sampleNode(obj,W,startFound,robotMove)
 
             start = obj.startNode.pose;
+            poleConfigurationOptions = W.cartPoleLength*[-1, 1]; %either at top or bottom
+
             if(robotMove)
                 prob = rand();
                 if prob < 0.9 %sample from the sensor radius with bias
@@ -95,19 +97,22 @@ classdef configurationSpace < handle
                 else %sample at random from the configuration space
                     %r = 2*W.sensorRadius*rand() + W.toleranceLimit; 
                     xSample = (W.envUB_x - W.envLB_x)*rand() + W.envLB_x;
-                    ySample = (W.envUB_y - W.envLB_y)*rand() + W.envLB_y;
+                    %ySample = (W.envUB_y - W.envLB_y)*rand() + W.envLB_y;
+                    ySample = poleConfigurationOptions(randi(2)); %either at top or bottom with equal probability
                     sample = [xSample ySample];
                     return
                 end
 
                 theta  = 2*pi*rand();
-                sample = [start(1)+r*cos(theta) start(2)+r*sin(theta)];
+                xSample = start(1)+r*cos(theta);
+                ySample = poleConfigurationOptions(randi(2)); %either at top or bottom with equal probability
+                sample = [xSample ySample];
                 %plot(sample(1),sample(2),'xb');
                 return
             end
 
             if(~startFound)
-                bias = 0.8; %0.9
+                bias = 0.95; %very marginal benefit from having start bias
             else
                 bias = 1;
             end
@@ -116,7 +121,8 @@ classdef configurationSpace < handle
             if prob < bias
                 %random sampling of nodes
                 xSample = (W.envUB_x - W.envLB_x)*rand() + W.envLB_x;
-                ySample = (W.envUB_y - W.envLB_y)*rand() + W.envLB_y;
+                %ySample = (W.envUB_y - W.envLB_y)*rand() + W.envLB_y;
+                ySample = poleConfigurationOptions(randi(2)); %either at top or bottom with equal probability
                 sample = [xSample ySample];
             else
                 sample = start;
@@ -140,17 +146,18 @@ classdef configurationSpace < handle
             else
                 t = epsilon/distance;
                 newNodePose(1) = (1-t)*nearestNode.pose(1) + t*sampledPoint(1);
-                newNodePose(2) = (1-t)*nearestNode.pose(2) + t*sampledPoint(2);
+                newNodePose(2) = sampledPoint(2); %preserve the up/down configuration of the sampled point
             end
+            
+            %saturating the newNodePose to be within the workspace limits
+            newNodePose(1) = min(max(newNodePose(1), W.envLB_x), W.envUB_x);
+            newNodePose(2) = min(max(newNodePose(2), W.envLB_y), W.envUB_y);
 
             %round off to the resolution of the motion planner 
             % (necessary due to the use of a pre-computed funnel library)
             temp = newNodePose ./ resolution;
             newNodePose = round(temp) .* resolution;
 
-            %saturating the newNodePose to be within the workspace limits
-            newNodePose(1) = min(max(newNodePose(1), W.envLB_x), W.envUB_x);
-            newNodePose(2) = min(max(newNodePose(2), W.envLB_y), W.envUB_y);
         end
 
         %-------------------------------------------------------------------------%

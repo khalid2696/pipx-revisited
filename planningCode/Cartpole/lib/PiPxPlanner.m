@@ -84,8 +84,8 @@ classdef PiPxPlanner < handle
                                           %use the previous line epsilon (upper bound value) as well
             newNodePose = C.expandSearchGraph(T,W,startFound,robotMove,epsilon,F.resolution);
             
-            %plot(newNodePose(1),newNodePose(2), 'xb','MarkerSize',7,'LineWidth',1.4)
-            %drawnow
+            plot(newNodePose(1),newNodePose(2), 'xb','MarkerSize',7,'LineWidth',1.4)
+            drawnow
             
             if(~W.vertexCollisionFree(newNodePose) || F.inAnyInlets(newNodePose))
                 flag = 1; return
@@ -94,10 +94,10 @@ classdef PiPxPlanner < handle
             %Find the neighbors within an r-Ball
             [potentialNeighbors, flag] = obj.findNeighborsInRBall(T,newNodePose);
          
-            if flag %if no neighbors found, continue with the next sampling
+            if numel(potentialNeighbors) == 0 %if no neighbors found, continue with the next sampling
                 return
             end
-        
+            
             thisNode = nodeStruct(C.numNodes+1,newNodePose);
 
             %add the the new sampled node to existing funnel-network 
@@ -108,6 +108,10 @@ classdef PiPxPlanner < handle
             end
             
             G.constructAugmentedGraph(F,C,thisNode);
+
+            plot(thisNode.pose(1),thisNode.pose(2), 'xy','MarkerSize',7,'LineWidth',1.4)
+            drawnow
+            keyboard
         end
         
         function flag = addStartNodeToFunnelRRG(obj,F,C,G,W,T,startPose)
@@ -117,7 +121,7 @@ classdef PiPxPlanner < handle
             
             [potentialNeighbors, flag] = obj.findNeighborsInRBall(T,startPose);
 
-            if flag %if no neighbors found, exit
+            if numel(potentialNeighbors) == 0 %if no neighbors found, exit
                 return
             end
             
@@ -241,7 +245,7 @@ classdef PiPxPlanner < handle
             
             neighbors = T.kdFindWithinRangePayload(r,newNodePose);
             if isempty(neighbors) %if no parent can be found within the radius ball continue
-                neighbors = nodeStruct();
+                neighbors = [];
                 flag = 1;
                 return
             end
@@ -256,7 +260,7 @@ classdef PiPxPlanner < handle
             epsilon = obj.extendDistance; %L_infinity_norm
 
             r = min(r0*(log(iteration)/(iteration))^(1/obj.CspaceDimensionality), epsilon); %upper saturation
-            r = max(r, max(obj.resolution)); %max or min           %lower saturation
+            r = max(r, max(obj.resolution));  %lower saturation
             
             %rBall radius is saturated by max extend distance (UB) and
             %resolution of the funnelLibrary (LB)

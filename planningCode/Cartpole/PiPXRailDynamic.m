@@ -50,11 +50,12 @@ if ~exist('obstacleDynamicity', 'var')
     obstacleDynamicity = 100; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end %by default all obstacles change position and direction
 
+cartPoleLength = 2; envPadding = 0.5;
 envLB_x = -5; envUB_x = 50;
-envLB_y = -1.5; envUB_y = 1.5;
+envLB_y = -(cartPoleLength + envPadding); envUB_y = cartPoleLength + envPadding;
 obstacleSizeRange = 0.5; %radius of circular obstacles
 robotSensorRadius = 3*extendDistance; %assuming robot can sense obstacles in 3 times the max move distance
-cartPoleLength = 1;
+
 
 W = railEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,cartPoleLength,obstacleSizeRange,'dynamic',obstacleDynamicity); 
 %obstacle class: %mode: 'sensing'
@@ -65,6 +66,7 @@ distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distanc
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
 
 load('./precomputedFunnelLibrary/library.mat');
+
 %resolution of the pre-computed funnel library
 funnelLibraryResolution = [1 cartPoleLength]; %lower this resolution, finer the motion plan
 F = searchFunnel(funnelLibrary,extendDistance,funnelLibraryResolution);
@@ -161,7 +163,7 @@ if drawFlag
     drawnow
 end
 
-return
+%return
 %% -----------------------------------------------------------%
 % Pre-planning phase of generating a roadmap of funnels
 %-----------------------------------------------------------%
