@@ -34,9 +34,10 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 extendDistance = 4;          %extend-distance along one direction
-prePlanningIterationLimit = 100; %300 and 350
+prePlanningIterationLimit = 100; %100 and 150
 totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
-idleTimeLimit = 0;
+idleTimeLimit = 5;
+movementSkip = 2; %simulate higher robot-speed by increasing movementSkip parameter
 
 planningFrequency = 1;
 robotMovementFrequency = 3; %decreasing this parameter increases the robot speed!
@@ -50,12 +51,11 @@ if ~exist('obstacleDynamicity', 'var')
     obstacleDynamicity = 100; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end %by default all obstacles change position and direction
 
-cartPoleLength = 1; envPadding = 0.5;
+cartPoleLength = 1.5; envPadding = 0.5;
 envLB_x = -5; envUB_x = 50;
 envLB_y = -(cartPoleLength + envPadding); envUB_y = cartPoleLength + envPadding;
 obstacleSizeRange = 0.5; %radius of circular obstacles
 robotSensorRadius = 3*extendDistance; %assuming robot can sense obstacles in 3 times the max move distance
-
 
 W = railEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,cartPoleLength,obstacleSizeRange,'dynamic',obstacleDynamicity); 
 %obstacle class: %mode: 'sensing'
@@ -197,8 +197,13 @@ end
 
 close(progressBar);
 
+planner.setupPlot()
+%F.drawAllFunnels();
+%drawnow;
+%return
+
 if ~startFound
-    C.drawSearchGraph();
+    C.drawSearchGraph(); F.drawAllFunnels();
     error(['Couldnot compute an initial funnel-path.. Exiting in pre-planning phase itself! ' ...
         'Increase the number of samples in the next run!']);
 end
@@ -255,8 +260,6 @@ if drawFlag
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
 
-return
-
 %-----------------------------------------------------------%
 %% start of robot motion and online re-planning phase
 %-----------------------------------------------------------%
@@ -304,15 +307,19 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     %planning/replanning
     if mod(iteration,planningFrequency) == 0
         
-        while true %run replanning loop till we add a new config and funnel-edges
-            flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove);   
-            
-            if flag == 0   %break out of this re-planning loop if and only if 
-                break  %new configurations were added to the search space
-            end        %flag = True (1) if no new configs were added, False (0) if new configs were added
-        end
+        % Breaking out of planning mode only if new configurations are sampled
+        % might be more difficult to meet in such a constrained C-space
+        % (hence using a more relaxed philosophy of "add samples if you can" 
+
+        % while true %run replanning loop till we add a new config and funnel-edges
+        %     flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove);   
+        % 
+        %     if flag == 0   %break out of this re-planning loop if and only if 
+        %         break  %new configurations were added to the search space
+        %     end        %flag = True (1) if no new configs were added, False (0) if new configs were added
+        % end
         
-        %break
+        planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove);
     end
 
     %move the robot
@@ -320,7 +327,6 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         
         %robot-motion
         disp(' '); disp(' ');
-        movementSkip = 2; %simulate higher robot-speed by increasing movementSkip parameter
         for movement = 1:movementSkip
 
             robotMoveStatus = planner.moveRobot(F,C,G,Q);

@@ -73,7 +73,7 @@ classdef searchFunnel < handle
             obj.configXArray = -obj.extendDistance:1/obj.resolution(1):obj.extendDistance;
             obj.configYArray = -obj.extendDistance:1/obj.resolution(2):obj.extendDistance;
 
-            obj.CspaceDimensionIndices = 1:3;     %3-state system
+            obj.stateSpaceDimensionIndices = 1:3;     %3-state system
             obj.CspaceDimensionIndices = [1 2];  %x-y configuration space
             obj.workspaceDimensionIndices = [1 2]; %x-y workspace
 

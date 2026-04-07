@@ -84,8 +84,8 @@ classdef PiPxPlanner < handle
                                           %use the previous line epsilon (upper bound value) as well
             newNodePose = C.expandSearchGraph(T,W,startFound,robotMove,epsilon,F.resolution);
             
-            plot(newNodePose(1),newNodePose(2), 'xb','MarkerSize',7,'LineWidth',1.4)
-            drawnow
+            %plot(newNodePose(1),newNodePose(2), 'xb','MarkerSize',7,'LineWidth',1.4)
+            %drawnow
             
             if(~W.vertexCollisionFree(newNodePose) || F.inAnyInlets(newNodePose))
                 flag = 1; return
@@ -109,9 +109,8 @@ classdef PiPxPlanner < handle
             
             G.constructAugmentedGraph(F,C,thisNode);
 
-            plot(thisNode.pose(1),thisNode.pose(2), 'xy','MarkerSize',7,'LineWidth',1.4)
-            drawnow
-            %keyboard
+            %plot(thisNode.pose(1),thisNode.pose(2), 'xy','MarkerSize',7,'LineWidth',1.4)
+            %drawnow
         end
         
         function flag = addStartNodeToFunnelRRG(obj,F,C,G,W,T,startPose)

@@ -61,19 +61,11 @@ classdef searchFunnel < handle
             
             obj.resolution = libraryResolution;
             
-            % Previous implementation
-            % if strcmp(libraryResolution,'dense') %1-Sparse %0.5-Nominal %0.25-Dense
-            %     obj.resolution = 0.25;
-            % elseif strcmp(libraryResolution,'sparse')
-            %     obj.resolution = 1;
-            % else
-            %     obj.resolution = 0.5;
-            % end
-        
-            obj.configXArray = [-3 -2 -1 0 1 2 3];
-            obj.configYArray = [-1 0 1]*libraryResolution(2); %either up or down
+            % Previous implementation: not required for cartpole-specific code
+            % obj.configXArray = [-3 -2 -1 0 1 2 3];
+            % obj.configYArray = [-1 1]*libraryResolution(2); %either up or down
 
-            obj.CspaceDimensionIndices = 1:12;     %12-state system
+            obj.stateSpaceDimensionIndices = 1:12;     %12-state system
             obj.CspaceDimensionIndices = [1 2 3];  %x-y-z configuration space
             obj.workspaceDimensionIndices = [1 2]; %x-y workspace
 
@@ -283,11 +275,11 @@ classdef searchFunnel < handle
         
             deltaQ = desiredConfig - parentConfig; %config space (q) --> [x,y]
             
-            [~, closestXIndex] = min(abs(obj.configXArray - deltaQ(1)));  
-            [~, closestYIndex] = min(abs(obj.configYArray - deltaQ(2)));
+            %[~, closestXIndex] = min(abs(obj.configXArray - deltaQ(1)));  
+            %[~, closestYIndex] = min(abs(obj.configYArray - deltaQ(2)));
+            %dictionaryKey = [obj.configXArray(closestXIndex), obj.configYArray(closestYIndex)]
             
-            dictionaryKey = [obj.configXArray(closestXIndex), obj.configYArray(closestYIndex)]
-            
+            dictionaryKey = deltaQ; %this works for the specific cartpole case where sampling stage is itself resolution-aware
             if isKey(obj.funnelLibrary, num2str(dictionaryKey))
                 funnel = obj.funnelLibrary(num2str(dictionaryKey));
             else
@@ -452,6 +444,17 @@ classdef searchFunnel < handle
         %-------------------------------------------------------%
         %plotting functions
         %-------------------------------------------------------%
+        function drawAllFunnels(obj)
+            
+            for i=1:obj.numFunnelEdges               
+                thisFunnel = obj.funnelEdges(i);
+                obj.drawFunnel(thisFunnel,1);
+            end
+
+            plot(obj.goalNode.pose(1), obj.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
+            plot(obj.startNode.pose(1), obj.startNode.pose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
+        end
+
         function drawSearchFunnel(obj)
             
             for i=1:obj.numNodes
@@ -464,13 +467,12 @@ classdef searchFunnel < handle
                 thisFunnel = obj.funnelEdges(thisNode.parentFunnelEdge);
                 
                 if ~thisFunnel.withinObstacle
-                    drawFunnel(obj,thisFunnel,1);
+                    obj.drawFunnel(thisFunnel,1);
                 end
             end
 
             plot(obj.goalNode.pose(1), obj.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
             plot(obj.startNode.pose(1), obj.startNode.pose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
-            %plot(C.startNode.pose(1), C.startNode.pose(2), 'dm', 'MarkerSize', 6, 'LineWidth', 3.5)
         end
         
         function drawSearchTrajectories(obj)
@@ -525,7 +527,7 @@ classdef searchFunnel < handle
                 tempFunnel = obj.funnelEdges(tempNode.parentFunnelEdge);
                 
                 x = tempFunnel.trajectory_workSpace;
-                drawFunnel(obj,tempFunnel,2);
+                obj.drawFunnel(tempFunnel,2);
                 plot(x(1,:),x(2,:),'-.c','LineWidth',1.5);
                 
                 tempNode = obj.graphNodes(tempNode.parent);
