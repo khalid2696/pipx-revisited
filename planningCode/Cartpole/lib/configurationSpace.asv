@@ -192,7 +192,7 @@ classdef configurationSpace < handle
                 tempStartVertex = G.graphVertices(obj.startNode.inletVertices(i));
                 
                 G.startVertex = tempStartVertex;    
-                G.computeShortestPath(Q); %important!
+                G.computeShortestPath(Q); %
                 
                 nextFunnel = F.funnelEdges(tempStartVertex.vertexData(2));
                 if ~F.inFunnelInlet(nextFunnel,G.startVertex.pose)

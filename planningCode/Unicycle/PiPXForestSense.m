@@ -23,8 +23,9 @@
 clc; clearvars; close all
 %keyboard
 
-%adding paths to code libraries
-addpath('./lib/');
+% adding paths to code libraries (local and shared cross-system libs)
+thisScriptFolder = fileparts(mfilename('fullpath'));
+addpath(fullfile(thisScriptFolder, 'lib'));
 
 %configurable flags
 drawFlag = 1;

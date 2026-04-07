@@ -43,7 +43,7 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numObstacles', 'var') 
-    numObstacles = 2; %7
+    numObstacles = 3; %7
 end
 
 if ~exist('obstacleDynamicity', 'var') 
@@ -185,7 +185,7 @@ while iteration < prePlanningIterationLimit %&& ~startFound
         if ~flag
             iteration = iteration+1; %updating the iteration count if start config was found
             startFound=1;
-            fprintf('\n\nInitial funnel-path found after <strong>%d iterations</strong>!\n\n',C.startNode.index);
+            fprintf('\n\nStart configuration found after <strong>%d iterations</strong>!\n\n',C.startNode.index);
         end
     end
 
