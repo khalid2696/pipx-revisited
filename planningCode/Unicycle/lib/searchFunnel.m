@@ -347,8 +347,6 @@ classdef searchFunnel < handle
                 check = obj.isComposable_usingSurfaceSampling(inletRofA, inletCenter, outletRofA, outletCenter, numSamplePoints);
             end
 
-            %check
-
         end
         
         %new function added!
