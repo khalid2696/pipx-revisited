@@ -73,8 +73,8 @@ classdef searchFunnel < handle
             obj.configXArray = -obj.extendDistance:1/obj.resolution(1):obj.extendDistance;
             obj.configYArray = -obj.extendDistance:1/obj.resolution(2):obj.extendDistance;
 
-            obj.CspaceDimensionIndices = 1:12;     %12-state system
-            obj.CspaceDimensionIndices = [1 2 3];  %x-y-z configuration space
+            obj.CspaceDimensionIndices = 1:3;     %3-state system
+            obj.CspaceDimensionIndices = [1 2];  %x-y configuration space
             obj.workspaceDimensionIndices = [1 2]; %x-y workspace
 
         end
@@ -261,7 +261,7 @@ classdef searchFunnel < handle
             %assigning the trajectory
             funnelEdge.trajectory_stateSpace = funnel.trajectory; %just for initialisation
             %shifting the trajectory along the cyclic coordinates
-            shiftVector = [desiredConfig 0]; %cyclic coordinates -- x, y and z
+            shiftVector = desiredConfig; %cyclic coordinates -- x, y and z
             funnelEdge.trajectory_stateSpace = obj.shiftAlongCyclicCoordinates(funnelEdge,shiftVector);
             
             %assigning the invariant sets
@@ -951,7 +951,7 @@ classdef searchFunnel < handle
                 
                 if(thisCheckPoint-inletCenter)'*inletRofA*(thisCheckPoint-inletCenter) > 1
                     check=0;
-                    plot3(thisCheckPoint(1),thisCheckPoint(2),thisCheckPoint(3),'xg');
+                    % plot3(thisCheckPoint(1),thisCheckPoint(2),thisCheckPoint(3),'xg');
                     return
                 end
             end

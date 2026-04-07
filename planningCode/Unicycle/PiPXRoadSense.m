@@ -320,7 +320,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         
         %robot-motion
         disp(' '); disp(' ');
-        movementSkip = 2; %simulate higher robot-speed by increasing movementSkip parameter
+        movementSkip = 1; %simulate higher robot-speed by increasing movementSkip parameter
         for movement = 1:movementSkip
 
             robotMoveStatus = planner.moveRobot(F,C,G,Q);
