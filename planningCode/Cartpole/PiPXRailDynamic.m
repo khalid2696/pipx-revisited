@@ -37,6 +37,7 @@ extendDistance = 4;          %extend-distance along one direction
 prePlanningIterationLimit = 100; %100 and 150
 totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
+prePlanningTimeLimit = 15; %time alloted for preplanning in seconds
 movementSkip = 2; %simulate higher robot-speed by increasing movementSkip parameter
 
 planningFrequency = 1;
@@ -44,11 +45,11 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numObstacles', 'var') 
-    numObstacles = 3; %7
+    numObstacles = 4; %3
 end
 
 if ~exist('obstacleDynamicity', 'var') 
-    obstacleDynamicity = 100; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
+    obstacleDynamicity = 20; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end %by default all obstacles change position and direction
 
 cartPoleLength = 1.5; envPadding = 0.5;
@@ -169,7 +170,9 @@ end
 %-----------------------------------------------------------%
 progressBar = waitbar(0, 'Funnel RRG construction progress');
 
-while iteration < prePlanningIterationLimit %&& ~startFound
+preplanningTime = 0;
+tic
+while iteration < prePlanningIterationLimit && preplanningTime < prePlanningTimeLimit
     
     flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove);    
     
@@ -193,6 +196,8 @@ while iteration < prePlanningIterationLimit %&& ~startFound
         waitbar(iteration/prePlanningIterationLimit)
         %fprintf('\nGenerated %0.2f percent of the funnel RRG!',iteration*100/prePlanningIterationLimit);
     end
+
+    preplanningTime = toc;
 end
 
 close(progressBar);
@@ -235,9 +240,7 @@ G.initialiseGraphSearch(Q);
 
 %determine the best inlet to take at the start configuration
 disp(' ');
-tic
 robotMoveStatus = C.findBestInletAtStartNode(G,F,Q);
-toc
 
 fprintf('\n\n -- Expected traversal distance to goal region is <strong>%0.2f</strong> -- \n\n',G.startVertex.cost);
 
@@ -286,7 +289,7 @@ if drawFlag
 end
 
 %PiP-X algorithm: Online motion planning/replanning using Funnels
-while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
+while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
 
     %sense obstacles
     if mod(iteration,sensingFrequency) == 0
@@ -308,8 +311,8 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     if mod(iteration,planningFrequency) == 0
         
         % Breaking out of planning mode only if new configurations are sampled
-        % might be more difficult to meet in such a constrained C-space
-        % (hence using a more relaxed philosophy of "add samples if you can" 
+        % might be more difficult to meet in such a constrained C-space.
+        % Hence using a more relaxed philosophy of "add samples if you can" 
 
         % while true %run replanning loop till we add a new config and funnel-edges
         %     flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove);   

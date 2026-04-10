@@ -166,7 +166,7 @@ classdef forestEnvironment < handle
                 % 3. number of obstacles that would change
                 numInactiveObstacles = 0;
                 %numInactiveObstacles = obj.indexOfLast;
-                %numInactiveObstacles = ceil(obj.indexOfLast/2);
+                % numInactiveObstacles = ceil(obj.indexOfLast/2);
                 %numInactiveObstacles = numObstacles - ceil(numObstacles * obj.dynamicity/100);
                 randomIndices = randperm(numObstacles, numInactiveObstacles);
 
