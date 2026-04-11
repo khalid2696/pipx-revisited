@@ -259,7 +259,7 @@ robotMove = 1;
 
 if videoFlag
     writerObj = VideoWriter('sample_run.avi');
-    writerObj.FrameRate = 2; % Sets the frame rate to 30 frames per second
+    writerObj.FrameRate = 1; % Sets the frame rate to n frames per second
     writerObj.Quality = 100;   % Sets the video quality (0-100)
     open(writerObj);
 end

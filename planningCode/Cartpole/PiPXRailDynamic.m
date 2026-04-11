@@ -283,6 +283,7 @@ if drawFlag
 
     if videoFlag
         %Capture the current figure as a frame and writes it video file
+        set(gcf, 'Position', [100, 100, 1920, 1080]);
         frame = getframe(gcf);
         writeVideo(writerObj, frame);
     end
@@ -296,13 +297,19 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
         planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
         
         if drawFlag
-            drawnow
-            
-            if videoFlag
-                %Capture the current figure as a frame and writes it video file
-                frame = getframe(gcf);
-                writeVideo(writerObj, frame);
+            if videoFlag %get new frames, if writing onto a video
+                planner.setupPlot();
             end
+
+            W.drawAllObstacles();
+            drawnow
+
+            % if videoFlag
+            %     %Capture the current figure as a frame and writes it video file
+            %     set(gcf, 'Position', [100, 100, 1920, 1080]);
+            %     frame = getframe(gcf);
+            %     writeVideo(writerObj, frame);
+            % end
         end
     end
     
@@ -379,6 +386,7 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
             
             if videoFlag
                 %Capture the current figure as a frame and writes it video file
+                set(gcf, 'Position', [100, 100, 1920, 1080]);
                 frame = getframe(gcf);
                 writeVideo(writerObj, frame);
             end
@@ -414,6 +422,7 @@ end
 if videoFlag
     close(writerObj);
     disp('Video created successfully!');
+    close all
 end
 
 %-----------------------------------------------------------%

@@ -63,7 +63,7 @@ classdef railEnvironment < handle
             %obj.toleranceLimit = epsilon/2; %extra-padding
             obj.toleranceLimit = cartPoleLength;
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
-            obj.velocityRange = [-2 2]; %moving obstacles' speed min-max values in m/s
+            obj.velocityRange = [1 2]; %moving obstacles' speed min-max values in m/s
             obj.refreshRate = 1; %in Hz
             obj.mode = mode;
 
@@ -258,8 +258,10 @@ classdef railEnvironment < handle
             end
 
             for i=1:numBoundingObstacles
-
-                obstacleVelocity = obj.velocityRange(1) + rand()*(obj.velocityRange(2) - obj.velocityRange(1));
+                
+                %Current speed of obstacle is drawn at random from the user-specified range
+                obstacleSpeed = obj.velocityRange(1) + rand()*(obj.velocityRange(2) - obj.velocityRange(1));
+                obstacleVelocity = (-1)^randi(2)*obstacleSpeed; %assign a random direction (+x/-x)
                 offset = 1/obj.refreshRate*obstacleVelocity;
                 tempObstacleCollection = obj.boundingRectangles{i};
 
