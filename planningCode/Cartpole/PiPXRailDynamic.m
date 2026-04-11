@@ -29,7 +29,7 @@ addpath('./lib/');
 %configurable flags
 drawFlag = 1;
 saveFlag = 0;
-videoFlag = 0;
+videoFlag = 1;
 fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
