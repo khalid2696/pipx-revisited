@@ -36,9 +36,9 @@ fileCount = 1; %for saving files in /temp/ folder
 extendDistance = 4;          %extend-distance along one direction
 prePlanningIterationLimit = 100; %100 and 150
 totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
-idleTimeLimit = 5;
+idleTimeLimit = 10;
 prePlanningTimeLimit = 15; %time alloted for preplanning in seconds
-movementSkip = 2; %simulate higher robot-speed by increasing movementSkip parameter
+movementSkip = 1; %simulate higher robot-speed by increasing movementSkip parameter
 
 planningFrequency = 1;
 robotMovementFrequency = 3; %decreasing this parameter increases the robot speed!
@@ -49,7 +49,7 @@ if ~exist('numObstacles', 'var')
 end
 
 if ~exist('obstacleDynamicity', 'var') 
-    obstacleDynamicity = 20; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
+    obstacleDynamicity = 100; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end %by default all obstacles change position and direction
 
 cartPoleLength = 1.5; envPadding = 0.5;
@@ -296,7 +296,6 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
         planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
         
         if drawFlag
-            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
             drawnow
             
             if videoFlag
@@ -310,9 +309,9 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
     %planning/replanning
     if mod(iteration,planningFrequency) == 0
         
-        % Breaking out of planning mode only if new configurations are sampled
-        % might be more difficult to meet in such a constrained C-space.
-        % Hence using a more relaxed philosophy of "add samples if you can" 
+        % % Breaking out of planning mode only if new configurations are sampled
+        % % might be more difficult to meet in such a constrained C-space.
+        % % Hence using a more relaxed philosophy of "add samples if you can" 
 
         % while true %run replanning loop till we add a new config and funnel-edges
         %     flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove);   

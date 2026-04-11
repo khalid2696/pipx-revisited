@@ -35,6 +35,8 @@ classdef railEnvironment < handle
         toleranceLimit
         sensorRadius %sensor radius of the robot
         sizeRange %size range of circular obstacles
+        velocityRange %speed range of the moving obstacles
+        refreshRate %frequency at which obstacles move (related to robot sensing rate) 
         mode %options: 'sensing' or 'dynamic' (addition and deletion)
         
         %list of obstacles with obstacleStruct datatype
@@ -61,6 +63,8 @@ classdef railEnvironment < handle
             %obj.toleranceLimit = epsilon/2; %extra-padding
             obj.toleranceLimit = cartPoleLength;
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
+            obj.velocityRange = [-2 2]; %moving obstacles' speed min-max values in m/s
+            obj.refreshRate = 1; %in Hz
             obj.mode = mode;
 
             if strcmpi(obj.mode, 'sensing')
@@ -170,7 +174,7 @@ classdef railEnvironment < handle
                 end
                 rectangleObstacleLocation_y = location(2);
 
-                %initialise an obstacle and add it to the list
+                %initialise the obstacles and add it to the list
                 for i=1:lengthScaling %
                     tempLocation = [rectangleObstacleLocation_x(i) rectangleObstacleLocation_y];
                     randomObstacle = obstacleStruct(obj.indexOfLast+1,tempLocation,radius);
@@ -186,42 +190,16 @@ classdef railEnvironment < handle
                 obj.boundingRectangles{count} = tempObstacleCollection;
                 count = count+1;
             end
- 
+            
         end
-        
-        % function addedObstacles = addRandomObstacles(obj,robotPose,goalPose,n) %n - number of obstacles
-        % 
-        %     addedObstacles = cell(n,1);
-        %     %offset = obj.sensorRadius/2; %making sure that obstacles don't get added on the robot itself
-        %     offset = obj.toleranceLimit + obj.sizeRange(2); %making sure that obstacles don't get added on the robot itself
-        % 
-        %     for i=1:n
-        %         %assign random locations and size within sensor radius
-        %         randRadius = (obj.sensorRadius-offset)*rand() + offset;
-        %         %randRadius = (3*obj.sensorRadius-offset)*rand() + offset;
-        %         randTheta  = 2*pi*rand();
-        %         location = [robotPose(1)+randRadius*cos(randTheta), robotPose(2)+randRadius*sin(randTheta)];
-        % 
-        %         size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
-        % 
-        %         if (obj.euclidianDist(location,goalPose) < size+obj.sensorRadius/2) || ...
-        %                 (obj.euclidianDist(location,robotPose) < size+obj.sensorRadius/2)
-        %             continue %explicitly avoid obstacles occluding start or goal location
-        %         end
-        % 
-        %         %initialise an obstacle and add it to the list
-        %         randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-        %         obj.addObstacle(randomObstacle);
-        %         addedObstacles{i} = randomObstacle;
-        %     end     
-        % end
 
-        function deletedObstacles = removeRandomObstacles(obj,F,G)
+        function [deletedObstacles, deletedBoundingObstacles] = removeRandomObstacles(obj,F,G)
 
             numTotalObstacles = length(obj.boundingRectangles);
             numChangedObstacles = ceil(numTotalObstacles * obj.dynamicity/100);
 
             deletedObstacles = cell(numChangedObstacles,1);
+            deletedBoundingObstacles = cell(numChangedObstacles,1);
             count = 0;
             for i= 1:min(numChangedObstacles,numTotalObstacles) 
                 index = randi([1 numTotalObstacles]);
@@ -234,14 +212,14 @@ classdef railEnvironment < handle
                     count = count+1;
                     deletedObstacles{count} = tempObstacle;
                 end
+                deletedBoundingObstacles{i} = tempRectangle;
             end
 
         end
 
-
         function obj = removeThisObstacle(obj,F,G,obstacle)
 
-            if(obj.numObstacles < 1 || obstacle.status == 0)
+            if obj.numObstacles < 1
                 return %no obstacle to remove or if obstacle has already been removed
             end
 
@@ -270,32 +248,45 @@ classdef railEnvironment < handle
             end      
         end
 
-        function addedObstacles = addShiftedObstacles(obj,obstacles,robotPose,goalPose) %obstacles - list of deleted obstacles
+        function addedObstacles = addShiftedObstacles(obj,boundingObstacles,robotPose,goalPose) %obstacles - list of deleted obstacles
 
-            n = length(obstacles);
-            addedObstacles = cell(n,1);
-            %offset = obj.sensorRadius/2; %making sure that obstacles don't get added on the robot itself
-            offset = obj.toleranceLimit + obj.sizeRange(2); %making sure that obstacles don't get added on the robot itself
+            addedObstacles = {};
+            numBoundingObstacles = length(boundingObstacles);
 
-            for i=1:n
-                %assign random locations and size within sensor radius
-                randRadius = (obj.sensorRadius-offset)*rand() + offset;
-                %randRadius = (3*obj.sensorRadius-offset)*rand() + offset;
-                randTheta  = 2*pi*rand();
-                location = [robotPose(1)+randRadius*cos(randTheta), robotPose(2)+randRadius*sin(randTheta)];
+            if numBoundingObstacles == 0
+                return %return if no obstacles got deleted
+            end
 
-                size = obj.sizeRange(1) + (obj.sizeRange(2) - obj.sizeRange(1))*rand();
+            for i=1:numBoundingObstacles
 
-                if (obj.euclidianDist(location,goalPose) < size+obj.sensorRadius/2) || ...
-                        (obj.euclidianDist(location,robotPose) < size+obj.sensorRadius/2)
-                    continue %explicitly avoid obstacles occluding robot or goal location
+                obstacleVelocity = obj.velocityRange(1) + rand()*(obj.velocityRange(2) - obj.velocityRange(1));
+                offset = 1/obj.refreshRate*obstacleVelocity;
+                tempObstacleCollection = obj.boundingRectangles{i};
+
+                for j = 1:numel(tempObstacleCollection.indicesOfObstaclesWithin) 
+                    tempObstacle = obj.obstacles{tempObstacleCollection.indicesOfObstaclesWithin(j)};
+
+                    tempObstacle.location(1) = tempObstacle.location(1) + offset; %move the obstacle by an offset amount
+                    tempObstacle.status = 1; %make the obstacle active again
+                    obj.numObstacles = obj.numObstacles+1; %add it back to the list
+
+                    %if occluding the robot pose or goal pose, revert back to previous (safe) location
+                    %up/down level (y_position) should match and also x_position shouldn't be occluding
+                    if abs(tempObstacle.location(1) - goalPose(1)) < tempObstacle.radius + 2*obj.toleranceLimit && tempObstacle.location(2) == goalPose(2)
+                        tempObstacle.location(1) = tempObstacle.location(1) - offset;
+                    end
+
+                    if abs(tempObstacle.location(1) - robotPose(1)) < tempObstacle.radius + 2*obj.toleranceLimit && tempObstacle.location(2) == robotPose(2)
+                        tempObstacle.location(1) = tempObstacle.location(1) - offset;
+                    end
+
+                    addedObstacles{end+1} = tempObstacle;
                 end
 
-                %initialise an obstacle and add it to the list
-                randomObstacle = obstacleStruct(obj.indexOfLast+1,location,size);
-                obj.addObstacle(randomObstacle);
-                addedObstacles{i} = randomObstacle;
-            end     
+                %update the bounding rectangle's location as well for consistency
+                tempObstacleCollection.location(1) = tempObstacleCollection.location(1) + offset;
+            end
+ 
         end
         
         %functions to determine which nodes and edges are within obstacles
