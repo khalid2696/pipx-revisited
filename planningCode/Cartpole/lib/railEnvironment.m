@@ -265,22 +265,22 @@ classdef railEnvironment < handle
                 offset = 1/obj.refreshRate*obstacleVelocity;
                 tempObstacleCollection = obj.boundingRectangles{i};
 
+                %if occluding the robot pose or goal pose, revert back to previous (safe) location
+                %up/down level (y_position) should match and also x_position shouldn't be occluding 
+                if abs(tempObstacleCollection.location(1) + offset - goalPose(1)) < obj.sizeRange + 2*obj.toleranceLimit && tempObstacleCollection.location(2) == goalPose(2)
+                    offset = 0;
+                end
+
+                if abs(tempObstacleCollection.location(1) + offset - robotPose(1)) < obj.sizeRange + 2*obj.toleranceLimit && tempObstacleCollection.location(2) == robotPose(2)
+                    offset = 0;
+                end
+
                 for j = 1:numel(tempObstacleCollection.indicesOfObstaclesWithin) 
                     tempObstacle = obj.obstacles{tempObstacleCollection.indicesOfObstaclesWithin(j)};
 
                     tempObstacle.location(1) = tempObstacle.location(1) + offset; %move the obstacle by an offset amount
                     tempObstacle.status = 1; %make the obstacle active again
                     obj.numObstacles = obj.numObstacles+1; %add it back to the list
-
-                    %if occluding the robot pose or goal pose, revert back to previous (safe) location
-                    %up/down level (y_position) should match and also x_position shouldn't be occluding
-                    if abs(tempObstacle.location(1) - goalPose(1)) < tempObstacle.radius + 2*obj.toleranceLimit && tempObstacle.location(2) == goalPose(2)
-                        tempObstacle.location(1) = tempObstacle.location(1) - offset;
-                    end
-
-                    if abs(tempObstacle.location(1) - robotPose(1)) < tempObstacle.radius + 2*obj.toleranceLimit && tempObstacle.location(2) == robotPose(2)
-                        tempObstacle.location(1) = tempObstacle.location(1) - offset;
-                    end
 
                     addedObstacles{end+1} = tempObstacle;
                 end

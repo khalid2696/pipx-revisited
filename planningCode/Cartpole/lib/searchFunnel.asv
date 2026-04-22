@@ -65,8 +65,6 @@ classdef searchFunnel < handle
             % obj.configXArray = [-3 -2 -1 0 1 2 3];
             % obj.configYArray = [-1 1]*libraryResolution(2); %either up or down
 
-            % To Do: Modify this for cartpole (once you use the correct
-            % funnel library)
             obj.stateSpaceDimensionIndices = 1:12;     %12-state system
             obj.CspaceDimensionIndices = [1 2 3];  %x-y-z configuration space
             obj.workspaceDimensionIndices = [1 2]; %x-y workspace
@@ -569,8 +567,7 @@ classdef searchFunnel < handle
                 status = 1; %gray-colored funnels
             end
             
-            % To Do: skip funnel plotting if only transition trajectory
-            % (swing-up or swing-down)
+            % To Do: s
             % all(all(isnan(funnelLibrary(num2str([0, 1])).invarianceCertificates(:,:,end)))) 
             % to check if all elements are nan (for the two trajectories)
 
