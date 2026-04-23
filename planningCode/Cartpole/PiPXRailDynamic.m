@@ -33,7 +33,7 @@ videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
-extendDistance = 4;          %extend-distance along one direction
+extendDistance = 3.5;          %extend-distance along one direction
 prePlanningIterationLimit = 100; %100 and 150
 totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 10;
@@ -52,10 +52,10 @@ if ~exist('obstacleDynamicity', 'var')
     obstacleDynamicity = 100; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end %by default all obstacles change position and direction
 
-cartPoleLength = 1.5; envPadding = 0.5;
+cartPoleLength = 1.0; envPadding = 0.5;
 envLB_x = -5; envUB_x = 50;
 envLB_y = -(cartPoleLength + envPadding); envUB_y = cartPoleLength + envPadding;
-obstacleSizeRange = 0.5; %radius of circular obstacles
+obstacleSizeRange = cartPoleLength/2; %radius of circular obstacles
 robotSensorRadius = 3*extendDistance; %assuming robot can sense obstacles in 3 times the max move distance
 
 W = railEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,cartPoleLength,obstacleSizeRange,'dynamic',obstacleDynamicity); 

@@ -247,6 +247,7 @@ classdef PiPxPlanner < handle
         function setupPlot(obj)
             figure; clf;
             axis equal
+            %daspect([2 1 1])
             xlim([obj.envLB_x obj.envUB_x])
             ylim([obj.envLB_y obj.envUB_y])
             hold on

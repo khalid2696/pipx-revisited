@@ -65,11 +65,12 @@ classdef searchFunnel < handle
             % obj.configXArray = [-3 -2 -1 0 1 2 3];
             % obj.configYArray = [-1 1]*libraryResolution(2); %either up or down
 
-            % To Do: Modify this for cartpole (once you use the correct
+            % Final To Do: Modify this for cartpole (once you use the correct
             % funnel library)
             obj.stateSpaceDimensionIndices = 1:12;     %12-state system
-            obj.CspaceDimensionIndices = [1 2 3];  %x-y-z configuration space
-            obj.workspaceDimensionIndices = [1 2]; %x-y workspace
+            % To Do: Change both the following to [1 3] after final changes
+            obj.CspaceDimensionIndices = [1 2];    % x-theta (Note 'y' is substitute for level - up/down)
+            obj.workspaceDimensionIndices = [1 2]; % x-theta workspace
 
         end
         
@@ -256,15 +257,11 @@ classdef searchFunnel < handle
             %assigning the trajectory
             funnelEdge.trajectory_stateSpace = funnel.trajectory; %just for initialisation
             %shifting the trajectory along the cyclic coordinates
-            shiftVector = [desiredConfig 0]; %cyclic coordinates -- x, y and z
+            shiftVector = desiredConfig; %cyclic coordinates -- x, y (substitute for level - up/down)
             funnelEdge.trajectory_stateSpace = obj.shiftAlongCyclicCoordinates(funnelEdge,shiftVector);
             
             %assigning the invariant sets
             funnelEdge.invariantSet_stateSpace = funnel.invarianceCertificates;
-
-            %To Do: add additional checks to prevent projections of trajectories
-            % all(all(isnan(funnelLibrary(num2str([0, 1])).invarianceCertificates(:,:,end)))) 
-            % to check if all elements are nan (for the two trajectories)
 
             %computing projections onto configuration space and workspace for later use
             %project the funnel in state-space to C-space
@@ -279,24 +276,27 @@ classdef searchFunnel < handle
         %Extracting the funnel-edge (parent to sampled node) from the trajectory library
         function funnel = findFunnel(obj,parentConfig,desiredConfig) 
         
-            deltaQ = desiredConfig - parentConfig; %config space (q) --> [x,y]
+            deltaQ = desiredConfig - parentConfig; %config space (q) --> [x,theta]
             
-            %[~, closestXIndex] = min(abs(obj.configXArray - deltaQ(1)));  
-            %[~, closestYIndex] = min(abs(obj.configYArray - deltaQ(2)));
-            %dictionaryKey = [obj.configXArray(closestXIndex), obj.configYArray(closestYIndex)]
-            
+            % To Do: analyse desiredConfig or parentConfig to see whether
+            % the level is up (1) or down (-1) and use the appropriate key
             dictionaryKey = deltaQ; %this works for the specific cartpole case where sampling stage is itself resolution-aware
             
+            disp(dictionaryKey)
+
             if dictionaryKey(1) == 0 
                 disp(dictionaryKey);
+                % To do: Normalize to match the key convention of the funnel library
+                % dictionaryKey(2) = dictionaryKey(2)/abs(dictionaryKey(2));
             end
 
-            if abs(dictionaryKey(2)) > 3
-                error('Should not happen');
+            % Some sanity checks
+            if dictionaryKey(1) * dictionaryKey(2) ~= 0
+                error('Should not happen -- crossing!')
             end
 
-            if dictionaryKey(1) == 0 && dictionaryKey(2) == 1
-                error('Should not happen');
+            if abs(dictionaryKey(1)) > 3
+                error('Should not happen -- exceeding the specified extend limit');
             end
 
             if isKey(obj.funnelLibrary, num2str(dictionaryKey))
@@ -345,10 +345,18 @@ classdef searchFunnel < handle
             inletRofA = funnel2.invariantSet_stateSpace(:,:,1); %index 1: inlet of funnel 2
             inletCenter = funnel2.trajectory_stateSpace(:,1); %index 1: inlet of funnel 2
             
-            % To Do: add composability check b/w trajectories and funnels
-            % (by assumption, composable)
-            % all(all(isnan(funnelLibrary(num2str([0, 1])).invarianceCertificates(:,:,end)))) 
-            % to check if all elements are nan (for the two trajectories)
+            % Trajectory-Funnel cross-compatability
+            % if either inlet or outlet is undefined (i.e. only a trajectory)
+            % just check whether the trajectory1/funnel1 final-state and trajectory2/funnel2 initial-state match
+            if all(all(isnan(inletRofA))) || all(all(isnan(outletRofA)))
+                if inletCenter == outletCenter
+                    check = 1;
+                else
+                    check = 0;
+                end
+                check
+                return
+            end
 
             %first pass check
             if(outletCenter-inletCenter)'*inletRofA*(outletCenter-inletCenter)>1 %if the centre itself doesn't lie in the ellipse, return  
@@ -421,9 +429,16 @@ classdef searchFunnel < handle
                 funnel2 = obj.funnelEdges(tempFunnelIndex);
 
                 obj.drawFunnel(funnel2,2)
+                
+                tempOutlet = funnel1.invariantSet_workSpace(:,:,end); %end is the outlet
+                if ~all(all(isnan(tempOutlet))) %draw ellipse only if ellipsoidal matrix exists (not a nan)
+                    obj.drawEllipse(funnel1.trajectory_workSpace(:,end),tempOutlet,0); 
+                end
 
-                obj.drawEllipse(funnel1.trajectory_workSpace(:,end),funnel1.invariantSet_workSpace(:,:,end),0); %end is the outlet
-                obj.drawEllipse(funnel2.trajectory_workSpace(:,1),funnel2.invariantSet_workSpace(:,:,1),2); %1 is the inlet
+                tempInlet = funnel2.invariantSet_workSpace(:,:,1); %1 is the inlet
+                if ~all(all(isnan(tempInlet))) %draw ellipse only if ellipsoidal matrix exists (not a nan)
+                    obj.drawEllipse(funnel2.trajectory_workSpace(:,1),tempInlet,2); 
+                end
 
                 check = obj.isComposable(funnel1,funnel2);
                 
@@ -515,11 +530,17 @@ classdef searchFunnel < handle
                     plot(traj(1,:),traj(2,:),'-.b','LineWidth',2.5);
                     
                     %funnel-inlet
-                    obj.drawEllipse(traj(:,1),thisFunnel.invariantSet_workSpace(:,:,1),1);
+                    tempInlet = thisFunnel.invariantSet_workSpace(:,:,1);
+                    if ~all(all(isnan(tempInlet)))
+                        obj.drawEllipse(traj(:,1),tempInlet,1);
+                    end
                     
                     %funnel-outlet
-                    obj.drawEllipse(traj(:,end),thisFunnel.invariantSet_workSpace(:,:,end),2);
-                    
+                    tempOutlet = thisFunnel.invariantSet_workSpace(:,:,end);
+                    if ~all(all(isnan(tempOutlet)))
+                        obj.drawEllipse(traj(:,end),tempOutlet,2);
+                    end
+
                     %Plotting the end and start points
                     plot(traj(1,1),traj(2,1),'oy','LineWidth',2.5,'MarkerSize',5); %inlet to the funnel
                     plot(traj(1,end),traj(2,end),'xg','LineWidth',3,'MarkerSize',7); %outlet of the funnel
@@ -563,22 +584,20 @@ classdef searchFunnel < handle
            
         end
         
-        %draws funnel defined by trajectory, x and ellipsoids, P along the knot points
+        % draws funnel defined by trajectory, x and ellipsoids, P along the knot points
+        % skips funnel plotting in case of transition trajectory only (swing-up or swing-down)
         function drawFunnel(obj,funnel,status)
             if nargin < 3
                 status = 1; %gray-colored funnels
             end
-            
-            % To Do: skip funnel plotting if only transition trajectory
-            % (swing-up or swing-down)
-            % all(all(isnan(funnelLibrary(num2str([0, 1])).invarianceCertificates(:,:,end)))) 
-            % to check if all elements are nan (for the two trajectories)
 
             N = length(funnel.time);
             for k=N:-1:1 %change it to -1 to get more pretty plots
                 P = funnel.invariantSet_workSpace(:,:,k);
                 xt = funnel.trajectory_workSpace(:,k);
-                drawEllipse(obj,xt,P,status);
+                if ~all(all(isnan(P))) %draw ellipse only if ellipsoidal matrix exists (not a nan)
+                    drawEllipse(obj,xt,P,status);
+                end
             end
 
             if status==0

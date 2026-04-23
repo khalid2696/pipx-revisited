@@ -146,13 +146,13 @@ classdef railEnvironment < handle
             while count<=numObstacles
 
                 location = zeros(1,2);
-                location(1) = rand()*(obstacleSpacing(count+1) - obstacleSpacing(count)) + obstacleSpacing(count) + 2*obj.toleranceLimit; %some extra padding to account for moving obstacles
+                location(1) = rand()*((obstacleSpacing(count+1) - 2*obj.toleranceLimit) - (obstacleSpacing(count) + 2*obj.toleranceLimit)) + (obstacleSpacing(count) + 2*obj.toleranceLimit); %some extra padding to account for moving obstacles
                 location(2) = (-1)^randi(2)*obj.cartPoleLength; %either at +L or -L (with equal probability)
                 
                 radius = obj.sizeRange;
 
-                if (obj.euclidianDist(location,goalPose) < radius+obj.toleranceLimit) || ...
-                        (obj.euclidianDist(location,robotPose) < radius+obj.toleranceLimit)
+                if (obj.euclidianDist(location,goalPose) < radius+3*obj.toleranceLimit) || ...
+                        (obj.euclidianDist(location,robotPose) < radius+3*obj.toleranceLimit)
                     continue %explicitly avoid obstacles occluding start or goal location
                 end
                 
