@@ -102,7 +102,6 @@ classdef searchFunnel < handle
         function flag = constructFunnelNetwork(obj,T,C,W,newNode,potentialNeighbors)
 
             flag = 0;
-            %maxNeighborsAllowed = 12; %k-nearest neighbors heuristic
             delta = 0.5; %pruning small-hop neighbors
 
             if (length(potentialNeighbors) < 1) %if no neighbor return
@@ -110,6 +109,7 @@ classdef searchFunnel < handle
                 return
             end
             
+            %maxNeighborsAllowed = 12; %k-nearest neighbors heuristic
             %restricting the max number of neighbors: for faster runtime (not required)
             %if N > maxNeighborsAllowed
             %    N = maxNeighborsAllowed;
@@ -138,12 +138,6 @@ classdef searchFunnel < handle
                 if newNode.pose(1) ~= thisNeighbor.pose(1) && newNode.pose(2) ~= thisNeighbor.pose(2)
                     continue
                 end
-
-                % makes only sense for road lanes
-                % %2. at max can shift only two lanes (risky though) in one maneuver
-                % if abs(newNode.pose(1) - thisNeighbor.pose(1)) > 2
-                %     continue
-                % end
                 
                 %---------------------------------------------------------------%
                 % outFunnelEdges from newNode <--> inFunnelEdges to neighborNode 

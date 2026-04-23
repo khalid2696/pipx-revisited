@@ -301,7 +301,7 @@ classdef railEnvironment < handle
                     continue
                 end
 
-                nodes = findNodesWithinEachObstacle(obj,C,tree,obstacles{i});   
+                nodes = obj.findNodesWithinEachObstacle(C,tree,obstacles{i});   
                 collisionNodes = [collisionNodes nodes'];
             end
         end
@@ -337,7 +337,7 @@ classdef railEnvironment < handle
                     continue
                 end
 
-                edges = findEdgesWithinEachObstacle(obj,F,G,tree,obstacles{i});
+                edges = obj.findEdgesWithinEachObstacle(F,G,tree,obstacles{i});
                 collisionEdges = [collisionEdges edges'];
             end
         end
@@ -628,7 +628,7 @@ classdef railEnvironment < handle
                 radius = thisObstacle.radius;
 
                 %Checking if node v is inside the obstacle            
-                if (euclidianDist(obj,centre,v) < radius) 
+                if (obj.euclidianDist(centre,v) < radius) 
                     check = 0;
                     return
                 end
@@ -643,7 +643,7 @@ classdef railEnvironment < handle
             check = 1;
             %v = edgeHead.pose;
             %w = edgeTail.pose;
-            if(~vertexCollisionFree(obj,w) || ~vertexCollisionFree(obj,v))
+            if(~obj.vertexCollisionFree(w) || ~obj.vertexCollisionFree(v))
                 check = 0;
                 return;
             end
@@ -664,7 +664,7 @@ classdef railEnvironment < handle
 
                 %Checking if the edge (v,w) intersects the circle
                 
-                angleSubtend = ((centre(1)-v(1))*(w(1)-v(1)) + (centre(2)-v(2))*(w(2)-v(2)))/(euclidianDist(obj,v,w)^2);
+                angleSubtend = ((centre(1)-v(1))*(w(1)-v(1)) + (centre(2)-v(2))*(w(2)-v(2)))/(obj.euclidianDist(v,w)^2);
 
                 xProjection = v(1) + angleSubtend*(w(1)-v(1));
                 yProjection = v(2) + angleSubtend*(w(2)-v(2));
@@ -673,8 +673,8 @@ classdef railEnvironment < handle
 
                 %If the closest point lies within the edge and as well as at a
                 %distance less than the radius, it implies collision
-                %if((euclidianDist(obj,closestPoint,centre) < radius))
-                if(liesInBetween(obj,v,w,closestPoint) && (euclidianDist(obj,closestPoint,centre) < radius))
+                %if((obj.euclidianDist(closestPoint,centre) < radius))
+                if(obj.liesInBetween(v,w,closestPoint) && (obj.euclidianDist(closestPoint,centre) < radius))
                     check = 0;
                     return
                 end
@@ -689,7 +689,7 @@ classdef railEnvironment < handle
             check = 1;
             %v = edgeHead.pose;
             %w = edgeTail.pose;
-            if(~vertexCollisionFree(obj,w) || ~vertexCollisionFree(obj,v))
+            if(~obj.vertexCollisionFree(w) || ~obj.vertexCollisionFree(v))
                 check = 0;
                 return;
             end
@@ -704,7 +704,7 @@ classdef railEnvironment < handle
 
             %Checking if the edge (v,w) intersects the circle
 
-            angleSubtend = ((centre(1)-v(1))*(w(1)-v(1)) + (centre(2)-v(2))*(w(2)-v(2)))/(euclidianDist(obj,v,w)^2);
+            angleSubtend = ((centre(1)-v(1))*(w(1)-v(1)) + (centre(2)-v(2))*(w(2)-v(2)))/(obj.euclidianDist(v,w)^2);
 
             xProjection = v(1) + angleSubtend*(w(1)-v(1));
             yProjection = v(2) + angleSubtend*(w(2)-v(2));
@@ -713,8 +713,8 @@ classdef railEnvironment < handle
 
             %If the closest point lies within the edge and as well as at a
             %distance less than the radius, it implies collision
-            %if((euclidianDist(obj,closestPoint,centre) < radius))
-            if(liesInBetween(obj,v,w,closestPoint) && (euclidianDist(obj,closestPoint,centre) < radius))
+            %if((obj.euclidianDist(closestPoint,centre) < radius))
+            if(obj.liesInBetween(v,w,closestPoint) && (obj.euclidianDist(closestPoint,centre) < radius))
                 check = 0;
                 return
             end
@@ -728,7 +728,7 @@ classdef railEnvironment < handle
             initialConfig  = traj(:,1);
             finalConfig = traj(:,end);
             midConfig = (initialConfig+finalConfig)/2; %computing the approx centre of the trajectory
-            boundingCircleRadius = 1*euclidianDist(obj,initialConfig,finalConfig)/2; %coefficient: scaling for safety          
+            boundingCircleRadius = 1*obj.euclidianDist(initialConfig,finalConfig)/2; %coefficient: scaling for safety          
             
             for i = 1:obj.indexOfLast
                
@@ -737,11 +737,11 @@ classdef railEnvironment < handle
                     continue
                 end
 
-                if(boundingCircleCheck(obj,midConfig,boundingCircleRadius,thisObstacle)) %if the funnel is sufficiently far off
+                if(obj.boundingCircleCheck(midConfig,boundingCircleRadius,thisObstacle)) %if the funnel is sufficiently far off
                     continue                                         %from the obstacle return with 1   
                 end
 
-                if(~funnelCircleCollision(obj,funnel,thisObstacle))
+                if(~obj.funnelCircleCollision(funnel,thisObstacle))
                     success=0;
                     return
                 end
@@ -756,17 +756,17 @@ classdef railEnvironment < handle
             initialConfig  = traj(:,1);
             finalConfig = traj(:,end);
             midConfig = (initialConfig+finalConfig)/2; %computing the approx centre of the trajectory
-            boundingCircleRadius = 1*euclidianDist(obj,initialConfig,finalConfig)/2;
+            boundingCircleRadius = 1*obj.euclidianDist(initialConfig,finalConfig)/2;
             
             if(thisObstacle.status == 0) %if inactive continue
                 return
             end
 
-            if(boundingCircleCheck(obj,midConfig,boundingCircleRadius,thisObstacle)) %if the funnel is sufficiently far off
+            if(obj.boundingCircleCheck(midConfig,boundingCircleRadius,thisObstacle)) %if the funnel is sufficiently far off
                 return                                         %from the obstacle return with 1   
             end
 
-            if(~funnelCircleCollision(obj,funnel,thisObstacle))
+            if(~obj.funnelCircleCollision(funnel,thisObstacle))
                 success=0;
                 return
             end
@@ -829,7 +829,7 @@ classdef railEnvironment < handle
             pass = 0;
             center = obstacle.location;
             radius = obstacle.radius; 
-            if(euclidianDist(obj,midState,center)>funnelRadius+radius)
+            if(obj.euclidianDist(midState,center)>funnelRadius+radius)
                 pass = 1;
                 return
             end
@@ -840,14 +840,18 @@ classdef railEnvironment < handle
             
             success = 1;
             N = length(funnel.time);
-            vanDerSequence = ceil(vdcorput(obj,N,2)*N);
+            vanDerSequence = ceil(obj.vdcorput(N,2)*N);
 
             for k = 1:N
                 index = vanDerSequence(k);
                 x_c = funnel.trajectory_workSpace(:,index);
                 M = funnel.invariantSet_workSpace(:,:,index);
 
-                if(~ellipseCircleCollisionFree(obj,x_c,M,obstacle))
+                if ~all(all(isnan(M))) %if ellipsoidal matrix doesn't exist, only a trajectory so continue
+                    continue
+                end
+
+                if(~obj.ellipseCircleCollisionFree(x_c,M,obstacle))
                     success = 0;
                     return
                 end
