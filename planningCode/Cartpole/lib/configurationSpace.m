@@ -89,6 +89,7 @@ classdef configurationSpace < handle
 
             start = obj.startNode.pose;
             poleConfigurationOptions = W.cartPoleLength*[-1, 1]; %either at top or bottom
+            % poleConfigurationOptions = [0 pi]; %either at top or bottom
 
             if(robotMove)
                 prob = rand();

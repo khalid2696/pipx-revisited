@@ -34,7 +34,7 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 extendDistance = 3.5;          %extend-distance along one direction
-prePlanningIterationLimit = 100; %100 and 150
+prePlanningIterationLimit = 100; %100
 totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 10;
 prePlanningTimeLimit = 15; %time alloted for preplanning in seconds
@@ -45,7 +45,7 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numObstacles', 'var') 
-    numObstacles = 4; %3
+    numObstacles = 0; %3
 end
 
 if ~exist('obstacleDynamicity', 'var') 
@@ -54,7 +54,8 @@ end %by default all obstacles change position and direction
 
 cartPoleLength = 1.0; envPadding = 0.5;
 envLB_x = -5; envUB_x = 50;
-envLB_y = -(cartPoleLength + envPadding); envUB_y = cartPoleLength + envPadding;
+% envLB_y = -(cartPoleLength + envPadding); envUB_y = cartPoleLength + envPadding;
+envLB_y = -envPadding*pi; envUB_y = (1 + envPadding)*pi;
 obstacleSizeRange = cartPoleLength/2; %radius of circular obstacles
 robotSensorRadius = 3*extendDistance; %assuming robot can sense obstacles in 3 times the max move distance
 
@@ -66,10 +67,10 @@ distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distanc
 %distanceFunction = @(vectorA, vectorB) sqrt(((vectorA - vectorB)'*distanceWeightMatrix*(vectorA - vectorB))); %distance function (for kDTree)
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
 
-load('./precomputedFunnelLibrary/library.mat');
+load('./precomputedFunnelLibrary/library_new.mat');
 
 %resolution of the pre-computed funnel library
-funnelLibraryResolution = [1 cartPoleLength]; %lower this resolution, finer the motion plan
+funnelLibraryResolution = [1 pi]; %lower this resolution, finer the motion plan
 F = searchFunnel(funnelLibrary,extendDistance,funnelLibraryResolution);
 
 C = configurationSpace();  %instantiate an empty configuration space class
@@ -81,8 +82,11 @@ planner.setupPlot()
 %----------------------------------------------------------------------%
 %fixed start and goal locations (begin and end of the road respectively)
 %----------------------------------------------------------------------%
-startPose = [envLB_x+5, -cartPoleLength];
-goalPose =  [envUB_x-5,  cartPoleLength];
+% startPose = [envLB_x+5, -cartPoleLength];
+% goalPose =  [envUB_x-5,  cartPoleLength];
+
+startPose = [envLB_x+5, 0];
+goalPose =  [envUB_x-5, pi];
 
 %------------------------------------%
 %user-input start and goal locations
@@ -164,7 +168,7 @@ if drawFlag
     drawnow
 end
 
-%return
+% return
 %% -----------------------------------------------------------%
 % Pre-planning phase of generating a roadmap of funnels
 %-----------------------------------------------------------%
@@ -262,6 +266,8 @@ if drawFlag
     title('Funnel-tree and shortest Funnel-path to goal')
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
+
+%return
 
 %-----------------------------------------------------------%
 %% start of robot motion and online re-planning phase

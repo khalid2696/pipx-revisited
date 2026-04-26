@@ -543,7 +543,8 @@ classdef railEnvironment < handle
         function drawAllObstacles(obj)            
             
             % visualize the railing lines (top and bottom pole positions)
-            yline(-obj.cartPoleLength,'--k'); yline(obj.cartPoleLength,'--k');
+            % yline(-obj.cartPoleLength,'--k'); yline(obj.cartPoleLength,'--k');
+            yline(0,'--k'); yline(pi,'--k');
 
             %if you want to plot the bounding circle-obstacles
             for i=1:obj.indexOfLast

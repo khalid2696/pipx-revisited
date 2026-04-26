@@ -67,10 +67,10 @@ classdef searchFunnel < handle
 
             % Final To Do: Modify this for cartpole (once you use the correct
             % funnel library)
-            obj.stateSpaceDimensionIndices = 1:12;     %12-state system
+            obj.stateSpaceDimensionIndices = 1:4;     %12-state system
             % To Do: Change both the following to [1 3] after final changes
-            obj.CspaceDimensionIndices = [1 2];    % x-theta (Note 'y' is substitute for level - up/down)
-            obj.workspaceDimensionIndices = [1 2]; % x-theta workspace
+            obj.CspaceDimensionIndices = [1 3];    % x-theta (Note 'y' is substitute for level - up/down)
+            obj.workspaceDimensionIndices = [1 3]; % x-theta workspace
 
         end
         
@@ -233,9 +233,6 @@ classdef searchFunnel < handle
         
         %new functions added (Jul '24)
         function funnelEdge = steer(obj,parentNode,desiredConfig)
-    
-            %funnel = obj.findFunnel(parentNode.pose,desiredConfig);
-            %shiftVector = [parentNode.pose 0]; %start point -- x, y and z
 
             funnel = obj.findFunnel(desiredConfig, parentNode.pose);
 
@@ -251,7 +248,7 @@ classdef searchFunnel < handle
             %assigning the trajectory
             funnelEdge.trajectory_stateSpace = funnel.trajectory; %just for initialisation
             %shifting the trajectory along the cyclic coordinates
-            shiftVector = desiredConfig; %cyclic coordinates -- x, y (substitute for level - up/down)
+            shiftVector = desiredConfig(1); %cyclic coordinates -- x
             funnelEdge.trajectory_stateSpace = obj.shiftAlongCyclicCoordinates(funnelEdge,shiftVector);
             
             %assigning the invariant sets
@@ -270,25 +267,23 @@ classdef searchFunnel < handle
         %Extracting the funnel-edge (parent to sampled node) from the trajectory library
         function funnel = findFunnel(obj,parentConfig,desiredConfig) 
         
-            deltaQ = desiredConfig - parentConfig; %config space (q) --> [x,theta]
-            
-            % To Do: analyse desiredConfig or parentConfig to see whether
-            % the level is up (1) or down (-1) and use the appropriate key
+            deltaQ = desiredConfig - parentConfig; %config space (q) --> [x,level]
             dictionaryKey = deltaQ; %this works for the specific cartpole case where sampling stage is itself resolution-aware
-            
-            disp(dictionaryKey)
 
-            if dictionaryKey(1) == 0 
-                disp(dictionaryKey);
-                % To do: Normalize to match the key convention of the funnel library
-                % dictionaryKey(2) = dictionaryKey(2)/abs(dictionaryKey(2));
+            % Analyse desiredConfig and parentConfig to see whether
+            % the level is up (1) or down (-1) and use the appropriate key
+            if desiredConfig(2) == 1 && parentConfig(2) == 1
+                dictionaryKey(2) = 1; %corresponds to level-up (upright)
+            elseif desiredConfig(2) == 0 && parentConfig(2) == 0
+                dictionaryKey(2) = -1; %corresponds to level-down (hanging)
+            end
+
+            if dictionaryKey(1) == 0 %transition trajectory: swing-up or swing-down
+                % Normalize to match the key convention of the funnel library
+                dictionaryKey(2) = dictionaryKey(2)/abs(dictionaryKey(2));
             end
 
             % Some sanity checks
-            if dictionaryKey(1) * dictionaryKey(2) ~= 0
-                error('Should not happen -- crossing!')
-            end
-
             if abs(dictionaryKey(1)) > 3
                 error('Should not happen -- exceeding the specified extend limit');
             end
@@ -307,7 +302,7 @@ classdef searchFunnel < handle
             %Constructing the shift matrix
             shiftVector = zeros(size(funnelEdge.trajectory_stateSpace,1), 1);
             
-            for i=1:length(obj.CspaceDimensionIndices)
+            for i=1:length(cyclicCoords)
                 shiftVector(obj.CspaceDimensionIndices(i)) = cyclicCoords(i);
             end
 
@@ -348,7 +343,7 @@ classdef searchFunnel < handle
                 else
                     check = 0;
                 end
-                check
+
                 return
             end
 
@@ -1030,9 +1025,15 @@ classdef searchFunnel < handle
             for k = 1:N
                 temp_trajectory_nD = trajectory_nD(:,k);
                 temp_ellipsoid_nD = ellipsoids_nD(:,:,k);
-        
-                ellipsoids_mD(:,:,k) = inv(basisMatrix' / temp_ellipsoid_nD * basisMatrix);
+                
                 trajectory_mD(:,k) = basisMatrix' * temp_trajectory_nD;
+
+                % If ellipsoids don't exist (aka trajectories), do not project ellipsoids
+                if all(all(isnan(temp_ellipsoid_nD)))
+                    continue
+                else
+                    ellipsoids_mD(:,:,k) = inv(basisMatrix' / temp_ellipsoid_nD * basisMatrix);
+                end
             end
         end
 
