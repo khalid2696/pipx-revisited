@@ -340,7 +340,7 @@ classdef searchFunnel < handle
             if all(all(isnan(inletRofA))) || all(all(isnan(outletRofA)))
                 if inletCenter == outletCenter
                     check = 1;
-                else
+                else %if states don't correspond (match) it can't be composed
                     check = 0;
                 end
 

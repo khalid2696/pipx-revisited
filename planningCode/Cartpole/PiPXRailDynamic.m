@@ -82,9 +82,6 @@ planner.setupPlot()
 %----------------------------------------------------------------------%
 %fixed start and goal locations (begin and end of the road respectively)
 %----------------------------------------------------------------------%
-% startPose = [envLB_x+5, -cartPoleLength];
-% goalPose =  [envUB_x-5,  cartPoleLength];
-
 startPose = [envLB_x+5, 0];
 goalPose =  [envUB_x-5, pi];
 
@@ -103,12 +100,8 @@ goalPose =  [envUB_x-5, pi];
 % temp = goalPose ./ funnelLibraryResolution;
 % goalPose = round(temp) .* funnelLibraryResolution;
 
-
 %initially adding obstacles
 W.addDynamicObstacles(numObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
-                                                      
-%W.initialiseObstacleTree();
-%W.senseObstacles(startPose);
 
 if(~W.vertexCollisionFree(goalPose))
     error('Goal inside the obstacles. No path exists!')

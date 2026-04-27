@@ -49,7 +49,8 @@ end
 
 cartPoleLength = 1.5; envPadding = 0.5;
 envLB_x = -5; envUB_x = 50;
-envLB_y = -(cartPoleLength + envPadding); envUB_y = cartPoleLength + envPadding;
+% envLB_y = -(cartPoleLength + envPadding); envUB_y = cartPoleLength + envPadding;
+envLB_y = -envPadding*pi; envUB_y = (1 + envPadding)*pi;
 obstacleSizeRange = 0.5; %radius of circular obstacles
 robotSensorRadius = 3*extendDistance; %assuming robot can sense obstacles in 3 times the max move distance
 
@@ -63,7 +64,7 @@ T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of 
 
 load('./precomputedFunnelLibrary/library.mat');
 %resolution of the pre-computed funnel library
-funnelLibraryResolution = [1 cartPoleLength]; %lower this resolution, finer the motion plan
+funnelLibraryResolution = [1 pi]; %lower this resolution, finer the motion plan
 F = searchFunnel(funnelLibrary,extendDistance,funnelLibraryResolution);
 
 C = configurationSpace();  %instantiate an empty configuration space class
@@ -75,8 +76,8 @@ planner.setupPlot()
 %----------------------------------------------------------------------%
 %fixed start and goal locations (begin and end of the road respectively)
 %----------------------------------------------------------------------%
-startPose = [envLB_x+5, -cartPoleLength];
-goalPose =  [envUB_x-5,  cartPoleLength];
+startPose = [envLB_x+5, 0];
+goalPose =  [envUB_x-5, pi];
 
 %------------------------------------%
 %user-input start and goal locations
@@ -153,7 +154,7 @@ if drawFlag
     %Plotting start and goal positions
     plot(goalPose(1), goalPose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
     plot(startPose(1), startPose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
-    W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+    W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
     drawnow
 end
 
@@ -293,7 +294,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 planner.setupPlot();
             end
 
-            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+            W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
             drawnow
             
             % if videoFlag
