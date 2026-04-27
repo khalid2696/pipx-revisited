@@ -45,7 +45,7 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numObstacles', 'var') 
-    numObstacles = 0; %3
+    numObstacles = 4; %3
 end
 
 if ~exist('obstacleDynamicity', 'var') 

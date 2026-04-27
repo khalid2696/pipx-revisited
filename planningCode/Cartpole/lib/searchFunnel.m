@@ -395,9 +395,16 @@ classdef searchFunnel < handle
             inletCenter_workspaceProjected = funnel.trajectory_workSpace(:,1); %1 is inlet
             inletRegion_workspaceProjected = funnel.invariantSet_workSpace(:,:,1); %1 is inlet
             
-            if(obj.inBasin(inletCenter_workspaceProjected,inletRegion_workspaceProjected,configurationPose))
-                check = 1;        
+            % Trajectory-Funnel cross-compatability
+            % if either inlet or outlet is undefined (i.e. only a trajectory)
+            % by convention, it lies within inlet
+            if all(all(isnan(inletRegion_workspaceProjected)))
+                check = 1; 
                 return
+            end
+            
+            if(obj.inBasin(inletCenter_workspaceProjected,inletRegion_workspaceProjected,configurationPose))
+                check = 1;
             end
         end
         
