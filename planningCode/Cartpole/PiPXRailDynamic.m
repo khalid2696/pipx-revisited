@@ -45,11 +45,11 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numObstacles', 'var') 
-    numObstacles = 4; %3
+    numObstacles = 0; %3
 end
 
 if ~exist('obstacleDynamicity', 'var') 
-    obstacleDynamicity = 100; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
+    obstacleDynamicity = 100; % D-percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end %by default all obstacles change position and direction
 
 cartPoleLength = 1.0; envPadding = 0.5;
@@ -67,7 +67,7 @@ distanceWeightMatrix = diag([1 1/pi]);
 distanceFunction = @(inputA, inputB) sqrt(((inputA - inputB)*distanceWeightMatrix*(inputA - inputB)')); %distance function (for kDTree)
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
 
-load('./precomputedFunnelLibrary/library_new.mat');
+load('./precomputedFunnelLibrary/library.mat');
 
 %resolution of the pre-computed funnel library
 funnelLibraryResolution = [1 pi]; %lower this resolution, finer the motion plan

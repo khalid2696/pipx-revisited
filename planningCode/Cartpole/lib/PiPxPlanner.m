@@ -161,6 +161,7 @@ classdef PiPxPlanner < handle
             %move the robot to its parent node
             parentIndex = C.startNode.parent;
             C.startNode = C.graphNodes(parentIndex);
+            C.startNode
             F.startNode = C.startNode;
             C.currentRobotNode = C.startNode;
         end
