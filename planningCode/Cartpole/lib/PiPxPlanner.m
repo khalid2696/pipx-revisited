@@ -84,9 +84,6 @@ classdef PiPxPlanner < handle
                                           %use the previous line epsilon (upper bound value) as well
             newNodePose = C.expandSearchGraph(T,W,startFound,robotMove,epsilon,F.resolution);
             
-            %plot(newNodePose(1),newNodePose(2), 'xb','MarkerSize',7,'LineWidth',1.4)
-            %drawnow
-            
             if(~W.vertexCollisionFree(newNodePose) || F.inAnyInlets(newNodePose))
                 flag = 1; return
             end

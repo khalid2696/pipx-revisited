@@ -88,17 +88,15 @@ classdef configurationSpace < handle
         function sample = sampleNode(obj,W,startFound,robotMove)
 
             start = obj.startNode.pose;
-            poleConfigurationOptions = W.cartPoleLength*[-1, 1]; %either at top or bottom
-            % poleConfigurationOptions = [0 pi]; %either at top or bottom
+            % poleConfigurationOptions = W.cartPoleLength*[-1, 1]; %either at top or bottom
+            poleConfigurationOptions = [0 pi]; %either at top or bottom
 
             if(robotMove)
                 prob = rand();
                 if prob < 0.9 %sample from the sensor radius with bias
                     r = W.sensorRadius*rand() + W.toleranceLimit; %providing some extra look-ahead
                 else %sample at random from the configuration space
-                    %r = 2*W.sensorRadius*rand() + W.toleranceLimit; 
                     xSample = (W.envUB_x - W.envLB_x)*rand() + W.envLB_x;
-                    %ySample = (W.envUB_y - W.envLB_y)*rand() + W.envLB_y;
                     ySample = poleConfigurationOptions(randi(2)); %either at top or bottom with equal probability
                     sample = [xSample ySample];
                     return
@@ -108,7 +106,8 @@ classdef configurationSpace < handle
                 xSample = start(1)+r*cos(theta);
                 ySample = poleConfigurationOptions(randi(2)); %either at top or bottom with equal probability
                 sample = [xSample ySample];
-                %plot(sample(1),sample(2),'xb');
+                
+                % plot(sample(1),sample(2),'xb');
                 return
             end
 
@@ -122,7 +121,6 @@ classdef configurationSpace < handle
             if prob < bias
                 %random sampling of nodes
                 xSample = (W.envUB_x - W.envLB_x)*rand() + W.envLB_x;
-                %ySample = (W.envUB_y - W.envLB_y)*rand() + W.envLB_y;
                 ySample = poleConfigurationOptions(randi(2)); %either at top or bottom with equal probability
                 sample = [xSample ySample];
             else
@@ -137,7 +135,7 @@ classdef configurationSpace < handle
             
             %sampling a point at random
             sampledPoint = obj.sampleNode(W,startFound,robotMove);
-            %plot(sampledPoint(1),sampledPoint(2), 'xy','MarkerSize',7,'LineWidth',1.4)
+            % plot(sampledPoint(1),sampledPoint(2), 'xy','MarkerSize',7,'LineWidth',1.4)
 
             nearestNode = T.kdFindNearestPayload(sampledPoint);
               
@@ -159,6 +157,8 @@ classdef configurationSpace < handle
             temp = newNodePose ./ resolution;
             newNodePose = round(temp) .* resolution;
 
+            % plot(newNodePose(1),newNodePose(2), 'xb','MarkerSize',7,'LineWidth',1.4)
+            % drawnow
         end
 
         %-------------------------------------------------------------------------%

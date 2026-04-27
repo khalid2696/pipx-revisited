@@ -45,7 +45,7 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numObstacles', 'var') 
-    numObstacles = 0; %3
+    numObstacles = 4; %3
 end
 
 if ~exist('obstacleDynamicity', 'var') 
@@ -62,9 +62,9 @@ robotSensorRadius = 3*extendDistance; %assuming robot can sense obstacles in 3 t
 W = railEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,cartPoleLength,obstacleSizeRange,'dynamic',obstacleDynamicity); 
 %obstacle class: %mode: 'sensing'
 
-distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
-%distanceWeightMatrix = eye(2);
-%distanceFunction = @(vectorA, vectorB) sqrt(((vectorA - vectorB)'*distanceWeightMatrix*(vectorA - vectorB))); %distance function (for kDTree)
+% distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
+distanceWeightMatrix = diag([1 1/pi]);
+distanceFunction = @(inputA, inputB) sqrt(((inputA - inputB)*distanceWeightMatrix*(inputA - inputB)')); %distance function (for kDTree)
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
 
 load('./precomputedFunnelLibrary/library_new.mat');
@@ -164,7 +164,7 @@ if drawFlag
     %Plotting start and goal positions
     plot(goalPose(1), goalPose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
     plot(startPose(1), startPose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
-    W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+    W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
     drawnow
 end
 

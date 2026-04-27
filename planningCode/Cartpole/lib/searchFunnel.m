@@ -272,7 +272,7 @@ classdef searchFunnel < handle
 
             % Analyse desiredConfig and parentConfig to see whether
             % the level is up (1) or down (-1) and use the appropriate key
-            if desiredConfig(2) == 1 && parentConfig(2) == 1
+            if desiredConfig(2) ~= 0 && parentConfig(2) ~= 0
                 dictionaryKey(2) = 1; %corresponds to level-up (upright)
             elseif desiredConfig(2) == 0 && parentConfig(2) == 0
                 dictionaryKey(2) = -1; %corresponds to level-down (hanging)
@@ -283,10 +283,10 @@ classdef searchFunnel < handle
                 dictionaryKey(2) = dictionaryKey(2)/abs(dictionaryKey(2));
             end
 
-            % Some sanity checks
-            if abs(dictionaryKey(1)) > 3
-                error('Should not happen -- exceeding the specified extend limit');
-            end
+            % % Some sanity checks
+            % if abs(dictionaryKey(1)) > 3
+            %     error('Should not happen -- exceeding the specified extend limit');
+            % end
 
             if isKey(obj.funnelLibrary, num2str(dictionaryKey))
                 funnel = obj.funnelLibrary(num2str(dictionaryKey));
@@ -361,7 +361,9 @@ classdef searchFunnel < handle
                 check = obj.isComposable_usingSurfaceSampling(inletRofA, inletCenter, outletRofA, outletCenter, numSamplePoints);
             end
 
-            %check
+            % if check == 0
+            %     disp(check);
+            % end
 
         end
         

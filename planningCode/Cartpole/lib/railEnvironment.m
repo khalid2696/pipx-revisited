@@ -138,6 +138,7 @@ classdef railEnvironment < handle
         
         function addedObstacles = addDynamicObstacles(obj,numObstacles,robotPose,goalPose,varargin) %n - number of obstacles
             
+            obstacleLevelOptions = [0 pi]; %either at top or bottom
             addedObstacles = cell(3*numObstacles,1); %assuming each car is represented as minimum of 3 bounding-circle obstacles
 
             % To ensure obstacles are added uniformly randomly apart
@@ -147,8 +148,8 @@ classdef railEnvironment < handle
 
                 location = zeros(1,2);
                 location(1) = rand()*((obstacleSpacing(count+1) - 2*obj.toleranceLimit) - (obstacleSpacing(count) + 2*obj.toleranceLimit)) + (obstacleSpacing(count) + 2*obj.toleranceLimit); %some extra padding to account for moving obstacles
-                location(2) = (-1)^randi(2)*obj.cartPoleLength; %either at +L or -L (with equal probability)
-                
+                location(2) = obstacleLevelOptions(randi(2)); %either at top or bottom with equal probability
+
                 radius = obj.sizeRange;
 
                 if (obj.euclidianDist(location,goalPose) < radius+3*obj.toleranceLimit) || ...
