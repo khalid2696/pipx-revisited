@@ -369,7 +369,8 @@ classdef railEnvironment < handle
                 motionEdgeIndices = [motionEdgeIndices, obj.findEdgesInAugmentedGraph(G,thisNode,thisObstacle)];
             end
 
-            
+            motionEdgeIndices = unique(motionEdgeIndices);
+
             if(isempty(motionEdgeIndices)) %if no edge is in collision, continue
                 edges = [];
                 return
@@ -434,10 +435,18 @@ classdef railEnvironment < handle
                 tempHead = G.graphVertices(tempEdge.parent);
                 tempTail = G.graphVertices(tempEdge.child);
 
+                
+
                 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
                 %Lane-based collision checking (very specific to the road-like workspace) 
                 %if edge is not in the same lane (x-position) as the other car-obstacle
                 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
+                
+                % To Do: check the trajectories separately (Note: following
+                % is the condition for the trajectory)
+                % To Do: 
+                % if trajectory then ... 
+                % else then ...
                 if tempHead.pose(1) == tempTail.pose(1) && tempHead.pose(1) ~= thisObstacle.location(1)
                     %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'m','LineWidth',3);
                     %drawnow
@@ -524,7 +533,7 @@ classdef railEnvironment < handle
                 obj.findNodesWithinObstacles(C,tree,obstacles);
                 modifiedEdges = obj.findEdgesWithinObstacles(F,G,tree,obstacles);
             elseif strcmpi(type,'deletion')
-                %this list would comprise of deleted obstacles, so just return
+                %this list comprises of deleted obstacles, so just return
                 %the edges pre-stored within the removed obstacles
                 modifiedEdges = [];
                 for i=1:length(obstacles)
@@ -557,7 +566,7 @@ classdef railEnvironment < handle
                 end
             end
 
-            % %if you want to plot recangular car-obstacles
+            % %if you want to plot recangular (bounding) obstacle history
             % for i=1:3:obj.indexOfLast
             %     thisRectangleObstacle = obj.boundingRectangles{ceil(i/3)};
             %     if(obj.obstacles{i}.status == 1 || obj.obstacles{i+1}.status == 1 || obj.obstacles{i+2}.status == 1)
@@ -725,13 +734,17 @@ classdef railEnvironment < handle
         function success = funnelCollisionFree(obj,funnel)
             success = 1;
             
-            traj = funnel.trajectory_workSpace;
-            
-            initialConfig  = traj(:,1);
-            finalConfig = traj(:,end);
+            initialConfig  = funnel.trajectory_workSpace(:,1);
+            finalConfig = funnel.trajectory_workSpace(:,end);
             midConfig = (initialConfig+finalConfig)/2; %computing the approx centre of the trajectory
             boundingCircleRadius = 1*obj.euclidianDist(initialConfig,finalConfig)/2; %coefficient: scaling for safety          
             
+            % In case of (transition) trajectory instead check for trajectory-obstacle collision
+            if all(all(isnan(funnel.invariantSet_workSpace(:,:,1))))
+                success = obj.trajectoryCollisionFree(funnel.trajectory_workSpace);
+                return
+            end
+
             for i = 1:obj.indexOfLast
                
                 thisObstacle = obj.obstacles{i};
@@ -750,30 +763,53 @@ classdef railEnvironment < handle
             end
         end
         
-        function success = funnelCollisionFreeWithThisObstacle(obj,funnel,thisObstacle)
-            success = 1;
-            
-            traj = funnel.trajectory_workSpace;
-            
-            initialConfig  = traj(:,1);
-            finalConfig = traj(:,end);
-            midConfig = (initialConfig+finalConfig)/2; %computing the approx centre of the trajectory
-            boundingCircleRadius = 1*obj.euclidianDist(initialConfig,finalConfig)/2;
-            
-            if(thisObstacle.status == 0) %if inactive continue
-                return
-            end
-
-            if(obj.boundingCircleCheck(midConfig,boundingCircleRadius,thisObstacle)) %if the funnel is sufficiently far off
-                return                                         %from the obstacle return with 1   
-            end
-
-            if(~obj.funnelCircleCollision(funnel,thisObstacle))
-                success=0;
-                return
-            end
-        end
+        % Legacy code (not used)
+        % function success = funnelCollisionFreeWithThisObstacle(obj,funnel,thisObstacle)
+        %     success = 1;
+        % 
+        %     initialConfig  = funnel.trajectory_workSpace(:,1);
+        %     finalConfig = funnel.trajectory_workSpace(:,end);
+        %     midConfig = (initialConfig+finalConfig)/2; %computing the approx centre of the trajectory
+        %     boundingCircleRadius = 1*obj.euclidianDist(initialConfig,finalConfig)/2;
+        % 
+        %     if(thisObstacle.status == 0) %if inactive continue
+        %         return
+        %     end
+        % 
+        %     if(obj.boundingCircleCheck(midConfig,boundingCircleRadius,thisObstacle)) %if the funnel is sufficiently far off
+        %         return                                         %from the obstacle return with 1   
+        %     end
+        % 
+        %     if(~obj.funnelCircleCollision(funnel,thisObstacle))
+        %         success=0;
+        %         return
+        %     end
+        % end
         
+        % implemented for the specific case of obstacles constrained along
+        % the rails, either at level up or down
+        function success = trajectoryCollisionFree(obj,trajectory)
+            success = 1;
+
+            for i = 1:obj.indexOfLast
+               
+                thisObstacle = obj.obstacles{i};
+                if(thisObstacle.status == 0) %if inactive continue
+                    continue
+                end
+                
+                thisObstacleMin_xPosition = thisObstacle.location(1) - thisObstacle.radius;% - obj.toleranceLimit;
+                thisObstacleMax_xPosition = thisObstacle.location(1) + thisObstacle.radius;% + obj.toleranceLimit;              
+
+                % if there is x-overlap at the max/min spots, then the trajectory is in collision 
+                if max(trajectory(1,:)) > thisObstacleMin_xPosition && min(trajectory(1,:)) < thisObstacleMax_xPosition
+                    success = 0;
+                    return
+                end
+            end
+
+        end
+
     end
     
 

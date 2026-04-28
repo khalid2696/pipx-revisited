@@ -41,7 +41,7 @@ classdef PiPxPlanner < handle
             obj.envLB_y = envLB_y; obj.envUB_y = envUB_y;
             obj.extendDistance = extendDistance;
             obj.resolution = resolution;
-            obj.CspaceDimensionality = 2; %xy-planning
+            obj.CspaceDimensionality = 2; %x-theta planning
             obj.initial_rBall_radius = 50; %used for the shrinking rBall radius compute
 
             if nargin < 5

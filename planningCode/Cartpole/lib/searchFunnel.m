@@ -65,11 +65,8 @@ classdef searchFunnel < handle
             % obj.configXArray = [-3 -2 -1 0 1 2 3];
             % obj.configYArray = [-1 1]*libraryResolution(2); %either up or down
 
-            % Final To Do: Modify this for cartpole (once you use the correct
-            % funnel library)
-            obj.stateSpaceDimensionIndices = 1:4;     %12-state system
-            % To Do: Change both the following to [1 3] after final changes
-            obj.CspaceDimensionIndices = [1 3];    % x-theta (Note 'y' is substitute for level - up/down)
+            obj.stateSpaceDimensionIndices = 1:4;     %4-state system
+            obj.CspaceDimensionIndices = [1 3];    % x-theta (Note 'theta' is substitute for level - up/down)
             obj.workspaceDimensionIndices = [1 3]; % x-theta workspace
 
         end
@@ -142,9 +139,11 @@ classdef searchFunnel < handle
                 %---------------------------------------------------------------%
                 % outFunnelEdges from newNode <--> inFunnelEdges to neighborNode 
                 %---------------------------------------------------------------%
-                %rough sanity check before subsequent computations
-                %Note: make sense only for "almost-holonomic" robots
-                if ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose)
+                % Rough sanity checks before subsequent computations
+                
+                %Note: make sense only for "almost-holonomic" movements 
+                % that is, not transition trajectories (swing-up or swing-down)
+                if newNode.pose(2) == thisNeighbor.pose(2) && ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose)
                     continue
                 end
 
@@ -155,7 +154,7 @@ classdef searchFunnel < handle
                     continue
                 end
 
-                if ~W.funnelCollisionFree(funnelEdge) %|| ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
+                if ~W.funnelCollisionFree(funnelEdge)
                     continue
                 end           
 
@@ -184,9 +183,11 @@ classdef searchFunnel < handle
                 %----------------------------------------------------------------%
                 % inFunnelEdges to newNode <--> outFunnelEdges from neighborNodes 
                 %----------------------------------------------------------------%
-                %rough sanity check before subsequent computations
-                %Note: make sense only for "almost-holonomic" robots
-                if ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose)
+                % Rough sanity check before subsequent computations
+                
+                %Note: make sense only for "almost-holonomic" movements 
+                % that is, not transition trajectories (swing-up or swing-down)
+                if newNode.pose(2) == thisNeighbor.pose(2) && ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose)
                     continue
                 end
 
@@ -197,7 +198,7 @@ classdef searchFunnel < handle
                     continue
                 end
 
-                if ~W.funnelCollisionFree(funnelEdge) %|| ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
+                if ~W.funnelCollisionFree(funnelEdge)
                     continue
                 end
 
