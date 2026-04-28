@@ -147,7 +147,7 @@ classdef railEnvironment < handle
             while count<=numObstacles
 
                 location = zeros(1,2);
-                location(1) = rand()*((obstacleSpacing(count+1) - 2*obj.toleranceLimit) - (obstacleSpacing(count) + 2*obj.toleranceLimit)) + (obstacleSpacing(count) + 2*obj.toleranceLimit); %some extra padding to account for moving obstacles
+                location(1) = rand()*((obstacleSpacing(count+1) - 3*obj.toleranceLimit) - (obstacleSpacing(count) + 3*obj.toleranceLimit)) + (obstacleSpacing(count) + 3*obj.toleranceLimit); %some extra padding to account for moving obstacles
                 location(2) = obstacleLevelOptions(randi(2)); %either at top or bottom with equal probability
 
                 radius = obj.sizeRange;
@@ -343,7 +343,7 @@ classdef railEnvironment < handle
             end
         end
         
-
+        % To Do: moodify this to check the transition trajectories as well
         function edges = findEdgesWithinEachObstacle(obj,F,G,tree,thisObstacle)
                 
             if thisObstacle.status == 0 
@@ -352,16 +352,13 @@ classdef railEnvironment < handle
             end
 
             centre  = thisObstacle.location;
-            epsilon = thisObstacle.radius + obj.toleranceLimit; %extra-padding
+            epsilon = thisObstacle.radius + 2*obj.toleranceLimit; %extra-padding (to account for swing-up and swing-down trajectories)
 
             nodes = tree.kdFindWithinRangePayload(epsilon,centre);         
             motionEdgeIndices = [];      
             
             for i=1:length(nodes)
                 thisNode = nodes{i};
-                
-                %fprintf('\n\nNode number: %d',i);
-                %fprintf('\nNode index: %d',thisNode.index);
                 
                 % plot(thisNode.pose(1),thisNode.pose(2),'xg','MarkerSize',15,'LineWidth',3);
                 % drawnow
@@ -406,7 +403,7 @@ classdef railEnvironment < handle
             %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
         end
            
-
+        % To Do: moodify this to check the transition trajectories as well
         function motionEdgesInCollision = findEdgesInAugmentedGraph(obj,G,thisNode,thisObstacle)
              
             s = 0;
@@ -434,8 +431,6 @@ classdef railEnvironment < handle
 
                 tempHead = G.graphVertices(tempEdge.parent);
                 tempTail = G.graphVertices(tempEdge.child);
-
-                
 
                 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
                 %Lane-based collision checking (very specific to the road-like workspace) 
@@ -559,7 +554,7 @@ classdef railEnvironment < handle
             %if you want to plot the bounding circle-obstacles
             for i=1:obj.indexOfLast
                 thisObstacle = obj.obstacles{i};
-                if(thisObstacle.status == 0)
+                if thisObstacle.status == 0
                     obj.drawDeletedObstacle(thisObstacle);
                 else %plot inactive obstacles with dashed circles
                     obj.drawActiveObstacle(thisObstacle);
@@ -597,7 +592,7 @@ classdef railEnvironment < handle
             
             color = [1 1 1];
             c = obstacle.location;
-            r = obstacle.radius;
+            r = obstacle.radius*1.01; %a small scaling factor (just for pretty plotting purposes)
             
             th = 0:pi/50:2*pi;
             xunit = r * cos(th) + c(1);
@@ -606,7 +601,7 @@ classdef railEnvironment < handle
             
             fill(xunit,yunit,[1 1 1], 'EdgeColor', 'none','FaceAlpha',0.05); %fill with white
             %Plot just the outline
-            plot(xunit, yunit,'--k','LineWidth',1.1);
+            plot(xunit, yunit,'--w','LineWidth',1.1);
         end
         
         %Function to draw circle representing sensor radius
@@ -797,7 +792,7 @@ classdef railEnvironment < handle
                 if(thisObstacle.status == 0) %if inactive continue
                     continue
                 end
-                
+
                 thisObstacleMin_xPosition = thisObstacle.location(1) - thisObstacle.radius;% - obj.toleranceLimit;
                 thisObstacleMax_xPosition = thisObstacle.location(1) + thisObstacle.radius;% + obj.toleranceLimit;              
 

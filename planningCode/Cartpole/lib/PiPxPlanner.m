@@ -181,14 +181,18 @@ classdef PiPxPlanner < handle
                     [deletedObstacles, deletedBoundingObstacles] = W.removeRandomObstacles(F,G);
                     freedUpEdges = W.getModifiedEdges(F,C,G,T,deletedObstacles,'deletion');
                     if obj.drawFlag
-                        W.drawAllObstacles();
+                        % W.drawAllObstacles();
+                        for j = 1:numel(deletedObstacles)
+                            thisObstacle = deletedObstacles{j};
+                            W.drawDeletedObstacle(thisObstacle);
+                        end
                     end
                     %addition
                     addedObstacles = W.addShiftedObstacles(deletedBoundingObstacles,C.currentRobotNode.pose,C.goalNode.pose);
                     newCollisionEdges = W.getModifiedEdges(F,C,G,T,addedObstacles,'addition');
-                    if obj.drawFlag
-                        W.drawAllObstacles();
-                    end
+                    % if obj.drawFlag
+                    %     W.drawAllObstacles();
+                    % end
                     modifiedEdges = [freedUpEdges, newCollisionEdges];
                 end
             else

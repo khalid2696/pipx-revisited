@@ -377,7 +377,7 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
     if drawFlag
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
             %planner.setupPlot(); C.drawSearchTree();  
-            W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
+            %W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
             %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
             % 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
