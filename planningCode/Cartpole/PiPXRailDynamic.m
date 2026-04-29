@@ -199,11 +199,6 @@ end
 
 close(progressBar);
 
-planner.setupPlot()
-%F.drawAllFunnels();
-%drawnow;
-%return
-
 if ~startFound
     C.drawSearchGraph(); F.drawAllFunnels();
     error(['Couldnot compute an initial funnel-path.. Exiting in pre-planning phase itself! ' ...
@@ -217,13 +212,6 @@ end
 % Plotting funnel tree and saving relevant data structures
 if saveFlag
     fileCount = planner.saveData(F,C,W,dir,fileCount);
-end
-
-if drawFlag
-    C.drawSearchGraph(); W.drawAllObstacles();   
-    drawnow
-    title('Constructed funnel roadmap and the computed Shortest path')
-    set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
 
 Q = heap(totalIterationLimit); %initialise the priority queue with the total iteration limit
@@ -241,13 +229,22 @@ robotMoveStatus = C.findBestInletAtStartNode(G,F,Q);
 
 fprintf('\n\n -- Expected traversal distance to goal region is <strong>%0.2f</strong> -- \n\n',G.startVertex.cost);
 
-if ~isinf(G.startVertex.cost)
-    G.drawPathToGoal();
+if drawFlag
+    % planner.setupPlot();
+    C.drawSearchGraph(); W.drawAllObstacles();
+    title('Constructed funnel roadmap and the computed Shortest path')
+    set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
+
+    if ~isinf(G.startVertex.cost)
+        G.drawPathToGoal();
+    end
+
+    drawnow
 end
 
 %drawing the shortest path tree of search trajectories with inlets and outlets
 if drawFlag
-    planner.setupPlot()
+    planner.setupPlot();
     
     C.findParentInletsAtEachNode(G);
     F.constructShortestFunnelPath(G);

@@ -204,7 +204,8 @@ classdef railEnvironment < handle
             count = 0;
             randomChangedObstacleIndices = randperm(numTotalObstacles, numChangedObstacles);
             for i= 1:numel(randomChangedObstacleIndices)
-                tempObstacleCollection = obj.boundingRectangles{i};
+                index = randomChangedObstacleIndices(i);
+                tempObstacleCollection = obj.boundingRectangles{index};
                 
                 for j = 1:numel(tempObstacleCollection.indicesOfObstaclesWithin) 
                     tempObstacle = obj.obstacles{tempObstacleCollection.indicesOfObstaclesWithin(j)};
@@ -331,7 +332,6 @@ classdef railEnvironment < handle
         function collisionEdges = findEdgesWithinObstacles(obj,F,G,tree,obstacles)
             
             collisionEdges = [];
-            %for i = 1:obj.indexOfLast
             for i = 1:length(obstacles)
 
                 if isempty(obstacles{i}) %just in case
@@ -352,18 +352,14 @@ classdef railEnvironment < handle
             end
 
             centre  = thisObstacle.location;
-            epsilon = thisObstacle.radius + 2*obj.toleranceLimit; %extra-padding (to account for swing-up and swing-down trajectories)
+            epsilon = thisObstacle.radius + 3*obj.toleranceLimit; %extra-padding (to account for swing-up and swing-down trajectories)
 
             nodes = tree.kdFindWithinRangePayload(epsilon,centre);         
             motionEdgeIndices = [];      
             
             for i=1:length(nodes)
                 thisNode = nodes{i};
-                
-                % plot(thisNode.pose(1),thisNode.pose(2),'xg','MarkerSize',15,'LineWidth',3);
-                % drawnow
-                
-                motionEdgeIndices = [motionEdgeIndices, obj.findEdgesInAugmentedGraph(G,thisNode,thisObstacle)];
+                motionEdgeIndices = [motionEdgeIndices, obj.findEdgesInAugmentedGraph(F,G,thisNode,thisObstacle)];
             end
 
             motionEdgeIndices = unique(motionEdgeIndices);
@@ -404,7 +400,7 @@ classdef railEnvironment < handle
         end
            
         % To Do: moodify this to check the transition trajectories as well
-        function motionEdgesInCollision = findEdgesInAugmentedGraph(obj,G,thisNode,thisObstacle)
+        function motionEdgesInCollision = findEdgesInAugmentedGraph(obj,F,G,thisNode,thisObstacle)
              
             s = 0;
             motionEdgesInCollision = NaN(length(thisNode.inletVertices) + length(thisNode.outletVertices),1);
@@ -432,29 +428,30 @@ classdef railEnvironment < handle
                 tempHead = G.graphVertices(tempEdge.parent);
                 tempTail = G.graphVertices(tempEdge.child);
 
-                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
-                %Lane-based collision checking (very specific to the road-like workspace) 
-                %if edge is not in the same lane (x-position) as the other car-obstacle
-                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
-                
-                % To Do: check the trajectories separately (Note: following
-                % is the condition for the trajectory)
-                % To Do: 
-                % if trajectory then ... 
-                % else then ...
-                if tempHead.pose(1) == tempTail.pose(1) && tempHead.pose(1) ~= thisObstacle.location(1)
-                    %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'m','LineWidth',3);
-                    %drawnow
-                    continue
-                end
+                % Check to see whether the edges are indeed in collision
+                % Transition Trajectory
+                if tempHead.pose(1) == tempTail.pose(1) % Condition for a swing-up or swing-down trajectory (x-positions of head and tail match)
+                    tempFunnel = F.funnelEdges(thisInletVertex.vertexData(2));
+                    transitionTrajectory = tempFunnel.trajectory_workSpace;
 
-                %Collision check to see whether edge is in collision
-                if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
-                    %fprintf('\n\n The edge that was skipped: %d',tempEdge.index);
-                    %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'g','LineWidth',3)
-                    continue
+                    thisObstacleMin_xPosition = thisObstacle.location(1) - thisObstacle.radius;% - obj.toleranceLimit;
+                    thisObstacleMax_xPosition = thisObstacle.location(1) + thisObstacle.radius;% + obj.toleranceLimit;              
+    
+                    % if there is no x-overlap at the max/min spots, then the trajectory is not in collision 
+                    if max(transitionTrajectory(1,:)) < thisObstacleMin_xPosition || min(transitionTrajectory(1,:)) > thisObstacleMax_xPosition
+                        continue
+                    end
+
+                    % plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'--r','LineWidth',2.5);
+                    % drawnow
+
+                else %Funnel
+                    %Collision check to see whether (almost-holonomic) edge is in collision
+                    if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
+                        continue
+                    end
                 end
-                        
+       
                 s = s+1;
                 motionEdgesInCollision(s) = tempEdgeIndex;
                 thisInletVertex.withinObstacle = 1; %not sure when this would become 0 again
@@ -483,21 +480,28 @@ classdef railEnvironment < handle
                 tempHead = G.graphVertices(tempEdge.parent);
                 tempTail = G.graphVertices(tempEdge.child);
 
-                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
-                %Lane-based collision checking (very specific to the road-like workspace) 
-                %if edge is not in the same lane (x-position) as the other car-obstacle
-                %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
-                if tempHead.pose(1) == tempTail.pose(1) && tempHead.pose(1) ~= thisObstacle.location(1)
-                    %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'m','LineWidth',3);
-                    %drawnow
-                    continue
-                end
+                % Check to see whether the edges are indeed in collision
+                % Transition Trajectory
+                if tempHead.pose(1) == tempTail.pose(1) % Condition for a swing-up or swing-down trajectory (x-positions of head and tail match)
+                    tempFunnel = F.funnelEdges(thisInletVertex.vertexData(2));
+                    transitionTrajectory = tempFunnel.trajectory_workSpace;
+                    
+                    thisObstacleMin_xPosition = thisObstacle.location(1) - thisObstacle.radius;% - obj.toleranceLimit;
+                    thisObstacleMax_xPosition = thisObstacle.location(1) + thisObstacle.radius;% + obj.toleranceLimit;              
+    
+                    % if there is no x-overlap at the max/min spots, then the trajectory is not in collision 
+                    if max(transitionTrajectory(1,:)) < thisObstacleMin_xPosition || min(transitionTrajectory(1,:)) > thisObstacleMax_xPosition
+                        continue
+                    end
 
-                %Collision check to see whether edge is in collision
-                if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
-                    %fprintf('\n\n The edge that was skipped: %d',tempEdge.index);
-                    %plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'g','LineWidth',3)
-                    continue
+                    % plot([tempHead.pose(1); tempTail.pose(1)], [tempHead.pose(2); tempTail.pose(2)],'--r','LineWidth',2.5);
+                    % drawnow
+
+                else %Funnel
+                    %Collision check to see whether (almost-holonomic) edge is in collision
+                    if obj.edgeCollisionFreeWithThisObstacle(tempHead.pose,tempTail.pose,thisObstacle)
+                        continue
+                    end
                 end
                         
                 s = s+1;
