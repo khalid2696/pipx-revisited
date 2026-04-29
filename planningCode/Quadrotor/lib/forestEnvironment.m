@@ -32,7 +32,9 @@ classdef forestEnvironment < handle
         toleranceLimit
         sensorRadius %sensor radius of the robot
         sizeRange %size range of circular obstacles
-        mode %options: 'sensing' or 'dynamic' (addition and deletion)
+        velocityRange %relevant only for dynamically 'moving' mode
+        refreshRate   %relevant only for dynamically 'moving' mode
+        mode %options: 'sensing' or 'dynamic' (addition and deletion) or 'moving'
         
         %list of obstacles with obstacleStruct datatype
         obstacles
@@ -55,6 +57,9 @@ classdef forestEnvironment < handle
             obj.sensorRadius = sensorRadius; %14
             obj.toleranceLimit = epsilon/2; %extra-padding       
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
+            obj.velocityRange = [2 4]; %speed range of the moving obstacles [m/s]
+            obj.refreshRate = 1;       %frequency at which obstacles move (related to robot sensing rate) [Hz]
+
             obj.mode = mode;
 
             if strcmpi(obj.mode, 'sensing')
@@ -156,7 +161,7 @@ classdef forestEnvironment < handle
             end
             
             %make all the obstacles 
-            if strcmpi(obj.mode, 'dynamic')
+            if strcmpi(obj.mode, 'dynamic') || strcmpi(obj.mode, 'moving')
 
                 % make m<=N obstacles inactive at random
                 %at random make (numObstacles * obj.dynamicity/100)
@@ -209,6 +214,41 @@ classdef forestEnvironment < handle
             end     
         end
         
+        function addedObstacles = addShiftedObstacles(obj,deletedObstacles,robotPose,goalPose) %obstacles - list of deleted obstacles
+
+            numDeletedObstacles = length(deletedObstacles);
+            addedObstacles = cell(numDeletedObstacles,1);
+
+            if numDeletedObstacles == 0
+                return %return if no obstacles got deleted
+            end
+
+            for i=1:numDeletedObstacles
+                
+                thisObstacle = deletedObstacles{i};
+                
+                %Current speed of obstacle is drawn at random from the user-specified range
+                obstacleSpeed = obj.velocityRange(1) + rand()*(obj.velocityRange(2) - obj.velocityRange(1));
+                obstacleHeading = 2*pi*rand(); %assign a random direction (+x/-x)
+                offset = 1/obj.refreshRate*[obstacleSpeed*cos(obstacleHeading) obstacleSpeed*sin(obstacleHeading)];
+                
+                %if occluding the robot pose or goal pose, revert back to previous (safe) location
+                if obj.euclidianDist(thisObstacle.location(1),goalPose) < thisObstacle.radius + obj.toleranceLimit
+                    offset = [0 0];
+                end
+                
+                if obj.euclidianDist(thisObstacle.location(1),robotPose) < thisObstacle.radius + obj.toleranceLimit
+                    offset = [0 0];
+                end
+
+                thisObstacle.location = thisObstacle.location + offset; %move the obstacle by an offset amount
+                thisObstacle.status = 1; %make the obstacle active again
+                obj.numObstacles = obj.numObstacles+1; %add it back to the list
+
+                addedObstacles{i} = thisObstacle;
+
+            end
+        end
         
         function obj = removeThisObstacle(obj,F,G,obstacle)
             
@@ -529,7 +569,7 @@ classdef forestEnvironment < handle
             
             color = [1 1 1];
             c = obstacle.location;
-            r = obstacle.radius;
+            r = obstacle.radius*1.1; %a small scale-up factor just for pretty plotting
             
             th = 0:pi/50:2*pi;
             xunit = r * cos(th) + c(1);
@@ -538,7 +578,7 @@ classdef forestEnvironment < handle
             
             fill(xunit,yunit,[1 1 1], 'EdgeColor', 'none','FaceAlpha',0.05); %fill with white
             %Plot just the outline
-            plot(xunit, yunit,'--k','LineWidth',1.1);
+            % plot(xunit, yunit,'--k','LineWidth',1.1);
         end
         
         %Function to draw circle representing sensor radius
