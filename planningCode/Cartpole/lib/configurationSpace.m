@@ -293,7 +293,7 @@ classdef configurationSpace < handle
                 edges(i-1,:) = obj.graphNodes(tempEdge.parent).pose; % edge ends
             end 
             
-            plot(edges(:,1),edges(:,2),'Color',[0.3010, 0.7450, 0.9330],'LineWidth',3); % [0, 0.4470, 0.7410]
+            plot(edges(:,1),edges(:,2),':','Color',[0.3010, 0.7450, 0.9330],'LineWidth',2); % [0, 0.4470, 0.7410]
             plot(nodes(:,1),nodes(:,2), 'o','Color',[0, 0.4470, 0.7410]); %[0, 0.4470, 0.7410]
             
             plot(obj.goalNode.pose(1), obj.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
