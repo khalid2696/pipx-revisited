@@ -63,7 +63,7 @@ classdef railEnvironment < handle
             %obj.toleranceLimit = epsilon/2; %extra-padding
             obj.toleranceLimit = cartPoleLength;
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
-            obj.velocityRange = [1 2]; %moving obstacles' speed min-max values in m/s
+            obj.velocityRange = [1 1.5]; %moving obstacles' speed min-max values in m/s
             obj.refreshRate = 1; %in Hz
             obj.mode = mode;
 
@@ -202,18 +202,18 @@ classdef railEnvironment < handle
             deletedObstacles = cell(numChangedObstacles,1);
             deletedBoundingObstacles = cell(numChangedObstacles,1);
             count = 0;
-            for i= 1:min(numChangedObstacles,numTotalObstacles) 
-                index = randi([1 numTotalObstacles]);
-                tempRectangle = obj.boundingRectangles{index};
+            randomChangedObstacleIndices = randperm(numTotalObstacles, numChangedObstacles);
+            for i= 1:numel(randomChangedObstacleIndices)
+                tempObstacleCollection = obj.boundingRectangles{i};
                 
-                for j = 1:numel(tempRectangle.indicesOfObstaclesWithin) 
-                    tempObstacle = obj.obstacles{tempRectangle.indicesOfObstaclesWithin(j)};
+                for j = 1:numel(tempObstacleCollection.indicesOfObstaclesWithin) 
+                    tempObstacle = obj.obstacles{tempObstacleCollection.indicesOfObstaclesWithin(j)};
     
                     obj.removeThisObstacle(F,G,tempObstacle);
                     count = count+1;
                     deletedObstacles{count} = tempObstacle;
                 end
-                deletedBoundingObstacles{i} = tempRectangle;
+                deletedBoundingObstacles{i} = tempObstacleCollection;
             end
 
         end
@@ -592,16 +592,16 @@ classdef railEnvironment < handle
             
             color = [1 1 1];
             c = obstacle.location;
-            r = obstacle.radius*1.01; %a small scaling factor (just for pretty plotting purposes)
+            r = obstacle.radius*1.05; %a small scaling factor (just for pretty plotting purposes)
             
             th = 0:pi/50:2*pi;
             xunit = r * cos(th) + c(1);
             yunit = r * sin(th) + c(2);
-            fill(xunit,yunit,[1 1 1], 'EdgeColor', 'none'); %fill with white
+            fill(xunit,yunit,[1 1 1], 'EdgeColor', 'white'); %fill with white
             
             fill(xunit,yunit,[1 1 1], 'EdgeColor', 'none','FaceAlpha',0.05); %fill with white
-            %Plot just the outline
-            plot(xunit, yunit,'--w','LineWidth',1.1);
+            % %Plot just the outline
+            % plot(xunit, yunit,'-w','LineWidth',1.5);
         end
         
         %Function to draw circle representing sensor radius

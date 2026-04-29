@@ -36,7 +36,7 @@ fileCount = 1; %for saving files in /temp/ folder
 extendDistance = 3.5;          %extend-distance along one direction
 prePlanningIterationLimit = 100; %100
 totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
-idleTimeLimit = 10;
+idleTimeLimit = 20;
 prePlanningTimeLimit = 15; %time alloted for preplanning in seconds
 movementSkip = 1; %simulate higher robot-speed by increasing movementSkip parameter
 
