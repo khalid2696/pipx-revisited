@@ -20,7 +20,7 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-clc; clearvars; close all
+clc; clearvars; close all;
 %keyboard
 
 %adding paths to code libraries
