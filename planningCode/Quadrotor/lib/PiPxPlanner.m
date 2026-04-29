@@ -175,8 +175,31 @@ classdef PiPxPlanner < handle
                     %deletion
                     deletedObstacles = W.removeRandomObstacles(F,G,numChangedObstacles);
                     freedUpEdges = W.getModifiedEdges(F,C,G,T,deletedObstacles,'deletion');
+                    if obj.drawFlag
+                        W.drawAllObstacles();
+                        drawnow;
+                    end
                     %addition
                     addedObstacles = W.addRandomObstacles(C.currentRobotNode.pose, C.goalNode.pose, numChangedObstacles);
+                    newCollisionEdges = W.getModifiedEdges(F,C,G,T,addedObstacles,'addition');
+                    
+                    modifiedEdges = [freedUpEdges, newCollisionEdges];
+                end
+            elseif strcmpi(W.environmentType, 'forest') && strcmpi(W.mode, 'moving') 
+                numChangedObstacles = ceil(W.numObstacles * W.dynamicity/100);
+
+                if numChangedObstacles == 0
+                    modifiedEdges = [];
+                else
+                    %deletion
+                    deletedObstacles = W.removeRandomObstacles(F,G,numChangedObstacles);
+                    freedUpEdges = W.getModifiedEdges(F,C,G,T,deletedObstacles,'deletion');
+                    if obj.drawFlag
+                        W.drawAllObstacles();
+                        drawnow;
+                    end
+                    %addition
+                    addedObstacles = W.addShiftedObstacles(deletedObstacles,C.currentRobotNode.pose, C.goalNode.pose);
                     newCollisionEdges = W.getModifiedEdges(F,C,G,T,addedObstacles,'addition');
                     
                     modifiedEdges = [freedUpEdges, newCollisionEdges];
