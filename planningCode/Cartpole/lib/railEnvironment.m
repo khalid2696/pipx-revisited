@@ -343,7 +343,6 @@ classdef railEnvironment < handle
             end
         end
         
-        % To Do: moodify this to check the transition trajectories as well
         function edges = findEdgesWithinEachObstacle(obj,F,G,tree,thisObstacle)
                 
             if thisObstacle.status == 0 
@@ -399,7 +398,6 @@ classdef railEnvironment < handle
             %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
         end
            
-        % To Do: moodify this to check the transition trajectories as well
         function motionEdgesInCollision = findEdgesInAugmentedGraph(obj,F,G,thisNode,thisObstacle)
              
             s = 0;
@@ -596,7 +594,7 @@ classdef railEnvironment < handle
             
             color = [1 1 1];
             c = obstacle.location;
-            r = obstacle.radius*1.05; %a small scaling factor (just for pretty plotting purposes)
+            r = obstacle.radius*1.01; %a small scaling factor (just for pretty plotting purposes)
             
             th = 0:pi/50:2*pi;
             xunit = r * cos(th) + c(1);
@@ -604,8 +602,11 @@ classdef railEnvironment < handle
             fill(xunit,yunit,[1 1 1], 'EdgeColor', 'white'); %fill with white
             
             fill(xunit,yunit,[1 1 1], 'EdgeColor', 'none','FaceAlpha',0.05); %fill with white
-            % %Plot just the outline
-            % plot(xunit, yunit,'-w','LineWidth',1.5);
+            
+            %Plot just the outline
+            if strcmpi(obj.mode, 'sensing')
+                plot(xunit, yunit,'-.k','LineWidth',1);
+            end
         end
         
         %Function to draw circle representing sensor radius
