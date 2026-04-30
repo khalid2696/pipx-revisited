@@ -56,7 +56,7 @@ cartPoleLength = 1.0; envPadding = 0.5;
 envLB_x = -5; envUB_x = 50;
 % envLB_y = -(cartPoleLength + envPadding); envUB_y = cartPoleLength + envPadding;
 envLB_y = -envPadding*pi; envUB_y = (1 + envPadding)*pi;
-obstacleSizeRange = cartPoleLength/2; %radius of circular obstacles
+obstacleSizeRange = 0.5; %radius of circular obstacles
 robotSensorRadius = 3*extendDistance; %assuming robot can sense obstacles in 3 times the max move distance
 
 W = railEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,robotSensorRadius,cartPoleLength,obstacleSizeRange,'dynamic',obstacleDynamicity); 

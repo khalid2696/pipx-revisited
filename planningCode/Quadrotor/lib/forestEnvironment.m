@@ -569,7 +569,7 @@ classdef forestEnvironment < handle
             
             color = [1 1 1];
             c = obstacle.location;
-            r = obstacle.radius*1.1; %a small scale-up factor just for pretty plotting
+            r = obstacle.radius*1.01; %a small scale-up factor just for pretty plotting
             
             th = 0:pi/50:2*pi;
             xunit = r * cos(th) + c(1);
@@ -577,8 +577,11 @@ classdef forestEnvironment < handle
             fill(xunit,yunit,[1 1 1], 'EdgeColor', 'none'); %fill with white
             
             fill(xunit,yunit,[1 1 1], 'EdgeColor', 'none','FaceAlpha',0.05); %fill with white
+            
             %Plot just the outline
-            % plot(xunit, yunit,'--k','LineWidth',1.1);
+            if strcmpi(obj.mode, 'sensing')
+                plot(xunit, yunit,'-.k','LineWidth',1);
+            end
         end
         
         %Function to draw circle representing sensor radius
