@@ -39,7 +39,7 @@ totalIterationLimit = 450; %Maximum number of iterations %keep it less than 300 
 idleTimeLimit = 5;
 
 planningFrequency = 1;
-robotMovementFrequency = 3; %decreasing this parameter increases the robot speed!
+robotMovementFrequency = 2; %decreasing this parameter increases the robot speed!
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 

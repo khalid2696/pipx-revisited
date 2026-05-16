@@ -893,7 +893,8 @@ classdef searchFunnel < handle
             check = obj.ellipsoidinEllipsoidCheck(inletCenter,inletRofA,outletEllipsoidSurfacePoints);
         end        
         
-        % Ellipsoid decomposition functions   
+        % Ellipsoid sampling functions 
+        % Future work: can be made ~4 times quicker by using Cholesky instead of eigen decompositon (Khalid Jaffar - 5/14)   
         function ellipsoid_surface_points = samplePointsOnEllipsoidSurface(obj, outletCenter,outletRofA,numSamplePoints)
             % Eigen decomposition
             [Q, Lambda] = eig(outletRofA);
