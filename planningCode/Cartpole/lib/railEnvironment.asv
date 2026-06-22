@@ -119,13 +119,13 @@ classdef railEnvironment < handle
             return
 
             %swing-up from pre-computed funnel library
-            dictionaryKey = [0 1]; %corresponding key
+            dictionaryKey = [0 1];
             swingUpTrajectory = F.funnelLibrary(num2str(dictionaryKey));
 
             obj.swingManeuverClearance = max(abs(swingUpTrajectory.minmaxBounds));
 
             %swing-up from pre-computed funnel library
-            dictionaryKey = [0 -1]; %corresponding key
+            dictionaryKey = [0 -1]; %corresponding 
             swingDownTrajectory = F.funnelLibrary(num2str(dictionaryKey));
             
             %if swing-down requires a bigger clearance, update the limit

@@ -67,11 +67,12 @@ distanceWeightMatrix = diag([1 1/pi]);
 distanceFunction = @(inputA, inputB) sqrt(((inputA - inputB)*distanceWeightMatrix*(inputA - inputB)')); %distance function (for kDTree)
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
 
-load('./precomputedFunnelLibrary/library.mat');
+load('./precomputedFunnelLibrary/library_old.mat');
 
 %resolution of the pre-computed funnel library
 funnelLibraryResolution = [1 pi]; %lower this resolution, finer the motion plan
 F = searchFunnel(funnelLibrary,extendDistance,funnelLibraryResolution);
+W.updateSwingManeuverToleranceLimits(F);
 
 C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
