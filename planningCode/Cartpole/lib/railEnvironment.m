@@ -114,13 +114,16 @@ classdef railEnvironment < handle
 
         %new method added (cart-pole swing-up/swing-down specific)
         function obj = updateSwingManeuverToleranceLimits(obj,F)
-            
-            obj.swingManeuverClearance = 0.75;
-            return
 
             %swing-up from pre-computed funnel library
             dictionaryKey = [0 1]; %corresponding key
             swingUpTrajectory = F.funnelLibrary(num2str(dictionaryKey));
+            
+            %if still using the old funnel library (not ideal)
+            if ~isfield(swingUpTrajectory, 'minmaxBounds')
+                obj.swingManeuverClearance = obj.toleranceLimit;
+                return
+            end
 
             obj.swingManeuverClearance = max(abs(swingUpTrajectory.minmaxBounds));
 

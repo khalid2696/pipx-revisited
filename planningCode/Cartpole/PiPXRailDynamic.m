@@ -67,7 +67,7 @@ distanceWeightMatrix = diag([1 1/pi]);
 distanceFunction = @(inputA, inputB) sqrt(((inputA - inputB)*distanceWeightMatrix*(inputA - inputB)')); %distance function (for kDTree)
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
 
-load('./precomputedFunnelLibrary/library_old.mat');
+load('./precomputedFunnelLibrary/library.mat');
 
 %resolution of the pre-computed funnel library
 funnelLibraryResolution = [1 pi]; %lower this resolution, finer the motion plan

@@ -339,7 +339,7 @@ classdef searchFunnel < handle
             % if either inlet or outlet is undefined (i.e. only a trajectory)
             % just check whether the trajectory1/funnel1 final-state and trajectory2/funnel2 initial-state match
             if all(all(isnan(inletRofA))) || all(all(isnan(outletRofA)))
-                if inletCenter == outletCenter
+                if norm(inletCenter - outletCenter) < 1e-2 %small numerical tolerance
                     check = 1;
                 else %if states don't correspond (match) it can't be composed
                     check = 0;
