@@ -50,6 +50,15 @@ if ~exist('obstacleDynamicity', 'var')
     obstacleDynamicity = 25; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end
 
+if ~exist('expNumber', 'var')
+    expNumber = 1; %identifier for saving files in /temp/ folder
+end
+
+if saveFlag
+    fileSaveDir = ['./temp/forest_dynamic/trial' num2str(expNumber) '/'];
+    mkdir(fileSaveDir);
+end
+
 envLB = 0;
 envUB = 50;
 obstacleSizeRange = [1 3]; %radius of circular obstacles
@@ -159,9 +168,7 @@ T.kdInsertAsPayload(goalNode);
 
 %save the initial environment
 if saveFlag
-    dir = ['./temp/trial' num2str(1) '/'];
-    mkdir(dir);
-    fileCount = planner.saveData(F,C,W,dir,fileCount);
+    fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
 end
 
 %draw the initial environment
@@ -177,7 +184,9 @@ end
 %% -----------------------------------------------------------%
 % Pre-planning phase of generating a roadmap of funnels
 %-----------------------------------------------------------%
-progressBar = waitbar(0, 'Funnel RRG construction progress');
+if drawFlag
+    progressBar = waitbar(0, 'Funnel RRG construction progress');
+end
 
 while iteration < prePlanningIterationLimit %&& ~startFound
     
@@ -200,12 +209,17 @@ while iteration < prePlanningIterationLimit %&& ~startFound
     end
 
     if mod((iteration*100/prePlanningIterationLimit),10) == 0
-        waitbar(iteration/prePlanningIterationLimit)
-        %fprintf('\nGenerated %0.2f percent of the funnel RRG!',iteration*100/prePlanningIterationLimit);
+        if drawFlag
+            waitbar(iteration/prePlanningIterationLimit)
+        % else
+        %     fprintf('\nGenerated %0.2f percent of the funnel RRG!',iteration*100/prePlanningIterationLimit);
+        end
     end
 end
 
-close(progressBar);
+if exist('progressBar', 'var') 
+    close(progressBar);
+end
 
 if ~startFound
     C.drawSearchGraph();
@@ -219,7 +233,7 @@ end
 
 % Plotting funnel tree and saving relevant data structures
 if saveFlag
-    fileCount = planner.saveData(F,C,W,dir,fileCount);
+    fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
 end
 
 if drawFlag
@@ -246,9 +260,9 @@ toc
 
 fprintf('\n\n -- Expected traversal distance to goal region is <strong>%0.2f</strong> -- \n\n',G.startVertex.cost);
 
-if ~isinf(G.startVertex.cost)
-    G.drawPathToGoal();
-end
+% if ~isinf(G.startVertex.cost)
+%     G.drawPathToGoal();
+% end
 
 %drawing the shortest path tree of search trajectories with inlets and outlets
 if drawFlag
@@ -293,6 +307,8 @@ if drawFlag
 end
 
 %PiP-X algorithm: Online motion planning/replanning using Funnels
+replanningComputeTimes = NaN(totalIterationLimit - prePlanningIterationLimit,1);
+count = 1;
 while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
 
     %sense obstacles
@@ -333,7 +349,11 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         movementSkip = 2; %simulate higher robot-speed by increasing movementSkip parameter
         for movement = 1:movementSkip
 
+            %This is the step that computes solution funnel-path,
+            %so analyse computation times for replanning
+            tic
             robotMoveStatus = planner.moveRobot(F,C,G,Q);
+            replanningComputeTimes(count) = toc; count = count+1;
 
             %if goal reached
             if C.goalCheck(C.startNode.pose)
@@ -404,7 +424,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     end
     
     if (saveFlag && robotMoveStatus)
-        fileCount = planner.saveData(F,C,W,dir,fileCount);
+        fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
     end
     
     % if(toc>120) %potentially no path exists (5 minutes of planning time)
@@ -418,6 +438,9 @@ if videoFlag
     disp('Video created successfully!');
 end
 
+replanningComputeTimes = replanningComputeTimes(1:count-1);
+replanningComputeTimeQuantiles = quantile(replanningComputeTimes, [0.1, 0.5, 0.9]);
+replanningFrequencyQuantiles = 1./replanningComputeTimeQuantiles;
 %-----------------------------------------------------------%
 % end of online re-planning and robot motion
 %-----------------------------------------------------------%
@@ -457,9 +480,9 @@ end
 
 if saveFlag
     %2 additional frames for more 'aesthetic' video
-    fileCount = planner.saveData(F,C,M,0,dir,fileCount);
-    fileCount = planner.saveData(F,C,M,0,dir,fileCount);
-    save([dir 'problem.mat'],'startPose','goalPose','traversedPathLength','success','fileCount');
+    fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
+    fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
+    save([fileSaveDir 'problem.mat'],'startPose','goalPose','traversedPathLength','success','fileCount');
 end
 
 toc
