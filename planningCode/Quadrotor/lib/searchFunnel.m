@@ -240,6 +240,10 @@ classdef searchFunnel < handle
             
             %assigning the invariant sets
             funnelEdge.invariantSet_stateSpace = funnel.invarianceCertificates;
+            
+            %assigning the closed-loop control inputs
+            funnelEdge.feedforwardControlInputs = funnel.nominalControl;
+            funnelEdge.feedbackControlGains = funnel.feedbackControlGains;
 
             %computing projections onto configuration space and workspace for later use
             %project the funnel in state-space to C-space

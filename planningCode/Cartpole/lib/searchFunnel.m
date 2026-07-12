@@ -255,6 +255,14 @@ classdef searchFunnel < handle
             %assigning the invariant sets
             funnelEdge.invariantSet_stateSpace = funnel.invarianceCertificates;
 
+            %assigning the closed-loop control inputs
+            funnelEdge.feedforwardControlInputs = funnel.nominalControl;
+
+            %if swing transition trajectory, feedback gains don't exist
+            if ~all(all(isnan(funnel.invarianceCertificates(:,:,1))))
+                funnelEdge.feedbackControlGains = funnel.feedbackControlGains;
+            end
+
             %computing projections onto configuration space and workspace for later use
             %project the funnel in state-space to C-space
             [funnelEdge.trajectory_configurationSpace, funnelEdge.invariantSet_configurationSpace] = ...

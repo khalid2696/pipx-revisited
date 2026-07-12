@@ -27,8 +27,8 @@ clc; clearvars; close all
 addpath('./lib/');
 
 %configurable flags
-drawFlag = 1;
-saveFlag = 0;
+drawFlag = 0;
+saveFlag = 1;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
 
@@ -80,7 +80,9 @@ C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
 
 planner = PiPxPlanner(envLB,envUB,epsilon,funnelLibraryResolution,drawFlag);
-planner.setupPlot()
+if drawFlag
+    planner.setupPlot()
+end
 
 %------------------------------------%
 %user-input start and goal locations
@@ -124,7 +126,8 @@ W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles,
 %W.initialiseObstacleTree();
 %W.senseObstacles(startPose);
 
-if(~W.vertexCollisionFree(goalPose))
+if(~W.vertexCollisionFree(goalPose) || ~W.vertexCollisionFree(startPose))
+    errorType = 'Start or Goal inside obstacle';
     error('Goal inside the obstacles. No path exists!')
 end
 
@@ -222,7 +225,10 @@ if exist('progressBar', 'var')
 end
 
 if ~startFound
-    C.drawSearchGraph();
+    if drawFlag
+        C.drawSearchGraph();
+    end
+    errorType = 'exit in pre-planning phase';
     error(['Couldnot compute an initial funnel-path.. Exiting in pre-planning phase itself! ' ...
         'Increase the number of samples in the next run!']);
 end
@@ -362,9 +368,11 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 fprintf('\n\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
                     traversedPathLength,remainingPathLength);
                 fprintf('<strong>\n\nGoal reached! \n</strong>');
-                plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
-                W.drawAllObstacles();
-                drawnow
+                if drawFlag
+                    plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+                    W.drawAllObstacles();
+                    drawnow
+                end
                 break
             end
 
@@ -412,9 +420,11 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     %if goal reached
     if C.goalCheck(C.startNode.pose)
         fprintf('<strong>\n\nGoal reached! \n</strong>');
-        plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
-        W.drawAllObstacles();
-        drawnow
+        if drawFlag
+            plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+            W.drawAllObstacles();
+            drawnow
+        end
         break
     end   
     
@@ -457,15 +467,17 @@ else
     success = 0;
 
     %plotting to show robot progress
-    planner.setupPlot()
-    C.findParentInletsAtEachNode(G);
-    F.constructShortestFunnelPath(G);
-    F.drawSearchTrajectories();
-    plot(C.goalNode.pose(1), C.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
-    plot(C.startNode.pose(1), C.startNode.pose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
-    plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
-             'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
-    drawnow
+    if drawFlag
+        planner.setupPlot()
+        C.findParentInletsAtEachNode(G);
+        F.constructShortestFunnelPath(G);
+        F.drawSearchTrajectories();
+        plot(C.goalNode.pose(1), C.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
+        plot(C.startNode.pose(1), C.startNode.pose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
+        plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
+                 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+        drawnow
+    end
 end
  
 if drawFlag

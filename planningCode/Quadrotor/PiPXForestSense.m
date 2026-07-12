@@ -20,7 +20,7 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-% clc; clearvars; close all
+clc; clearvars; close all
 % keyboard
 
 %adding paths to code libraries
@@ -43,7 +43,7 @@ robotMovementFrequency = 2; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 25; %15
+    numTreeObstacles = 5; %15
 end
 
 if ~exist('expNumber', 'var')
@@ -122,7 +122,8 @@ W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles,
 W.initialiseObstacleTree();
 W.senseObstacles(startPose);
 
-if(~W.vertexCollisionFree(goalPose))
+if(~W.vertexCollisionFree(goalPose) || ~W.vertexCollisionFree(startPose))
+    errorType = 'Start or Goal inside obstacle';
     error('Goal inside the obstacles. No path exists!')
 end
 
@@ -219,7 +220,10 @@ if exist('progressBar', 'var')
 end
 
 if ~startFound
-    C.drawSearchGraph();
+    if drawFlag
+        C.drawSearchGraph();
+    end
+    errorType = 'exit in pre-planning phase';
     error(['Couldnot compute an initial funnel-path.. Exiting in pre-planning phase itself! ' ...
         'Increase the number of samples in the next run!']);
 end

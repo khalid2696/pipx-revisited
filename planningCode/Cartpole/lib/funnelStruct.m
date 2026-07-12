@@ -39,6 +39,10 @@ classdef funnelStruct < handle
 
         trajectory_workSpace
         invariantSet_workSpace
+
+        % Closed-loop control inputs
+        feedforwardControlInputs
+        feedbackControlGains
         
         %search graph based attributes
         parent
@@ -70,6 +74,9 @@ classdef funnelStruct < handle
         
                 obj.trajectory_workSpace = [];
                 obj.invariantSet_workSpace = [];
+
+                obj.feedforwardControlInputs = [];
+                obj.feedbackControlGains = [];
            
                 obj.cost = inf;
                 obj.nominalCost = inf;
@@ -88,6 +95,9 @@ classdef funnelStruct < handle
         
                 obj.trajectory_workSpace = [];
                 obj.invariantSet_workSpace = [];
+
+                obj.feedforwardControlInputs = [];
+                obj.feedbackControlGains = [];
             end
             
             if nargin < 3

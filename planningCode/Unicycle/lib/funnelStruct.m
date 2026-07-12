@@ -27,8 +27,6 @@ classdef funnelStruct < handle
         
         %funnel related attributes
         time
-        trajectory
-        RofA
         
         %Projections to lower-dimension spaces, for computation speed-up
         trajectory_stateSpace
@@ -39,6 +37,10 @@ classdef funnelStruct < handle
 
         trajectory_workSpace
         invariantSet_workSpace
+
+        % Closed-loop control inputs
+        feedforwardControlInputs
+        feedbackControlGains
         
         %search graph based attributes
         parent
@@ -59,8 +61,6 @@ classdef funnelStruct < handle
             if nargin == 0 %useful for dummy edge intialisations
                 obj.index = NaN;
                 obj.time = NaN;
-                obj.trajectory = [];
-                obj.RofA = [];
                 
                 obj.trajectory_stateSpace = [];
                 obj.invariantSet_stateSpace = [];
@@ -70,6 +70,9 @@ classdef funnelStruct < handle
         
                 obj.trajectory_workSpace = [];
                 obj.invariantSet_workSpace = [];
+
+                obj.feedforwardControlInputs = [];
+                obj.feedbackControlGains = [];
            
                 obj.cost = inf;
                 obj.nominalCost = inf;
@@ -77,8 +80,8 @@ classdef funnelStruct < handle
             else
                 obj.index = id;
                 obj.time = funnel.time;
-                obj.trajectory = funnel.trajectory;
-                obj.RofA = funnel.RofA;
+                % obj.trajectory = funnel.trajectory;
+                % obj.RofA = funnel.RofA;
 
                 obj.trajectory_stateSpace = funnel.trajectory;
                 obj.invariantSet_stateSpace = funnel.RofA;
@@ -88,6 +91,9 @@ classdef funnelStruct < handle
         
                 obj.trajectory_workSpace = [];
                 obj.invariantSet_workSpace = [];
+
+                obj.feedforwardControlInputs = [];
+                obj.feedbackControlGains = [];
             end
             
             if nargin < 3
