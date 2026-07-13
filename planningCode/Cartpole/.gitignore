@@ -1,0 +1,6 @@
+# folders
+/temp* 
+/experiment*
+
+# autosaves
+*.asv
