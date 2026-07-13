@@ -78,7 +78,9 @@ C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
 
 planner = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,extendDistance,funnelLibraryResolution,drawFlag);
-planner.setupPlot()
+if drawFlag
+    planner.setupPlot()
+end
 
 %----------------------------------------------------------------------%
 %fixed start and goal locations (begin and end of the road respectively)
@@ -166,7 +168,9 @@ end
 %% -----------------------------------------------------------%
 % Pre-planning phase of generating a roadmap of funnels
 %-----------------------------------------------------------%
-progressBar = waitbar(0, 'Funnel RRG construction progress');
+if drawFlag
+    progressBar = waitbar(0, 'Funnel RRG construction progress');
+end
 
 preplanningTime = 0;
 tic
@@ -191,17 +195,24 @@ while iteration < prePlanningIterationLimit && preplanningTime < prePlanningTime
     end
 
     if mod((iteration*100/prePlanningIterationLimit),10) == 0
-        waitbar(iteration/prePlanningIterationLimit)
-        %fprintf('\nGenerated %0.2f percent of the funnel RRG!',iteration*100/prePlanningIterationLimit);
+        if drawFlag
+            waitbar(iteration/prePlanningIterationLimit)
+        % else
+        %     fprintf('\nGenerated %0.2f percent of the funnel RRG!',iteration*100/prePlanningIterationLimit);
+        end
     end
 
     preplanningTime = toc;
 end
 
-close(progressBar);
+if exist('progressBar', 'var') 
+    close(progressBar);
+end
 
 if ~startFound
-    C.drawSearchGraph(); F.drawAllFunnels();
+    if drawFlag
+        C.drawSearchGraph(); F.drawAllFunnels();
+    end
     error(['Couldnot compute an initial funnel-path.. Exiting in pre-planning phase itself! ' ...
         'Increase the number of samples in the next run!']);
 end
@@ -287,6 +298,9 @@ if drawFlag
 end
 
 %PiP-X algorithm: Online motion planning/replanning using Funnels
+replanningComputeTimes = NaN(totalIterationLimit - prePlanningIterationLimit,1);
+traversedFunnelPath = cell(totalIterationLimit - prePlanningIterationLimit,1);
+count = 1;
 while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
 
     %sense obstacles
@@ -335,7 +349,15 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
         disp(' '); disp(' ');
         for movement = 1:movementSkip
 
-            robotMoveStatus = planner.moveRobot(F,C,G,Q);
+            %This is the step that computes solution funnel-path,
+            %so analyse computation times for replanning
+            tic
+            [robotMoveStatus, traversedFunnelEdge] = planner.moveRobot(F,C,G,Q);
+            replanningComputeTimes(count) = toc; 
+            if robotMoveStatus
+                traversedFunnelPath{count} = traversedFunnelEdge;
+            end
+            count = count+1;
 
             %if goal reached
             if C.goalCheck(C.startNode.pose)
@@ -344,9 +366,12 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
                 fprintf('\n\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
                     traversedPathLength,remainingPathLength);
                 fprintf('<strong>\n\nGoal reached! \n</strong>');
-                plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
-                W.drawAllObstacles();
-                drawnow
+                if drawFlag
+                    plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+                    W.drawAllObstacles();
+                    drawnow
+                end
+
                 break
             end
 
@@ -395,9 +420,12 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
     %if goal reached
     if C.goalCheck(C.startNode.pose)
         fprintf('<strong>\n\nGoal reached! \n</strong>');
-        plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
-        W.drawAllObstacles();
-        drawnow
+        if drawFlag
+            plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+            W.drawAllObstacles();
+            drawnow
+        end
+
         break
     end   
     
@@ -422,6 +450,12 @@ if videoFlag
     close all
 end
 
+replanningComputeTimes = replanningComputeTimes(1:count-1);
+traversedFunnelPath = traversedFunnelPath(1:count-1);
+
+% replanningComputeTimeQuantiles = quantile(replanningComputeTimes, [0.1, 0.5, 0.9]);
+% replanningFrequencyQuantiles = 1./replanningComputeTimeQuantiles;
+
 %-----------------------------------------------------------%
 % end of online re-planning and robot motion
 %-----------------------------------------------------------%
@@ -438,15 +472,17 @@ else
     success = 0;
 
     %plotting to show robot progress
-    planner.setupPlot()
-    C.findParentInletsAtEachNode(G);
-    F.constructShortestFunnelPath(G);
-    F.drawSearchTrajectories();
-    plot(C.goalNode.pose(1), C.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
-    plot(C.startNode.pose(1), C.startNode.pose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
-    plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
-             'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
-    drawnow
+    if drawFlag
+        planner.setupPlot()
+        C.findParentInletsAtEachNode(G);
+        F.constructShortestFunnelPath(G);
+        F.drawSearchTrajectories();
+        plot(C.goalNode.pose(1), C.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
+        plot(C.startNode.pose(1), C.startNode.pose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
+        plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
+                 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+        drawnow
+    end
 end
  
 if drawFlag
@@ -466,6 +502,5 @@ if saveFlag
     save([dir 'problem.mat'],'startPose','goalPose','traversedPathLength','success','fileCount');
 end
 
-toc
 %-------------------------------------------------------------------------%
 %end of main code

@@ -20,7 +20,7 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-clc; clearvars; close all
+% clc; clearvars; close all
 % keyboard
 
 %adding paths to code libraries
@@ -43,7 +43,7 @@ robotMovementFrequency = 2; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 5; %15
+    numTreeObstacles = 25; %15
 end
 
 if ~exist('expNumber', 'var')
@@ -255,9 +255,7 @@ G.initialiseGraphSearch(Q);
 
 %determine the best inlet to take at the start configuration
 disp(' ');
-tic
 robotMoveStatus = C.findBestInletAtStartNode(G,F,Q);
-toc
 
 fprintf('\n\n -- Expected traversal distance to goal region is <strong>%0.2f</strong> -- \n\n',G.startVertex.cost);
 
@@ -309,6 +307,7 @@ end
 
 %PiP-X algorithm: Online motion planning/replanning using Funnels
 replanningComputeTimes = NaN(totalIterationLimit - prePlanningIterationLimit,1);
+traversedFunnelPath = cell(totalIterationLimit - prePlanningIterationLimit,1);
 count = 1;
 while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
     
@@ -359,8 +358,12 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             %This is the step that computes solution funnel-path,
             %so analyse computation times for replanning
             tic
-            robotMoveStatus = planner.moveRobot(F,C,G,Q);
-            replanningComputeTimes(count) = toc; count = count+1;
+            [robotMoveStatus, traversedFunnelEdge] = planner.moveRobot(F,C,G,Q);
+            replanningComputeTimes(count) = toc; 
+            if robotMoveStatus
+                traversedFunnelPath{count} = traversedFunnelEdge;
+            end
+            count = count+1;
 
             %if goal reached
             if C.goalCheck(C.startNode.pose)
@@ -454,8 +457,11 @@ if videoFlag
 end
 
 replanningComputeTimes = replanningComputeTimes(1:count-1);
+traversedFunnelPath = traversedFunnelPath(1:count-1);
+
 % replanningComputeTimeQuantiles = quantile(replanningComputeTimes, [0.1, 0.5, 0.9]);
 % replanningFrequencyQuantiles = 1./replanningComputeTimeQuantiles;
+
 %-----------------------------------------------------------%
 % end of online re-planning and robot motion
 %-----------------------------------------------------------%
@@ -504,6 +510,5 @@ if saveFlag
     save([fileSaveDir 'problem.mat'],'startPose','goalPose','traversedPathLength','success','fileCount');
 end
 
-toc
 %-------------------------------------------------------------------------%
 %end of main code

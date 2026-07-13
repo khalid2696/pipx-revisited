@@ -8,7 +8,7 @@ lengthArray = NaN(1,numTrials);
 replanningComputeTimeHistory = [];
 
 expType = 'forest_sense';
-numTreeObstacles = 50;
+numTreeObstacles = 15;
 
 for expNumber = 1:numTrials
     
@@ -19,13 +19,17 @@ for expNumber = 1:numTrials
     %close all; clc;
     
     try
-        run('./PiPXForestSense.m');
+        run('./PiPXMazeDynamic.m');
     catch
+        %2 error types: 'Start or Goal inside obstacle' and 'exit in pre-planning phase'
+        %Re-run the experiment in case of first error (not our planner's error)
         success = 0;
         traversedPathLength = NaN;
         replanningComputeTimes = [];
+        traversedFunnelPath = [];
     end
 
+    %if the robot didnot reach the goal, void the datapoint on traversed path length
     if success == 0
         traversedPathLength = NaN;
     end
@@ -33,11 +37,14 @@ for expNumber = 1:numTrials
     successArray(expNumber) = success;
     lengthArray(expNumber) = traversedPathLength;
     replanningComputeTimeHistory = [replanningComputeTimeHistory; replanningComputeTimes];
+    traversedFunnelPath %isempty(traversedFunnelPath{index}) to figure out if the robot was idle
+
+    % keyboard
 end
 
 %% Post-processing
 
-clearvars -except expType numTrials numTreeObstacles successArray lengthArray replanningComputeTimeHistory
+clearvars -except expType numTrials numTreeObstacles successArray lengthArray replanningComputeTimeHistory traversedFunnelPath
     
 replanningComputeTimeQuantiles = quantile(replanningComputeTimeHistory, [0.1, 0.5, 0.9]);
 

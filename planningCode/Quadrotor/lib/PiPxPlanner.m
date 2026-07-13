@@ -126,10 +126,11 @@ classdef PiPxPlanner < handle
             C.startNode = startNode; F.startNode = startNode;
         end
         
-        function status = moveRobot(obj,F,C,G,Q)
+        function [status, traversingFunnelEdge] = moveRobot(obj,F,C,G,Q)
             
             if C.goalCheck(C.startNode.pose)
                 status = 1; %if already at goal region break out
+                traversingFunnelEdge = NaN;
                 return
             end
         
@@ -141,14 +142,16 @@ classdef PiPxPlanner < handle
             status = C.findBestInletAtStartNode(G,F,Q);
             
             if ~status
+                traversingFunnelEdge = NaN;
                 return
             end
 
             C.findParentInletsAtEachNode(G);
             F.constructShortestFunnelPath(G); 
             
-            if obj.drawFlag
-                traversingFunnelEdge = F.funnelEdges(C.currentRobotNode.parentFunnelEdge);
+            traversingFunnelEdge = F.funnelEdges(C.currentRobotNode.parentFunnelEdge);
+
+            if obj.drawFlag  
                 F.drawFunnel(traversingFunnelEdge,2);
             end
             
@@ -157,6 +160,7 @@ classdef PiPxPlanner < handle
             C.startNode = C.graphNodes(parentIndex);
             F.startNode = C.startNode;
             C.currentRobotNode = C.startNode;
+
         end
         
         %-------------------------------------------------------------------------%
