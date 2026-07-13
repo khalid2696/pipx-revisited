@@ -2,8 +2,8 @@ clc; clearvars; close all
 
 expType = 'forest_sense';
 parentDir = ['./experiment_data/' expType];
-if exist('parentDir','dir')
-    rmdir(parentDir, 's');
+if exist(parentDir, 'dir')
+    rmdir(parentDir, 's'); %remove folder if already exists from previous runs
 end
 mkdir(parentDir);
 
@@ -11,17 +11,14 @@ numTreeObstaclesArray = [0, 5, 10];
 numTrials = 2;
 gitCommitTag = ''; %saving this for reproducibility and version control
 
-% saving metadata in the output file (remove if already exists from previous runs)
+% saving metadata in the output file 
 experimentsDataFilePath = fullfile(parentDir, '/experimentData.mat');
-% if exist(experimentsDataFilePath, 'file') == 2
-%     delete(experimentsDataFilePath);
-% end
 save(experimentsDataFilePath, 'expType', 'numTreeObstaclesArray', 'numTrials', 'gitCommitTag');
 
 experimentsOutputTable = cell(numel(numTreeObstaclesArray), numTrials);
-for expCondition = 1:numel(numTreeObstaclesArray)
+for expSetting = 1:numel(numTreeObstaclesArray)
 
-    numTreeObstacles = numTreeObstaclesArray(expCondition)
+    numTreeObstacles = numTreeObstaclesArray(expSetting)
 
     for expNumber = 1:numTrials
         
@@ -34,7 +31,7 @@ for expCondition = 1:numel(numTreeObstaclesArray)
         end
     
         clearvars -except expType numTreeObstaclesArray numTrials fileSaveDir...
-                            expCondition expNumber numTreeObstacles ...
+                            expSetting expNumber numTreeObstacles ...
                               parentDir experimentsDataFilePath experimentsOutputTable 
         
         try
@@ -76,14 +73,15 @@ for expCondition = 1:numel(numTreeObstaclesArray)
         expOutput.errorType = errorType;
         
         %save into master output table
-        experimentsOutputTable{expCondition,expNumber} = expOutput;
+        experimentsOutputTable{expSetting,expNumber} = expOutput;
     
         %save the data generated from the experiments (after each trial for safety)
         save(experimentsDataFilePath, 'experimentsOutputTable', '-append');
     end
 end
 
-fprintf("\n\n Completed running all %d trials in '<strong>%s</strong>' environment\n", numTrials, expType)
+fprintf("\n\n Completed running all %d trials of %d settings in '<strong>%s</strong>' environment\n", ...
+                numTrials, numel(numTreeObstaclesArray), expType);
 return
 %% Post-processing
 
