@@ -1,5 +1,6 @@
 # folders
-temp/
+/temp*
+/experiment*
 
 # autosaves
 *.asv

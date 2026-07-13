@@ -46,12 +46,8 @@ if ~exist('numTreeObstacles', 'var')
     numTreeObstacles = 25; %15
 end
 
-if ~exist('expNumber', 'var')
-    expNumber = 1; %identifier for saving files in /temp/ folder
-end
-
-if saveFlag
-    fileSaveDir = ['./temp/forest_sense/trial' num2str(expNumber) '/'];
+if ~exist('fileSaveDir', 'var')
+    fileSaveDir = './temp/forest_sense/';
     mkdir(fileSaveDir);
 end
 
@@ -186,6 +182,7 @@ if drawFlag
     progressBar = waitbar(0, 'Funnel RRG construction progress');
 end
 
+tic
 while iteration < prePlanningIterationLimit %&& ~startFound
     
     flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove,epsilon);    
@@ -201,7 +198,7 @@ while iteration < prePlanningIterationLimit %&& ~startFound
         
         if ~flag
             iteration = iteration+1; %updating the iteration count if start config was found
-            startFound=1;
+            startFound=1; startFoundIterationCount = C.startNode.index;
             fprintf('\n\nInitial funnel-path found after <strong>%d iterations</strong>!\n\n',C.startNode.index);
         end
     end
@@ -214,6 +211,7 @@ while iteration < prePlanningIterationLimit %&& ~startFound
         end
     end
 end
+preplanningComputeTime = toc; %this is the time taken to offline build the funnel RRG
 
 if exist('progressBar', 'var') 
     close(progressBar);
@@ -244,6 +242,7 @@ if drawFlag
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
 
+tic
 Q = heap(totalIterationLimit); %initialise the priority queue with the total iteration limit
 C.previousRobotNode = C.startNode; C.currentRobotNode = C.startNode;
 
@@ -257,11 +256,13 @@ G.initialiseGraphSearch(Q);
 disp(' ');
 robotMoveStatus = C.findBestInletAtStartNode(G,F,Q);
 
+preplanningComputeTime = preplanningComputeTime + toc; %this is the time taken to compute the initial solution funnel-path
+
 fprintf('\n\n -- Expected traversal distance to goal region is <strong>%0.2f</strong> -- \n\n',G.startVertex.cost);
 
-% if ~isinf(G.startVertex.cost)
-%     G.drawPathToGoal();
-% end
+if ~isinf(G.startVertex.cost) && drawFlag
+    G.drawPathToGoal();
+end
 
 %drawing the shortest path tree of search trajectories with inlets and outlets
 if drawFlag

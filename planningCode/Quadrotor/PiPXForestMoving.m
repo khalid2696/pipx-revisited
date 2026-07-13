@@ -264,9 +264,9 @@ robotMoveStatus = C.findBestInletAtStartNode(G,F,Q);
 
 fprintf('\n\n -- Expected traversal distance to goal region is <strong>%0.2f</strong> -- \n\n',G.startVertex.cost);
 
-% if ~isinf(G.startVertex.cost)
-%     G.drawPathToGoal();
-% end
+if ~isinf(G.startVertex.cost) && drawFlag
+    G.drawPathToGoal();
+end
 
 %drawing the shortest path tree of search trajectories with inlets and outlets
 if drawFlag

@@ -1,47 +1,90 @@
 clc; clearvars; close all
 
-numTrials = 5;
-
-computationTime = NaN(1,numTrials); 
-successArray = NaN(1,numTrials); 
-lengthArray = NaN(1,numTrials);
-replanningComputeTimeHistory = [];
-
 expType = 'forest_sense';
-numTreeObstacles = 15;
+parentDir = ['./experiment_data/' expType];
+if exist('parentDir','dir')
+    rmdir(parentDir, 's');
+end
+mkdir(parentDir);
 
-for expNumber = 1:numTrials
+numTreeObstaclesArray = [0, 5, 10];
+numTrials = 2;
+gitCommitTag = ''; %saving this for reproducibility and version control
+
+% saving metadata in the output file (remove if already exists from previous runs)
+experimentsDataFilePath = fullfile(parentDir, '/experimentData.mat');
+% if exist(experimentsDataFilePath, 'file') == 2
+%     delete(experimentsDataFilePath);
+% end
+save(experimentsDataFilePath, 'expType', 'numTreeObstaclesArray', 'numTrials', 'gitCommitTag');
+
+experimentsOutputTable = cell(numel(numTreeObstaclesArray), numTrials);
+for expCondition = 1:numel(numTreeObstaclesArray)
+
+    numTreeObstacles = numTreeObstaclesArray(expCondition)
+
+    for expNumber = 1:numTrials
+        
+        expNumber
+
+        fileSaveDir = [parentDir '/obstacles_' num2str(numTreeObstacles) ...
+                            '/trial_' num2str(expNumber) '/'];
+        if ~exist('fileSaveDir','dir')
+            mkdir(fileSaveDir);
+        end
     
-    expNumber
+        clearvars -except expType numTreeObstaclesArray numTrials fileSaveDir...
+                            expCondition expNumber numTreeObstacles ...
+                              parentDir experimentsDataFilePath experimentsOutputTable 
+        
+        try
+            run('./PiPXForestSense.m');
+        catch
+            if strcmpi(errorType, 'start or goal inside obstacle')
+                expNumber = expNumber - 1;
+                fprintf("\nNot algorithm's fault. Re-running the trial..\n");
+                continue
+            end
 
-    clearvars -except expType expNumber numTrials numTreeObstacles ...
-                 successArray lengthArray replanningComputeTimeHistory
-    %close all; clc;
+            %2 error types: 'Start or Goal inside obstacle' and 'exit in pre-planning phase'
+            %Re-run the experiment in case of first error (not our planner's error)
+            success = 0;
+            traversedPathLength = NaN;
+            startFoundIterationCount = NaN;
+            replanningComputeTimes = [];
+            traversedFunnelPath = [];
+        end
     
-    try
-        run('./PiPXMazeDynamic.m');
-    catch
-        %2 error types: 'Start or Goal inside obstacle' and 'exit in pre-planning phase'
-        %Re-run the experiment in case of first error (not our planner's error)
-        success = 0;
-        traversedPathLength = NaN;
-        replanningComputeTimes = [];
-        traversedFunnelPath = [];
+        %successful trial implies no runtime errors
+        if success == 1
+            errorType = 'None';
+        else %if the robot didnot reach the goal, void the datapoint on traversed path length
+            traversedPathLength = NaN;
+        end
+    
+        %save experiment outputs into a struct variable
+        expOutput = struct('success', [], 'funnelPathCost', [], 'traversedFunnelPath', [], ...
+                            'preplanningComputeTime', [], 'startFoundIterationCount', [], ...
+                            'onlineReplanningComputeTimes', [], 'errorType', []);
+             
+        expOutput.success = success;
+        expOutput.funnelPathCost = traversedPathLength;
+        expOutput.traversedFunnelPath = traversedFunnelPath; %isempty(traversedFunnelPath{index}) to figure out if the robot was idle
+        expOutput.preplanningComputeTime = preplanningComputeTime;
+        expOutput.startFoundIterationCount = startFoundIterationCount;
+        expOutput.onlineReplanningComputeTimes = replanningComputeTimes;
+        expOutput.errorType = errorType;
+        
+        %save into master output table
+        experimentsOutputTable{expCondition,expNumber} = expOutput;
+    
+        %save the data generated from the experiments (after each trial for safety)
+        save(experimentsDataFilePath, 'experimentsOutputTable', '-append');
     end
-
-    %if the robot didnot reach the goal, void the datapoint on traversed path length
-    if success == 0
-        traversedPathLength = NaN;
-    end
-
-    successArray(expNumber) = success;
-    lengthArray(expNumber) = traversedPathLength;
-    replanningComputeTimeHistory = [replanningComputeTimeHistory; replanningComputeTimes];
-    traversedFunnelPath %isempty(traversedFunnelPath{index}) to figure out if the robot was idle
-
-    % keyboard
 end
 
+fprintf("\n\n Completed running all %d trials in '<strong>%s</strong>' environment\n", numTrials, expType)
+return
 %% Post-processing
 
 clearvars -except expType numTrials numTreeObstacles successArray lengthArray replanningComputeTimeHistory traversedFunnelPath
