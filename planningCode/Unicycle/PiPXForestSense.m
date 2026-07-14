@@ -47,6 +47,11 @@ if ~exist('numTreeObstacles', 'var')
     numTreeObstacles = 30; %15
 end
 
+if ~exist('fileSaveDir', 'var')
+    fileSaveDir = './temp/forest_sense/';
+    mkdir(fileSaveDir);
+end
+
 envLB_x = 0; envLB_y = 0;
 envUB_x = 50; envUB_y = 50;
 obstacleSizeRange = [1 3]; %radius of circular obstacles
@@ -162,9 +167,7 @@ T.kdInsertAsPayload(goalNode);
 
 %save the initial environment
 if saveFlag
-    dir = ['./temp/trial' num2str(1) '/'];
-    mkdir(dir);
-    fileCount = planner.saveData(F,C,W,dir,fileCount);
+    fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
 end
 
 %draw the initial environment
@@ -183,6 +186,7 @@ if drawFlag
     progressBar = waitbar(0, 'Funnel RRG construction progress');
 end
 
+tic
 while iteration < prePlanningIterationLimit %&& ~startFound
     
     flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove);    
@@ -198,7 +202,7 @@ while iteration < prePlanningIterationLimit %&& ~startFound
         
         if ~flag
             iteration = iteration+1; %updating the iteration count if start config was found
-            startFound=1;
+            startFound=1; startFoundIterationCount = C.startNode.index;
             fprintf('\n\nInitial funnel-path found after <strong>%d iterations</strong>!\n\n',C.startNode.index);
         end
     end
@@ -211,6 +215,7 @@ while iteration < prePlanningIterationLimit %&& ~startFound
         end
     end
 end
+preplanningComputeTime = toc; %this is the time taken to offline build the funnel RRG
 
 if exist('progressBar', 'var') 
     close(progressBar);
@@ -230,7 +235,7 @@ end
 
 % Plotting funnel tree and saving relevant data structures
 if saveFlag
-    fileCount = planner.saveData(F,C,W,dir,fileCount);
+    fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
 end
 
 if drawFlag
@@ -240,6 +245,7 @@ if drawFlag
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
 
+tic
 Q = heap(totalIterationLimit); %initialise the priority queue with the total iteration limit
 C.previousRobotNode = C.startNode; C.currentRobotNode = C.startNode;
 
@@ -252,6 +258,7 @@ G.initialiseGraphSearch(Q);
 %determine the best inlet to take at the start configuration
 disp(' ');
 robotMoveStatus = C.findBestInletAtStartNode(G,F,Q);
+preplanningComputeTime = preplanningComputeTime + toc; %this is the time taken to compute the initial solution funnel-path
 
 fprintf('\n\n -- Expected traversal distance to goal region is <strong>%0.2f</strong> -- \n\n',G.startVertex.cost);
 
@@ -436,7 +443,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     end
     
     if (saveFlag && robotMoveStatus)
-        fileCount = planner.saveData(F,C,W,dir,fileCount);
+        fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
     end
     
     % if(toc>120) %potentially no path exists (5 minutes of planning time)
@@ -500,9 +507,9 @@ end
 
 if saveFlag
     %2 additional frames for more 'aesthetic' video
-    fileCount = planner.saveData(F,C,M,0,dir,fileCount);
-    fileCount = planner.saveData(F,C,M,0,dir,fileCount);
-    save([dir 'problem.mat'],'startPose','goalPose','traversedPathLength','success','fileCount');
+    fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
+    fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
+    save([fileSaveDir 'problem.mat'],'startPose','goalPose','traversedPathLength','success','fileCount');
 end
 
 %-------------------------------------------------------------------------%

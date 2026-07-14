@@ -28,7 +28,7 @@ addpath('./lib/');
 
 %configurable flags
 drawFlag = 0;
-saveFlag = 1;
+saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
 
@@ -46,16 +46,12 @@ if ~exist('numTreeObstacles', 'var')
     numTreeObstacles = 10; %15
 end
 
-if ~exist('obstacleDynamicity', 'var') 
+if ~exist('obstacleDynamicity', 'var')
     obstacleDynamicity = 25; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end
 
-if ~exist('expNumber', 'var')
-    expNumber = 1; %identifier for saving files in /temp/ folder
-end
-
-if saveFlag
-    fileSaveDir = ['./temp/forest_dynamic/trial' num2str(expNumber) '/'];
+if ~exist('fileSaveDir', 'var')
+    fileSaveDir = './temp/forest_dynamic/';
     mkdir(fileSaveDir);
 end
 
@@ -129,6 +125,8 @@ W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles,
 if(~W.vertexCollisionFree(goalPose) || ~W.vertexCollisionFree(startPose))
     errorType = 'Start or Goal inside obstacle';
     error('Goal inside the obstacles. No path exists!')
+else
+    errorType = 'None';
 end
 
 %progress variables
@@ -171,7 +169,7 @@ T.kdInsertAsPayload(goalNode);
 
 %save the initial environment
 if saveFlag
-    fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
+    fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
 end
 
 %draw the initial environment
@@ -191,6 +189,7 @@ if drawFlag
     progressBar = waitbar(0, 'Funnel RRG construction progress');
 end
 
+tic
 while iteration < prePlanningIterationLimit %&& ~startFound
     
     flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove,epsilon);    
@@ -206,7 +205,7 @@ while iteration < prePlanningIterationLimit %&& ~startFound
         
         if ~flag
             iteration = iteration+1; %updating the iteration count if start config was found
-            startFound=1;
+            startFound=1; startFoundIterationCount = C.startNode.index;
             fprintf('\n\nInitial funnel-path found after <strong>%d iterations</strong>!\n\n',C.startNode.index);
         end
     end
@@ -219,6 +218,7 @@ while iteration < prePlanningIterationLimit %&& ~startFound
         end
     end
 end
+preplanningComputeTime = toc; %this is the time taken to offline build the funnel RRG
 
 if exist('progressBar', 'var') 
     close(progressBar);
@@ -239,7 +239,7 @@ end
 
 % Plotting funnel tree and saving relevant data structures
 if saveFlag
-    fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
+    fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
 end
 
 if drawFlag
@@ -249,6 +249,7 @@ if drawFlag
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
 
+tic
 Q = heap(totalIterationLimit); %initialise the priority queue with the total iteration limit
 C.previousRobotNode = C.startNode; C.currentRobotNode = C.startNode;
 
@@ -261,6 +262,8 @@ G.initialiseGraphSearch(Q);
 %determine the best inlet to take at the start configuration
 disp(' ');
 robotMoveStatus = C.findBestInletAtStartNode(G,F,Q);
+
+preplanningComputeTime = preplanningComputeTime + toc; %this is the time taken to compute the initial solution funnel-path
 
 fprintf('\n\n -- Expected traversal distance to goal region is <strong>%0.2f</strong> -- \n\n',G.startVertex.cost);
 
@@ -438,7 +441,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     end
     
     if (saveFlag && robotMoveStatus)
-        fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
+        fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
     end
     
     % if(toc>120) %potentially no path exists (5 minutes of planning time)
@@ -499,8 +502,8 @@ end
 
 if saveFlag
     %2 additional frames for more 'aesthetic' video
-    fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
-    fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
+    fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
+    fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
     save([fileSaveDir 'problem.mat'],'startPose','goalPose','traversedPathLength','success','fileCount');
 end
 

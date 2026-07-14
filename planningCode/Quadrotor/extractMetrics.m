@@ -1,7 +1,8 @@
 clc; clearvars; close all
 
 %select experiment setting
-expType = 'forest_sense';
+%Options: 'forest_sense', 'forest_dynamic', 'forest_moving', 'maze_sense', 'maze_dynamic'
+expType = 'forest_sense'; 
 
 %Load the experiment data
 experimentsDataFilePath = ['./experiment_data/' expType '/experimentData.mat'];
@@ -18,6 +19,8 @@ for expSetting1 = 1:size(experimentsOutputTable,1)
 
         for expNumber = 1:size(experimentsOutputTable,3)
             
+            fprintf("\nObstacles: %d, Dynamicity: %d, Trial id: %d", ...
+                        numTreeObstacles, obstacleDynamicity, expNumber);
             tempOutput = experimentsOutputTable{expSetting1, expSetting2, expNumber} 
 
             % tempOutput.success

@@ -296,14 +296,21 @@ classdef PiPxPlanner < handle
         
         %-------------------------------------------------------------------------%
         %Saving data functions
-        function fileCount = saveData(obj,F,C,W,dir,fileCount)
-            nodes = C.graphNodes;
-            edges = C.graphEdges;
-            funnels = F.funnelEdges;  
-            obstacles = W.obstacles;
-            robotNode = C.startNode;
-            save([dir 'iteration_' num2str(fileCount) '.mat'],'nodes','edges','funnels','obstacles','robotNode');
+        function fileCount = saveData(obj,F,C,G,W,dir,fileCount)
+            % configurations = C.graphNodes;
+            % %edges = C.graphEdges;
+            % graphVertices = G.graphVertices;
+            % graphEdges = G.graphEdges;
+            % funnels = F.funnelEdges;  
+            % obstacles = W.obstacles;
+            % robotNode = C.startNode;
+            % save([dir 'iteration_' num2str(fileCount) '.mat'],'configurations','graphVertices','graphEdges','funnels','obstacles','robotNode');
             
+            funnelNetwork = F;
+            configurations = C;
+            augmentedGraph = G;
+            workspace = W;
+            save([dir 'iteration_' num2str(fileCount) '.mat'],'funnelNetwork','configurations','augmentedGraph','workspace');
             fileCount = fileCount+1;
         end
     

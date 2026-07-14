@@ -28,7 +28,7 @@ addpath('./lib/');
 
 %configurable flags
 drawFlag = 0;
-saveFlag = 1;
+saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
 
@@ -121,6 +121,8 @@ W.senseObstacles(startPose);
 if(~W.vertexCollisionFree(goalPose) || ~W.vertexCollisionFree(startPose))
     errorType = 'Start or Goal inside obstacle';
     error('Goal inside the obstacles. No path exists!')
+else
+    errorType = 'None';
 end
 
 %progress variables
@@ -163,7 +165,7 @@ T.kdInsertAsPayload(goalNode);
 
 %save the initial environment
 if saveFlag
-    fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
+    fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
 end
 
 %draw the initial environment
@@ -232,7 +234,7 @@ end
 
 % Plotting funnel tree and saving relevant data structures
 if saveFlag
-    fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
+    fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
 end
 
 if drawFlag
@@ -442,7 +444,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     end
     
     if (saveFlag && robotMoveStatus)
-        fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
+        fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
     end
     
     % if(toc>120) %potentially no path exists (5 minutes of planning time)
@@ -506,8 +508,8 @@ end
 
 if saveFlag
     %2 additional frames for more 'aesthetic' video
-    fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
-    fileCount = planner.saveData(F,C,W,fileSaveDir,fileCount);
+    fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
+    fileCount = planner.saveData(F,C,G,W,fileSaveDir,fileCount);
     save([fileSaveDir 'problem.mat'],'startPose','goalPose','traversedPathLength','success','fileCount');
 end
 

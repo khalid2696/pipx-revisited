@@ -1,10 +1,11 @@
 clc; clearvars; close all
 
-%experiment settings
-expType = 'forest_sense';
-numTreeObstaclesArray = 0:5:10; %75
-obstacleDynamicityArray = 0;
-numTrials = 2;
+% Experiment settings
+% options: 'forest_sense', 'forest_dynamic', 'forest_moving', 'maze_sense', 'maze_dynamic'
+expType = 'forest_sense'; 
+numTreeObstaclesArray = 0:5:15; %75
+obstacleDynamicityArray = NaN; %50 seems to be the limit 
+numTrials = 1;
 gitCommitTag = ''; %saving this for reproducibility and version control
 
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", expType, numTrials);
@@ -30,12 +31,14 @@ for expSetting1 = 1:numel(numTreeObstaclesArray)
         
         obstacleDynamicity = obstacleDynamicityArray(expSetting2);
 
-        for expNumber = 1:numTrials
+        expNumber = 1;
+        while expNumber <= numTrials
             
-            expNumber
+            fprintf("\nObstacles: %d, Dynamicity: %d, Trial id: %d", ...
+                        numTreeObstacles, obstacleDynamicity, expNumber);
     
             fileSaveDir = [parentDir '/obstacles_' num2str(numTreeObstacles) ...
-                                '/trial_' num2str(expNumber) '/'];
+                             '_dynamicity_' num2str(obstacleDynamicity) '/trial_' num2str(expNumber) '/'];
             if ~exist('fileSaveDir','dir')
                 mkdir(fileSaveDir);
             end
@@ -45,21 +48,43 @@ for expSetting1 = 1:numel(numTreeObstaclesArray)
                                   parentDir fileSaveDir experimentsDataFilePath experimentsOutputTable 
             
             try
-                run('./PiPXForestSense.m');
-            catch
-                if strcmpi(errorType, 'start or goal inside obstacle')
-                    expNumber = expNumber - 1;
-                    fprintf("\nNot algorithm's fault. Re-running the trial..\n");
-                    continue
+                switch expType
+                    case 'forest_sense'
+                        run('./PiPXForestSense.m');
+                    case 'forest_dynamic'
+                        run('./PiPXForestDynamic.m');
+                    case 'forest_moving'
+                        run('./PiPXForestMoving.m');
+                    case 'maze_sense'
+                        run('./PiPXMazeSense.m');
+                    case 'maze_dynamic'
+                        run('./PiPXMazeDynamic.m');
+                    otherwise
+                        error('Unsupported experiment type')
                 end
-    
+            catch
                 %2 error types: 'Start or Goal inside obstacle' and 'exit in pre-planning phase'
                 %Re-run the experiment in case of first error (not our planner's error)
-                success = 0;
-                traversedPathLength = NaN;
-                startFoundIterationCount = NaN;
-                replanningComputeTimes = [];
-                traversedFunnelPath = [];
+                
+                if strcmpi(errorType, 'start or goal inside obstacle')
+                    expNumber = expNumber - 1;
+                    fprintf("\nStart/Goal occluded -- not algorithm's fault. Re-running the trial..\n");
+                    continue
+                elseif strcmpi(errorType, 'exit in pre-planning phase')
+                    success = 0;
+                    traversedPathLength = NaN;
+                    startFoundIterationCount = NaN;
+                    replanningComputeTimes = [];
+                    traversedFunnelPath = [];
+                else
+                    warning('Unknown error!! Should not happen, check the code!');
+                    success = 0;
+                    traversedPathLength = NaN;
+                    % startFoundIterationCount = NaN;
+                    % preplanningComputeTime = NaN;
+                    % replanningComputeTimes = [];
+                    % traversedFunnelPath = [];
+                end
             end
         
             %successful trial implies no runtime errors
@@ -87,6 +112,9 @@ for expSetting1 = 1:numel(numTreeObstaclesArray)
         
             %save the data generated from the experiments (after each trial for safety)
             save(experimentsDataFilePath, 'experimentsOutputTable', '-append');
+            
+            %increment the experiment counter
+            expNumber = expNumber + 1;
         
         end %MC trials loop
     end %obstacleDynamicity loop
