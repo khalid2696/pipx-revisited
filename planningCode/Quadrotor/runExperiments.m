@@ -3,9 +3,9 @@ clc; clearvars; close all
 % Experiment settings
 % options: 'forest_sense', 'forest_dynamic', 'forest_moving', 'maze_sense', 'maze_dynamic'
 expType = 'forest_sense'; 
-numTreeObstaclesArray = 0:5:15; %75
+numTreeObstaclesArray = 0:5:75; %75
 obstacleDynamicityArray = NaN; %50 seems to be the limit 
-numTrials = 1;
+numTrials = 25;
 gitCommitTag = ''; %saving this for reproducibility and version control
 
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", expType, numTrials);
