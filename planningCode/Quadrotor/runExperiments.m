@@ -5,8 +5,8 @@ clc; clearvars; close all
 expType = 'maze_dynamic';
 numTreeObstaclesArray = NaN;            % e.g. 45
 obstacleDynamicityArray = 25:25:75;     % 50 seems to be the limit
-numTrials = 1;
-gitCommitTag = 'deca87e';               % for reproducibility / version control
+numTrials = 50;
+gitCommitTag = '';               % for reproducibility / version control
 
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", ...
         expType, numTrials);
