@@ -2,11 +2,11 @@ clc; clearvars; close all
 
 % Experiment settings
 % options: 'forest_sense', 'forest_dynamic', 'forest_moving', 'maze_sense', 'maze_dynamic'
-expType = 'forest_sense'; 
-numTreeObstaclesArray = 0:5:75; %75
+expType = 'maze_sense'; 
+numTreeObstaclesArray = NaN; %45
 obstacleDynamicityArray = NaN; %50 seems to be the limit 
-numTrials = 25;
-gitCommitTag = ''; %saving this for reproducibility and version control
+numTrials = 250;
+gitCommitTag = '60ed222'; %saving this for reproducibility and version control
 
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", expType, numTrials);
 
@@ -22,6 +22,7 @@ experimentsDataFilePath = fullfile(parentDir, '/experimentData.mat');
 save(experimentsDataFilePath, 'expType', 'numTreeObstaclesArray', 'obstacleDynamicityArray', 'numTrials', 'gitCommitTag');
 
 experimentsOutputTable = cell(numel(numTreeObstaclesArray), numel(obstacleDynamicityArray), numTrials);
+% load(experimentsDataFilePath);
 
 for expSetting1 = 1:numel(numTreeObstaclesArray)
 
@@ -39,7 +40,7 @@ for expSetting1 = 1:numel(numTreeObstaclesArray)
     
             fileSaveDir = [parentDir '/obstacles_' num2str(numTreeObstacles) ...
                              '_dynamicity_' num2str(obstacleDynamicity) '/trial_' num2str(expNumber) '/'];
-            if ~exist('fileSaveDir','dir')
+            if ~exist(fileSaveDir,'dir')
                 mkdir(fileSaveDir);
             end
         

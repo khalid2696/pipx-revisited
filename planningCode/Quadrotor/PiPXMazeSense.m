@@ -36,7 +36,7 @@ fileCount = 1; %for saving files in /temp/ folder
 epsilon = 4;          %extend-distance
 prePlanningIterationLimit = 350; %300 and 350
 totalIterationLimit = 450; %Maximum number of iterations %keep it less than 300 always!
-idleTimeLimit = 5;
+idleTimeLimit = 7;
 
 planningFrequency = 1;
 robotMovementFrequency = 2; %decreasing this parameter increases the robot speed!
