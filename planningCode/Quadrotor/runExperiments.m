@@ -2,12 +2,13 @@ clc; clearvars; close all
 
 %% Experiment settings
 % options: 'forest_sense', 'forest_dynamic', 'forest_moving', 'maze_sense', 'maze_dynamic'
-expType = 'maze_dynamic';
-numTreeObstaclesArray = NaN;            % e.g. 45
-obstacleDynamicityArray = 25:25:75;     % 50 seems to be the limit
-numTrials = 50;
-gitCommitTag = '';               % for reproducibility / version control
+expType = 'forest_dynamic';
+numTreeObstaclesArray = 5:5:105;            % e.g. 45
+obstacleDynamicityArray = 0:10:50;     % 50 seems to be the limit
+numTrials = 25;
+gitCommitTag = '60ed222';               % for reproducibility / version control
 
+%% Folder and file management
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", ...
         expType, numTrials);
 
@@ -135,7 +136,7 @@ end % numObstacles loop
 
 fprintf("\n\n Completed all %d trials of %d settings in '<strong>%s</strong>' environment\n", ...
         numTrials, numel(numTreeObstaclesArray)*numel(obstacleDynamicityArray), expType);
-fprintf(" Run aggregateResults.m to build the master experimentsOutputTable.\n");
+fprintf("\nBuilding the master experimentsOutputTable.\n");
 
 %% Aggregates all per-trial results into the master experimentsOutputTable
 % Run this once after (or even during) the experiments. Safe to re-run anytime.
@@ -166,7 +167,7 @@ for i = 1:numel(numTreeObstaclesArray)
 end
 
 % Written once, at the end
-save(fullfile(parentDir, 'experimentData.mat'), 'experimentsOutputTable', '-v7.3');
+save(fullfile(parentDir, 'experimentData.mat'), 'experimentsOutputTable');
 
 fprintf('Aggregated table saved. %d trial(s) missing/incomplete.\n', numMissing);
 
