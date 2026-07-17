@@ -1,12 +1,12 @@
 clc; clearvars; close all
 
 %% Experiment settings
-% options: 'forest_sense' -- 15:5:25, 'road_sense' -- 5:5:15
-expType = 'road_sense';
-numObstaclesArray = 5:5:15;
+% options: 'forest_sense' -- 15:5:30, 'road_sense' -- 5:5:15
+expType = 'forest_sense';
+numObstaclesArray = 15:5:30;
 
-numTrials = 5;
-gitCommitTag = '';               % for reproducibility / version control
+numTrials = 100;
+gitCommitTag = 'add1316';               % for reproducibility / version control
 
 %% Folder and file management
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", ...
@@ -34,7 +34,7 @@ for expSetting1 = 1:numel(numObstaclesArray)
     while expNumber <= numTrials
 
         fileSaveDir = fullfile(parentDir, ...
-            sprintf('obstacles_%g_', numObstacles), ...
+            sprintf('obstacles_%g', numObstacles), ...
             sprintf('trial_%d', expNumber));
         resultFile = fullfile(fileSaveDir, 'trialResult.mat');
 
@@ -144,7 +144,7 @@ numMissing = 0;
 for i = 1:numel(numObstaclesArray)
     for j = 1:numTrials
         resultFile = fullfile(parentDir, ...
-            sprintf('obstacles_%g_', numObstaclesArray(i)), ...
+            sprintf('obstacles_%g', numObstaclesArray(i)), ...
             sprintf('trial_%d', j), 'trialResult.mat');
         if isfile(resultFile)
             S = load(resultFile, 'expOutput');

@@ -105,7 +105,10 @@ W.initialiseObstacleTree();
 W.senseObstacles(startPose);
 
 if(~W.vertexCollisionFree(goalPose))
+    errorType = 'Start or Goal inside obstacle';
     error('Goal inside the obstacles. No path exists!')
+else
+    errorType = 'None';
 end
 
 %progress variables
@@ -206,6 +209,7 @@ if ~startFound
     if drawFlag
         C.drawSearchGraph();
     end
+    errorType = 'exit in pre-planning phase';
     error(['Couldnot compute an initial funnel-path.. Exiting in pre-planning phase itself! ' ...
         'Increase the number of samples in the next run!']);
 end
