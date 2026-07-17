@@ -5,7 +5,7 @@ clc; clearvars; close all
 expType = 'maze_sense';
 numTreeObstaclesArray = NaN;            % e.g. 45
 obstacleDynamicityArray = NaN;     % 50 seems to be the limit
-numTrials = 25;
+numTrials = 250;
 gitCommitTag = '';               % for reproducibility / version control
 
 %% Folder and file management
