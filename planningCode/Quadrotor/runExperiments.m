@@ -2,11 +2,11 @@ clc; clearvars; close all
 
 %% Experiment settings
 % options: 'forest_sense', 'forest_dynamic', 'forest_moving', 'maze_sense', 'maze_dynamic'
-expType = 'forest_dynamic';
-numTreeObstaclesArray = 5:5:105;            % e.g. 45
-obstacleDynamicityArray = 0:10:50;     % 50 seems to be the limit
+expType = 'maze_sense';
+numTreeObstaclesArray = NaN;            % e.g. 45
+obstacleDynamicityArray = NaN;     % 50 seems to be the limit
 numTrials = 25;
-gitCommitTag = '60ed222';               % for reproducibility / version control
+gitCommitTag = '';               % for reproducibility / version control
 
 %% Folder and file management
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", ...
