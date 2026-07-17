@@ -6,7 +6,7 @@ expType = 'maze_sense';
 numTreeObstaclesArray = NaN;            % e.g. 45
 obstacleDynamicityArray = NaN;     % 50 seems to be the limit
 numTrials = 250;
-gitCommitTag = '';               % for reproducibility / version control
+gitCommitTag = 'd06ebe8';               % for reproducibility / version control
 
 %% Folder and file management
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", ...

@@ -49,7 +49,7 @@ classdef roadEnvironment < handle
         %constructor class - initialises with the position, size and an unique id
         function obj = roadEnvironment(envLB_x,envUB_x,envLB_y,envUB_y,sensorRadius,epsilon,sizeRange,mode,vargin)
             
-            obj.environmentType = 'forest';
+            obj.environmentType = 'road';
             obj.envLB_x = envLB_x; obj.envUB_x = envUB_x;
             obj.envLB_y = envLB_y; obj.envUB_y = envUB_y;
             obj.numObstacles = 0;
