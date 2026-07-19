@@ -2,11 +2,11 @@ clc; clearvars; close all
 
 %% Experiment settings
 % options: 'forest_sense' -- 15:5:30, 'road_sense' -- 5:5:15
-expType = 'forest_sense';
-numObstaclesArray = 15:5:30;
+expType = 'road_sense';
+numObstaclesArray = 5:2:17;
 
 numTrials = 100;
-gitCommitTag = 'add1316';               % for reproducibility / version control
+gitCommitTag = '';               % for reproducibility / version control
 
 %% Folder and file management
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", ...
