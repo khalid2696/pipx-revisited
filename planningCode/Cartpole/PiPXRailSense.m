@@ -33,11 +33,11 @@ videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
-extendDistance = 4;          %extend-distance along one direction
+extendDistance = 3;          %extend-distance along one direction
 prePlanningIterationLimit = 100; %100 and 150
 totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
-idleTimeLimit = 5;
-movementSkip = 2; %simulate higher robot-speed by increasing movementSkip parameter
+idleTimeLimit = 10;
+movementSkip = 1; %simulate higher robot-speed by increasing movementSkip parameter
 
 planningFrequency = 1;
 robotMovementFrequency = 3; %decreasing this parameter increases the robot speed!

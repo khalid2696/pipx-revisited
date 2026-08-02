@@ -2,7 +2,7 @@ clc; clearvars; close all
 
 %% Experiment settings
 % options: 'rail_dynamic', 'rail_sense'
-expType = 'rail_dynamic';
+expType = 'rail_sense';
 numObstaclesArray = 3:1:6;
 
 numTrials = 100;
