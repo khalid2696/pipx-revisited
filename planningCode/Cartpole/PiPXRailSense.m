@@ -33,10 +33,11 @@ videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
-extendDistance = 3;          %extend-distance along one direction
+extendDistance = 3.5;          %extend-distance along one direction
 prePlanningIterationLimit = 100; %100 and 150
 totalIterationLimit = 200; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 10;
+prePlanningTimeLimit = 20; %time alloted for preplanning in seconds
 movementSkip = 1; %simulate higher robot-speed by increasing movementSkip parameter
 
 planningFrequency = 1;
@@ -108,7 +109,10 @@ W.initialiseObstacleTree();
 W.senseObstacles(startPose);
 
 if(~W.vertexCollisionFree(goalPose))
+    errorType = 'Start or Goal inside obstacle';
     error('Goal inside the obstacles. No path exists!')
+else
+    errorType = 'None';
 end
 
 %progress variables
@@ -172,8 +176,8 @@ if drawFlag
     progressBar = waitbar(0, 'Funnel RRG construction progress');
 end
 
-tic
-while iteration < prePlanningIterationLimit %&& ~startFound
+preplanningComputeTime = 0; tic;
+while iteration < prePlanningIterationLimit && preplanningComputeTime < prePlanningTimeLimit
     
     flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove);    
     
@@ -200,7 +204,9 @@ while iteration < prePlanningIterationLimit %&& ~startFound
         %     fprintf('\nGenerated %0.2f percent of the funnel RRG!',iteration*100/prePlanningIterationLimit);
         end
     end
+    preplanningComputeTime = toc;
 end
+
 preplanningComputeTime = toc; %this is the time taken to offline build the funnel RRG
 
 if exist('progressBar', 'var') 
@@ -211,6 +217,7 @@ if ~startFound
     if drawFlag
         C.drawSearchGraph();
     end
+    errorType = 'exit in pre-planning phase';
     error(['Couldnot compute an initial funnel-path.. Exiting in pre-planning phase itself! ' ...
         'Increase the number of samples in the next run!']);
 end

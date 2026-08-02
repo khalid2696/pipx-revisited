@@ -3,7 +3,7 @@ clc; clearvars; close all
 %% Experiment settings
 % options: 'rail_dynamic', 'rail_sense'
 expType = 'rail_sense';
-numObstaclesArray = 3:1:6;
+numObstaclesArray = 3:1:5;
 
 numTrials = 100;
 gitCommitTag = '';               % for reproducibility / version control

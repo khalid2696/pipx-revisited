@@ -112,7 +112,10 @@ goalPose =  [envUB_x-5, pi];
 W.addDynamicObstacles(numObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
 
 if(~W.vertexCollisionFree(goalPose))
+    errorType = 'Start or Goal inside obstacle';
     error('Goal inside the obstacles. No path exists!')
+else
+    errorType = 'None';
 end
 
 %progress variables
@@ -217,6 +220,7 @@ if ~startFound
     if drawFlag
         C.drawSearchGraph(); F.drawAllFunnels();
     end
+    errorType = 'exit in pre-planning phase';
     error(['Couldnot compute an initial funnel-path.. Exiting in pre-planning phase itself! ' ...
         'Increase the number of samples in the next run!']);
 end
