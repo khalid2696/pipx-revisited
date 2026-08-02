@@ -20,14 +20,14 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-clc; clearvars; close all;
+%clc; clearvars; close all;
 %keyboard
 
 %adding paths to code libraries
 addpath('./lib/');
 
 %configurable flags
-drawFlag = 1;
+drawFlag = 0;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
@@ -175,7 +175,7 @@ if drawFlag
     progressBar = waitbar(0, 'Funnel RRG construction progress');
 end
 
-tic
+preplanningComputeTime = 0; tic;
 while iteration < prePlanningIterationLimit && preplanningComputeTime < prePlanningTimeLimit
     
     flag = planner.generateFunnelRRG(F,C,G,W,T,startFound,robotMove);    
@@ -203,9 +203,10 @@ while iteration < prePlanningIterationLimit && preplanningComputeTime < prePlann
         %     fprintf('\nGenerated %0.2f percent of the funnel RRG!',iteration*100/prePlanningIterationLimit);
         end
     end
-
-    preplanningComputeTime = toc; %this is the time taken to offline build the funnel RRG
+    preplanningComputeTime = toc;
 end
+
+preplanningComputeTime = toc; %this is the time taken to offline build the funnel RRG
 
 
 if exist('progressBar', 'var') 

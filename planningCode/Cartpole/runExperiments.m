@@ -1,12 +1,12 @@
 clc; clearvars; close all
 
 %% Experiment settings
-% options: 'forest_sense' -- 15:5:30, 'road_sense' -- 5:5:15
-expType = 'road_sense';
-numObstaclesArray = 5:2:15;
+% options: 'rail_dynamic', 'rail_sense'
+expType = 'rail_dynamic';
+numObstaclesArray = 3:1:6;
 
 numTrials = 100;
-gitCommitTag = '9b10827';               % for reproducibility / version control
+gitCommitTag = '';               % for reproducibility / version control
 
 %% Folder and file management
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", ...
@@ -66,8 +66,8 @@ for expSetting1 = 1:numel(numObstaclesArray)
         errorType = ''; % ensure it always exists for the catch block
         try
             switch expType
-                case 'forest_sense', numTreeObstacles = numObstacles;  run('./PiPXForestSense.m');
-                case 'road_sense',   numCarObstacles  = numObstacles;  run('./PiPXRoadSense.m');
+                case 'rail_dynamic', run('./PiPXRailDynamic.m');
+                case 'rail_sense',   run('./PiPXRailSense.m');
                 otherwise, error('Unsupported experiment type');
             end
         catch ME
