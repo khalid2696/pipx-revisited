@@ -59,10 +59,7 @@ while expNumber <= numTrials
     try
         switch expType
             case 'forest_sense',   run('./PiPXForestSense.m');
-            case 'forest_dynamic', run('./PiPXForestDynamic.m');
-            case 'forest_moving',  run('./PiPXForestMoving.m');
             case 'maze_sense',     run('./PiPXMazeSense.m');
-            case 'maze_dynamic',   run('./PiPXMazeDynamic.m');
             otherwise, error('Unsupported experiment type');
         end
     catch ME

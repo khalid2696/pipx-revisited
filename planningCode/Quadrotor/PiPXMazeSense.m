@@ -34,7 +34,7 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 250; %300 and 350
+prePlanningIterationLimit = 300; %300 and 350
 totalIterationLimit = 450; %Maximum number of iterations
 idleTimeLimit = 10;
 
@@ -42,7 +42,11 @@ planningFrequency = 1;
 robotMovementFrequency = 2; %decreasing this parameter increases the robot speed!
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
-if ~exist('fileSaveDir', 'var')
+if ~exist('usePresavedEnvironments', 'var') 
+    usePresavedEnvironments = true; %by default generate planning environment
+end
+
+if ~exist('fileSaveDir', 'var') && saveFlag
     fileSaveDir = './temp/maze_sense/';
     mkdir(fileSaveDir);
 end
@@ -50,15 +54,6 @@ end
 envLB = 0; envUB = 50;
 obstacleSizeRange = [1 3]; %radius of circular obstacles
 robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
-
-%W = forestEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1); 
-W = mazeEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1,'sensing');
-%obstacle class:  epsilon - tolerance
-%type - 1, 2 (different maze spaces)
-%mode: 'sensing' or 'dynamic' (addition and deletion)
-
-distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
-T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
 
 load('./precomputedFunnelLibrary/library.mat');
 %resolution of the pre-computed funnel library
@@ -68,10 +63,48 @@ F = searchFunnel(funnelLibrary,epsilon,funnelLibraryResolution);
 % !!! for RRT-X comparison instantiate the following class instead of the above 
 % F = searchTrajectory(funnelLibrary,epsilon,funnelLibraryResolution);
 
+if usePresavedEnvironments
+    environmentID = randi(50) %draw a pre-saved environment at random (50-100 environments are saved)
+    environmentsDir = fullfile('presaved_environments/maze/', sprintf('environment_%d', environmentID));
+    load(fullfile(environmentsDir, 'planningProblem.mat')); %loads pre-saved W and planner data-structure
+    
+    W.sensorRadius = robotSensorRadius; planner.drawFlag = drawFlag;
+    planner.extendDistance = epsilon; planner.resolution = funnelLibraryResolution; 
+
+    startPose = planner.startConfig; goalPose = planner.goalConfig;
+else
+    W = mazeEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1,'sensing');
+    %obstacle class:  epsilon - tolerance
+    %type - 1, 2 (different maze spaces)
+    %mode: 'sensing' or 'dynamic' (addition and deletion)
+    planner = PiPxPlanner(envLB,envUB,epsilon,funnelLibraryResolution,drawFlag);
+
+    %--------------------------------%
+    %random start and goal locations 
+    % on a circle of fixed distance (for experiments)
+    %--------------------------------%
+    workspaceCenter = (W.envLB + W.envUB)/2;
+    fixedDistance = 45;
+    randTheta = rand()*pi;
+    
+    startPose = [workspaceCenter + fixedDistance/2*cos(randTheta), workspaceCenter + fixedDistance/2*sin(randTheta)];  
+    goalPose  = [workspaceCenter - fixedDistance/2*cos(randTheta), workspaceCenter - fixedDistance/2*sin(randTheta)];  
+    
+    %round off to nearest integer (resolution of the motion planner)
+    startPose = round(startPose * funnelLibraryResolution) / funnelLibraryResolution;
+    goalPose = round(goalPose * funnelLibraryResolution) / funnelLibraryResolution;
+    planner.startConfig = startPose; planner.goalConfig = goalPose; 
+    
+    W.senseObstacles(startPose);
+end
+
+
+distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
+T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
+
 C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
 
-planner = PiPxPlanner(envLB,envUB,epsilon,funnelLibraryResolution,drawFlag);
 if drawFlag
     planner.setupPlot()
 end
@@ -91,28 +124,16 @@ end
 %startPose = rand([1 2])*(W.envUB-envLB) + W.envLB;
 %goalPose = rand([1 2])*(W.envUB-envLB) + W.envLB;
 
-%--------------------------------%
-%random start and goal locations around a circle of fixed distance (for experiments)
-%--------------------------------%
-workspaceCenter = (W.envLB + W.envUB)/2;
-fixedDistance = 45;
-randTheta = rand()*pi;
-
-startPose = [workspaceCenter + fixedDistance/2*cos(randTheta), workspaceCenter + fixedDistance/2*sin(randTheta)];  
-goalPose  = [workspaceCenter - fixedDistance/2*cos(randTheta), workspaceCenter - fixedDistance/2*sin(randTheta)];  
-
 %------------------------------------------------%
 %fixed start and goal locations (for dev purposes)
 %------------------------------------------------%
 %startPose = [5.4,4.7];
 %goalPose = [45.6,44.8];
 
-%round off to nearest integer (resolution of the motion planner)
-startPose = round(startPose * funnelLibraryResolution) / funnelLibraryResolution;
-goalPose = round(goalPose * funnelLibraryResolution) / funnelLibraryResolution;
-planner.startConfig = startPose; planner.goalConfig = goalPose; 
-
-W.senseObstacles(startPose);
+% %round off to nearest integer (resolution of the motion planner)
+% startPose = round(startPose * funnelLibraryResolution) / funnelLibraryResolution;
+% goalPose = round(goalPose * funnelLibraryResolution) / funnelLibraryResolution;
+% planner.startConfig = startPose; planner.goalConfig = goalPose;
 
 if(~W.vertexCollisionFree(goalPose) || ~W.vertexCollisionFree(startPose))
     errorType = 'Start or Goal inside obstacle';
@@ -120,8 +141,6 @@ if(~W.vertexCollisionFree(goalPose) || ~W.vertexCollisionFree(startPose))
 else
     errorType = 'None';
 end
-
-% return
 
 %progress variables
 iteration = 1;            %keeps track of number of nodes in tree

@@ -1,6 +1,7 @@
 # folders
 /temp*
 /experiment*
+/presaved_environments
 
 # autosaves
 *.asv
