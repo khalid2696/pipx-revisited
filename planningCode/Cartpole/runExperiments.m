@@ -6,7 +6,7 @@ expType = 'rail_sense';
 numObstaclesArray = 3:1:5;
 
 numTrials = 100;
-gitCommitTag = '';               % for reproducibility / version control
+gitCommitTag = '74d4150';               % for reproducibility / version control
 
 %% Folder and file management
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", ...

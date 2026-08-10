@@ -30,6 +30,8 @@ classdef PiPxPlanner < handle
         CspaceDimensionality
         initial_rBall_radius
         drawFlag
+        startConfig
+        goalConfig
     end %end of properties
 
     methods
