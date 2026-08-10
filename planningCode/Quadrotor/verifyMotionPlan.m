@@ -3,7 +3,7 @@ clc; clearvars; close all
 
 %% Experiment settings
 % options: 'forest_sense', 'maze_sense'
-expType = 'forest_sense';
+expType = 'maze_sense';
 numTreeObstacles = 5;
 numTrials = 1;
 gitCommitTag = '';               % for reproducibility / version control

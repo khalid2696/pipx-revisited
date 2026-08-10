@@ -20,14 +20,14 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-% clc; clearvars; close all
+clc; clearvars; close all
 % keyboard
 
 %adding paths to code libraries
 addpath('./lib/');
 
 %configurable flags
-drawFlag = 0;
+drawFlag = 1;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
@@ -51,8 +51,7 @@ if ~exist('fileSaveDir', 'var')
     mkdir(fileSaveDir);
 end
 
-envLB = 0;
-envUB = 50;
+envLB = 0; envUB = 50;
 obstacleSizeRange = [1 3]; %radius of circular obstacles
 robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
 
@@ -67,6 +66,9 @@ load('./precomputedFunnelLibrary/library.mat');
 %resolution of the pre-computed funnel library
 funnelLibraryResolution = 1; %higher this resolution, finer the motion plan
 F = searchFunnel(funnelLibrary,epsilon,funnelLibraryResolution);
+
+% !!! for RRT-X comparison instantiate the following class instead of the above 
+% F = searchTrajectory(funnelLibrary,epsilon,funnelLibraryResolution);
 
 C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
@@ -124,6 +126,8 @@ if(~W.vertexCollisionFree(goalPose) || ~W.vertexCollisionFree(startPose))
 else
     errorType = 'None';
 end
+
+% return
 
 %progress variables
 iteration = 1;            %keeps track of number of nodes in tree

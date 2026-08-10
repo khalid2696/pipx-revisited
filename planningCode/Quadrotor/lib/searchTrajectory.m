@@ -1,6 +1,6 @@
 % The MIT License (MIT)
 %
-% Copyright 2022 Mohamed Khalid M Jaffar, University of Maryland
+% Copyright 2025 Mohamed Khalid M Jaffar, University of Maryland
 %
 % Permission is hereby granted, free of charge, to any person obtaining a copy
 % of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@
 % the software.
 
 %Defining a class to abstract information about funnels in the funnel-network  
-classdef searchFunnel < handle
+classdef searchTrajectory < handle
     properties
         
         funnelLibrary
@@ -45,7 +45,7 @@ classdef searchFunnel < handle
         goalNode
     end
     methods
-        function obj = searchFunnel(library, extendDistance, libraryResolution)
+        function obj = searchTrajectory(library, extendDistance, libraryResolution)
             
             obj.startNode = []; %will be updated in runtime
             obj.goalNode  = []; %will be updated in runtime
@@ -149,7 +149,8 @@ classdef searchFunnel < handle
                 %outFunnel for newNode/ inFunnel for neighborNode 
                 funnelEdge = obj.steer(newNode,thisNeighbor.pose);
 
-                if ~W.funnelCollisionFree(funnelEdge) %|| ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
+                % if ~W.funnelCollisionFree(funnelEdge) %|| ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
+                if ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose)
                     continue
                 end           
 
@@ -186,7 +187,8 @@ classdef searchFunnel < handle
 
                 funnelEdge = obj.steer(thisNeighbor,newNode.pose);
 
-                if ~W.funnelCollisionFree(funnelEdge) %|| ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
+                % if ~W.funnelCollisionFree(funnelEdge) %|| ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose))
+                if ~W.edgeCollisionFree(thisNeighbor.pose,newNode.pose)
                     continue
                 end
 
@@ -294,6 +296,9 @@ classdef searchFunnel < handle
         %checks whether funnel1 is composable with funnel2
         %that is if outlet of funnel1 is contained within the inlet of funnel2
         function check = isComposable(obj, funnel1, funnel2, checkingMethod)
+        
+            check = 1;  
+            return
 
             if nargin < 4
                 checkingMethod = 'Sampling';
@@ -345,6 +350,9 @@ classdef searchFunnel < handle
         
         %new function added!
         function check = inFunnelInlet(obj,funnel,configurationPose) %2D configuration for now
+
+            check = 1;
+            return
 
             check = 0;
             
@@ -514,17 +522,17 @@ classdef searchFunnel < handle
                 status = 1; %gray-colored funnels
             end
 
-            N = length(funnel.time);
-            for k=N:-1:1 %change it to -1 to get more pretty plots
-                P = funnel.invariantSet_workSpace(:,:,k);
-                xt = funnel.trajectory_workSpace(:,k);
-                drawEllipse(obj,xt,P,status);
-            end
+            % N = length(funnel.time);
+            % for k=N:-1:1 %change it to -1 to get more pretty plots
+            %     P = funnel.invariantSet_workSpace(:,:,k);
+            %     xt = funnel.trajectory_workSpace(:,k);
+            %     drawEllipse(obj,xt,P,status);
+            % end
 
             if status==0
-                drawDeletedTrajectory(obj,funnel);
+                obj.drawDeletedTrajectory(funnel);
             else
-                drawTrajectory(obj,funnel);
+                obj.drawTrajectory(funnel);
             end
         end
 
