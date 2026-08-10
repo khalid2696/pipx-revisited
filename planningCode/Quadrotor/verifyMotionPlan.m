@@ -13,7 +13,7 @@ fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials 
         expType, numTrials);
 
 % parentDir = fullfile('.', 'experiment_data/invariance_verification', expType);
-parentDir = fullfile('.', 'temp/invariance_verification', expType);
+parentDir = fullfile('.', 'temp_invariance_verification', expType);
 if ~exist(parentDir, 'dir') 
     mkdir(parentDir); 
 end
@@ -200,7 +200,8 @@ function postProcess(expOutput, expDataStructures)
     traversedFunnelPath = expOutput.traversedFunnelPath;
 
     for i=1:numel(traversedFunnelPath)
-        F.drawFunnel(traversedFunnelPath{i},2);
+        tempFunnel = traversedFunnelPath{i}
+        F.drawFunnel(tempFunnel,2);
     end
 
     plot(planner.goalConfig(1), planner.goalConfig(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
