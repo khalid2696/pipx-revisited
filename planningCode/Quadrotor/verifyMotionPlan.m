@@ -3,9 +3,10 @@ clc; clearvars; close all
 
 %% Experiment settings
 % options: 'forest_sense', 'maze_sense'
+usePresavedEnvironments = true; 
 expType = 'maze_sense';
-numTreeObstacles = 5;
-numTrials = 1;
+numTreeObstacles = 10; %5:5:75
+numTrials = 3;
 gitCommitTag = '';               % for reproducibility / version control
 
 %% Folder and file management
@@ -53,10 +54,12 @@ while expNumber <= numTrials
     fprintf("\nTrial id: %d", expNumber);
     logMessage(logFile, sprintf('START trial=%d', expNumber));
 
-    clearvars -except expType numTreeObstacles numTrials expNumber parentDir fileSaveDir resultFile logFile
+    clearvars -except usePresavedEnvironments expType numTreeObstacles numTrials ...
+                        expNumber parentDir fileSaveDir resultFile logFile
 
     errorType = ''; % ensure it always exists for the catch block
     try
+        environmentID = expNumber;
         switch expType
             case 'forest_sense',   run('./PiPXForestSense.m');
             case 'maze_sense',     run('./PiPXMazeSense.m');

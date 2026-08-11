@@ -20,21 +20,21 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-clc; clearvars; close all
+% clc; clearvars; close all
 % keyboard
 
 %adding paths to code libraries
 addpath('./lib/');
 
 %configurable flags
-drawFlag = 1;
+drawFlag = 0;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 200; %300 and 350
+prePlanningIterationLimit = 250; %300 and 350
 totalIterationLimit = 450; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
 
@@ -43,7 +43,11 @@ robotMovementFrequency = 2; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('usePresavedEnvironments', 'var') 
-    usePresavedEnvironments = true; %by default generate planning environment
+    usePresavedEnvironments = false; %by default generate planning environment
+end
+
+if usePresavedEnvironments && ~exist('environmentID', 'var') 
+    environmentID = randi(50); %draw a pre-saved environment at random (50-100 environments are saved)
 end
 
 if ~exist('numTreeObstacles', 'var') 
@@ -67,7 +71,7 @@ F = searchFunnel(funnelLibrary,epsilon,funnelLibraryResolution);
 % F = searchTrajectory(funnelLibrary,epsilon,funnelLibraryResolution);
 
 if usePresavedEnvironments
-    environmentID = randi(50) %draw a pre-saved environment at random (50-100 environments are saved)
+    fprintf('\nUsing presaved environments for the planning task..\n');
     environmentsDir = fullfile('presaved_environments/forest/', ...
         sprintf('obstacles_%d', numTreeObstacles), sprintf('environment_%d', environmentID));
     load(fullfile(environmentsDir, 'planningProblem.mat')); %loads pre-saved W and planner data-structure
@@ -77,6 +81,7 @@ if usePresavedEnvironments
 
     startPose = planner.startConfig; goalPose = planner.goalConfig;
 else
+    fprintf('\nGenerating a random environment for the planning task..\n');
     W = forestEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,'sensing');
     %obstacle class:  epsilon - tolerance
     %mode: 'sensing' or 'dynamic' (addition and deletion)
