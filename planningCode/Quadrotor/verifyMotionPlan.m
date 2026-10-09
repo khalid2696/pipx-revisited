@@ -6,7 +6,7 @@ clc; clearvars; close all
 usePresavedEnvironments = true; 
 expType = 'maze_sense';
 numTreeObstacles = 10; %5:5:75
-numTrials = 3;
+numTrials = 4;
 gitCommitTag = '';               % for reproducibility / version control
 
 %% Folder and file management
@@ -198,9 +198,14 @@ function postProcess(expOutput, expDataStructures)
 
     planner.setupPlot(); W.drawAllObstacles();
     traversedFunnelPath = expOutput.traversedFunnelPath;
+    
+    expOutput
 
     for i=1:numel(traversedFunnelPath)
         tempFunnel = traversedFunnelPath{i}
+        if isempty(tempFunnel) %skip empty saved data (happens due to nature of file saving)
+            continue
+        end
         F.drawFunnel(tempFunnel,2);
     end
 

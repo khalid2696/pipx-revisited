@@ -297,6 +297,7 @@ classdef searchTrajectory < handle
         %that is if outlet of funnel1 is contained within the inlet of funnel2
         function check = isComposable(obj, funnel1, funnel2, checkingMethod)
         
+            %for trajectories no need to check for compasability
             check = 1;  
             return
 
@@ -351,6 +352,7 @@ classdef searchTrajectory < handle
         %new function added!
         function check = inFunnelInlet(obj,funnel,configurationPose) %2D configuration for now
 
+            %for trajectories no need, so skip this 
             check = 1;
             return
 

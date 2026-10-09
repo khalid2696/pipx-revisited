@@ -21,10 +21,12 @@
 % the software.
 
 % clc; clearvars; close all
-%keyboard
+% keyboard
 
 %adding paths to code libraries
 addpath('./lib/');
+
+%TO DO: a switch for RRT-X (to make things easier and future proof)
 
 %configurable flags
 drawFlag = 0;
@@ -34,8 +36,8 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 300; %300 and 350
-totalIterationLimit = 450; %Maximum number of iterations
+prePlanningIterationLimit = 300; %300 and 350 %no more than 200 for RRT-X!
+totalIterationLimit = 450; %Maximum number of iterations %no more than 225 for RRT-X!
 idleTimeLimit = 10;
 
 planningFrequency = 1;

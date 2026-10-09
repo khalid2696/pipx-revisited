@@ -23,6 +23,8 @@
 % clc; clearvars; close all
 % keyboard
 
+%TO DO: a switch for RRT-X (to make things easier and future proof)
+
 %adding paths to code libraries
 addpath('./lib/');
 
@@ -34,8 +36,8 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 250; %300 and 350
-totalIterationLimit = 450; %Maximum number of iterations %keep it less than 300 always!
+prePlanningIterationLimit = 250; %250 and 300 %no more than 200 for RRT-X!
+totalIterationLimit = 300; %Maximum number of iterations %keep it less than 300 always! %no more than 225 for RRT-X!
 idleTimeLimit = 5;
 
 planningFrequency = 1;
@@ -67,7 +69,8 @@ load('./precomputedFunnelLibrary/library.mat');
 %resolution of the pre-computed funnel library
 funnelLibraryResolution = 1; %higher this resolution, finer the motion plan
 F = searchFunnel(funnelLibrary,epsilon,funnelLibraryResolution);
-% !!! for RRT-X comparison instantiate the following class instead of the above 
+
+% !!! for RRT-X comparison instantiate the following class instead of the above
 % F = searchTrajectory(funnelLibrary,epsilon,funnelLibraryResolution);
 
 if usePresavedEnvironments
