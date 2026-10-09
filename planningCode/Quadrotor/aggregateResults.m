@@ -2,7 +2,7 @@
 % Run this once after (or even during) the experiments. Safe to re-run anytime.
 clc; clearvars
 
-expType = 'maze_dynamic';
+expType = 'forest_sense';
 parentDir = fullfile('.', 'experiment_data', expType);
 
 load(fullfile(parentDir, 'experimentMetadata.mat'), ...

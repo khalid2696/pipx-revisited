@@ -27,6 +27,7 @@
 addpath('./lib/');
 
 %TO DO: a switch for RRT-X (to make things easier and future proof)
+%for RRT-X, change tolerance limit (epsilon) in W instantiation to be zero (no need of tolerance)
 
 %configurable flags
 drawFlag = 0;

@@ -6,7 +6,7 @@ clc; clearvars; close all
 usePresavedEnvironments = true; 
 expType = 'maze_sense';
 numTreeObstacles = 10; %5:5:75
-numTrials = 4;
+numTrials = 3;
 gitCommitTag = '';               % for reproducibility / version control
 
 %% Folder and file management
