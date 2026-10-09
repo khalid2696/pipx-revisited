@@ -6,7 +6,7 @@ clc; clearvars; close all
 usePresavedEnvironments = true; 
 expType = 'maze_sense';
 numTreeObstacles = 10; %5:5:75
-numTrials = 3;
+numTrials = 1;
 gitCommitTag = '';               % for reproducibility / version control
 
 %% Folder and file management
@@ -142,6 +142,7 @@ for k = 1:numTrials
     resultFile = fullfile(parentDir, sprintf('trial_%d', k), 'trialResult.mat');
     if isfile(resultFile)
         load(resultFile, 'expOutput', 'expDataStructures');
+        expOutput.traversedFunnelPath
         postProcess(expOutput, expDataStructures);
     else
         numMissing = numMissing + 1;
