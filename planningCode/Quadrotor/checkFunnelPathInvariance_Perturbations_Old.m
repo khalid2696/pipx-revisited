@@ -54,11 +54,11 @@ if ~exist('quadParameters','var')
 end
 
 if ~exist('num_samples','var'),      num_samples = 100;         end % # rollouts
-if ~exist('n_perturb','var'),        n_perturb   = 2;           end % perturbations PER funnel
+if ~exist('n_perturb','var'),        n_perturb   = 5;           end % perturbations PER funnel
 if ~exist('perturbMode','var'),      perturbMode      = 'additive'; end % HOW  : 'additive'|'resample'
 if ~exist('perturbPlacement','var'), perturbPlacement = 'interior'; end % WHERE: 'boundary'|'interior'
-if ~exist('perturbLevel','var'),     perturbLevel     = 0.0;    end % level c in (0,1], boundary=1
-if ~exist('upsamplingFactor','var'), upsamplingFactor = 40;     end % fine steps per ORIGINAL knot interval
+if ~exist('perturbLevel','var'),     perturbLevel     = 0.02;    end % level c in (0,1], boundary=1
+if ~exist('upsamplingFactor','var'), upsamplingFactor = 50;     end % fine steps per ORIGINAL knot interval
 if ~exist('intMethod','var'),        intMethod   = 'RK4';       end % 'Euler'|'trapezoidal'|'RK4'|'ode45'
 if ~exist('divergeTol','var'),       divergeTol  = 1e6;         end % |x| beyond this (or non-finite) => rollout flagged diverged
 if ~exist('knotRange','var'),        knotRange   = [1 Inf];     end % [kmin kmax] for perturb knots (ORIGINAL knots)
@@ -92,6 +92,15 @@ T = numel(globalTime);   % total recorded (fine) points along the path
 
 fprintf('Funnel path: %d funnels, upsampling x%d -> %d fine points, horizon %.3f s.\n', ...
     p, upsamplingFactor, T, globalTime(end));
+
+% ---- certified-knot columns (metrics/plots/saves restricted to these) ----
+knotCols   = find(mod(knotMap(:,2) - 1, upsamplingFactor) == 0).';  % 1 x Tk, row
+knotTime   = globalTime(knotCols);
+x_nom_knot = x_nom_global(:, knotCols);
+u_nom_knot = u_nom_global(:, knotCols);
+knotMap_k  = knotMap(knotCols, :);
+Tk         = numel(knotCols);
+fprintf('Certified knots along path       : %d\n', Tk);
 
 %% --- Test D: seam continuity between consecutive funnels ---
 seamGap = zeros(1, p-1);
@@ -162,8 +171,9 @@ for s = 1:num_samples
 
     inside          = V <= 1 + containTol;
     inFunnel(s,:)   = inside;
-    exitIdx         = find(~inside, 1, 'first');
-    if ~isempty(exitIdx), firstExitT(s) = globalTime(exitIdx); end
+    vK              = V(knotCols);
+    exitIdxK        = find(vK > 1 + containTol, 1, 'first');   % true exit; NaN tail ignored
+    if ~isempty(exitIdxK), firstExitT(s) = knotTime(exitIdxK); end
 
     if hasObstacles
         [hit, hitIdx] = check_collisions(X(ws_dims,:), obstacles, robotRadius);
@@ -177,8 +187,13 @@ disp('-- End of Monte Carlo funnel-path rollouts --'); disp(' ');
 %% ------------------------------------------------------------------------
 %  Verification summary
 %  ------------------------------------------------------------------------
-nFullyContained = sum(all(inFunnel, 2));
-knotOutRate     = 1 - mean(inFunnel(:));
+funnelValueK    = funnelValue(:, knotCols);
+valid           = isfinite(funnelValueK);                 % S x Tk: knots actually reached
+inFunnelK       = funnelValueK <= 1 + containTol;         % NaN -> false (handled via `valid`)
+% exit rate over REACHED knots only (don't count NaN tails of diverged runs as exits)
+knotOutRate     = 1 - sum(inFunnelK(:)) / max(nnz(valid), 1);
+% "fully contained" = did not diverge AND never left a funnel
+nFullyContained = sum( ~diverged & all(inFunnelK, 2) );
 nCollided       = sum(collided);
 nHandoffFail    = sum(any(~handoffOK, 2));
 
@@ -188,12 +203,12 @@ fprintf('Perturbations per rollout        : %d  (%d/funnel x %d funnels)\n', ...
         n_perturb*p, n_perturb, p);
 fprintf('Fully-contained rollouts         : %d / %d  (%.1f%%)\n', ...
         nFullyContained, num_samples, 100*nFullyContained/num_samples);
-fprintf('Fine points outside funnel       : %.2f%%\n', 100*knotOutRate);
+fprintf('Knots outside funnel             : %.2f%%\n', 100*knotOutRate);
 fprintf('Handoff-inlet violations         : %d rollout(s)\n', nHandoffFail);
 if any(diverged)
     fprintf(2, 'Diverged (numerical blow-up)     : %d rollout(s)  <-- integration/control issue, not a funnel result\n', sum(diverged));
 end
-fprintf('Max funnel value observed        : %.4g  (level = 1)\n', max(funnelValue(:), [], 'omitnan'));
+fprintf('Max funnel value observed        : %.4g  (level = 1)\n', max(funnelValueK(:), [], 'omitnan'));
 if hasObstacles
     fprintf('Rollouts colliding w/ obstacle   : %d / %d  (%.1f%%)\n', ...
             nCollided, num_samples, 100*nCollided/num_samples);
@@ -206,12 +221,8 @@ if any(~isnan(firstExitT))
 end
 fprintf('======================================================\n\n');
 
-%% --- Test A: funnel value at ORIGINAL knots only (certified points) ---
-isKnot   = mod(knotMap(:,2) - 1, upsamplingFactor) == 0;   % T x 1 logical
-knotV    = funnelValue(:, isKnot);
 fprintf('Max V at certified knots : %.4g   (vs %.4g on full fine grid)\n', ...
-        max(knotV(:), [], 'omitnan'), max(funnelValue(:), [], 'omitnan'));
-
+        max(funnelValueK(:), [], 'omitnan'), max(funnelValue(:), [], 'omitnan'));
 %% ------------------------------------------------------------------------
 %  Save trajectory data + normalized Lyapunov values (x'Px, boundary = 1)
 %  ------------------------------------------------------------------------
@@ -220,19 +231,17 @@ if ~exist('outputFile','var'),  outputFile  = 'funnelPath_MCRollouts.mat'; end
 
 if saveResults
     rollout = struct();
-    rollout.time       = globalTime;                 % 1 x T   (fine global time)
-    rollout.states     = cat(3, trajectories{:});    % n_x x T x num_samples
-    rollout.inputs     = cat(3, input_traj{:});      % n_u x T x num_samples
-    rollout.lyapunov   = funnelValue;                % num_samples x T  (normalized: <=1 inside)
-    rollout.inFunnel   = inFunnel;                   % num_samples x T  logical
-    rollout.collided   = collided;                   % num_samples x 1
-    rollout.firstExitT = firstExitT;                 % num_samples x 1
-    rollout.firstHitT  = firstHitT;                  % num_samples x 1
-    rollout.handoffOK  = handoffOK;                  % num_samples x (p-1)
-    rollout.diverged   = diverged;                   % num_samples x 1  (numerical blow-up)
-    rollout.x_nom      = x_nom_global;               % n_x x T  nominal along path (fine)
-    rollout.u_nom      = u_nom_global;               % n_u x T  nominal inputs (fine)
-    rollout.knotMap    = knotMap;                    % T x 2  [funnelIndex, localFineKnot]
+    allStates          = cat(3, trajectories{:});   % n_x x T x S (fine, transient)
+    allInputs          = cat(3, input_traj{:});
+    rollout.time       = knotTime;                  % 1 x Tk
+    rollout.states     = allStates(:, knotCols, :); % n_x x Tk x S
+    rollout.inputs     = allInputs(:, knotCols, :); % n_u x Tk x S
+    rollout.lyapunov   = funnelValue(:, knotCols);  % S x Tk  (certified P)
+    rollout.inFunnel   = inFunnel(:, knotCols);     % S x Tk
+    ...
+    rollout.x_nom      = x_nom_knot;                % n_x x Tk
+    rollout.u_nom      = u_nom_knot;                % n_u x Tk
+    rollout.knotMap    = knotMap_k;                 % Tk x 2
     rollout.obstacles  = obstacles;                  % M x 3  [xc yc r]
     rollout.config     = struct( ...
         'num_samples',      num_samples, ...
@@ -254,7 +263,7 @@ end
 disp('Plotting workspace, funnel value, and input profiles...'); disp(' ');
 
 plot_workspace(trajectories, funnelPath, obstacles, robotRadius, ws_dims, collided);
-plot_funnel_value(funnelValue, globalTime, inFunnel);
+plot_funnel_value(funnelValue(:,knotCols), knotTime, inFunnel(:,knotCols));
 plot_input_profiles(input_traj, globalTime, u_nom_global);
 
 %% ========================================================================
@@ -579,9 +588,9 @@ function plot_funnel_value(funnelValue, time, inFunnel)
     for s = 1:size(funnelValue,1)
         col = [0.5 0.5 0.9 0.4];
         if ~all(inFunnel(s,:)), col = [0.9 0.3 0.3 0.6]; end   % violating rollout
-        plot(time, funnelValue(s,:), '-', 'Color', col, 'LineWidth', 0.4);
+        plot(time, funnelValue(s,:), '.-', 'Color', col, 'LineWidth', 0.4, 'MarkerSize', 4);
     end
-    plot(time, mean(funnelValue,1,'omitnan'), 'k-', 'LineWidth', 2);   % ensemble mean
+    plot(time, mean(funnelValue,1,'omitnan'), 'k.-', 'LineWidth', 2, 'MarkerSize', 8); % ensemble mean
     yline(1, 'r--', 'funnel level = 1', 'LineWidth', 1.5);
     xlabel('Time (s)'); ylabel('(x-x_{nom})^T P (x-x_{nom})');
     title('Funnel Containment Value Over Time');

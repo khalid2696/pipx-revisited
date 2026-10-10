@@ -51,10 +51,10 @@ if ~exist('quadParameters','var')
 end
 
 if ~exist('num_samples','var'),      num_samples = 100;         end % # rollouts
-if ~exist('n_perturb','var'),        n_perturb   = 2;           end % perturbations PER funnel
+if ~exist('n_perturb','var'),        n_perturb   = 5;           end % perturbations PER funnel
 if ~exist('perturbMode','var'),      perturbMode      = 'additive'; end % 'additive'|'resample'
 if ~exist('perturbPlacement','var'), perturbPlacement = 'interior'; end % 'boundary'|'interior'
-if ~exist('perturbLevel','var'),     perturbLevel     = 0.05;    end % level c in (0,1], boundary=1
+if ~exist('perturbLevel','var'),     perturbLevel     = 0.02;    end % level c in (0,1], boundary=1
 if ~exist('divergeTol','var'),       divergeTol  = 1e6;         end % |e| beyond this (or non-finite) => diverged
 if ~exist('knotRange','var'),        knotRange   = [1 Inf];     end % [kmin kmax] for perturb knots
 if ~exist('robotRadius','var'),      robotRadius = 0.0;         end % obstacle inflation (0 = none)
@@ -115,7 +115,7 @@ for s = 1:num_samples
 
     inside        = V <= 1 + containTol;
     inFunnel(s,:) = inside;
-    exitIdx       = find(~inside, 1, 'first');
+    exitIdx = find(V > 1 + containTol, 1, 'first');   % true exit; NaN tail ignored
     if ~isempty(exitIdx), firstExitT(s) = globalTime(exitIdx); end
 
     if hasObstacles
@@ -130,8 +130,9 @@ disp('-- End of Monte Carlo funnel-path rollouts --'); disp(' ');
 %% ------------------------------------------------------------------------
 %  Verification summary
 %  ------------------------------------------------------------------------
-nFullyContained = sum(all(inFunnel, 2));
-knotOutRate     = 1 - mean(inFunnel(:));
+valid           = isfinite(funnelValue);                       % knots actually reached
+knotOutRate     = 1 - sum(inFunnel(:)) / max(nnz(valid), 1);   % rate over reached knots
+nFullyContained = sum( ~diverged & all(inFunnel, 2) );         % contained = didn't diverge & never exited
 nCollided       = sum(collided);
 nHandoffFail    = sum(any(~handoffOK, 2));
 
@@ -449,9 +450,9 @@ function plot_funnel_value(funnelValue, time, inFunnel)
     for s = 1:size(funnelValue,1)
         col = [0.5 0.5 0.9 0.4];
         if ~all(inFunnel(s,:)), col = [0.9 0.3 0.3 0.6]; end
-        plot(time, funnelValue(s,:), '-', 'Color', col, 'LineWidth', 0.4);
+        plot(time, funnelValue(s,:), '.-', 'Color', col, 'LineWidth', 0.4);
     end
-    plot(time, mean(funnelValue,1,'omitnan'), 'k-', 'LineWidth', 2);
+    plot(time, mean(funnelValue,1,'omitnan'), 'k.-', 'LineWidth', 2);
     yline(1, 'r--', 'funnel level = 1', 'LineWidth', 1.5);
     xlabel('Time (s)'); ylabel('(x-x_{nom})^T P (x-x_{nom})');
     title('Funnel Containment Value Over Time'); xlim([time(1) time(end)]);
