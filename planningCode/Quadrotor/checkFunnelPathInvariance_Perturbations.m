@@ -1,4 +1,4 @@
-clc; clearvars; close all
+% clc; clearvars; close all
 
 %% checkFunnelPath_MCRollouts.m
 %  Monte Carlo verification of a funnel-path (sequence of funnels) for a
@@ -25,15 +25,13 @@ clc; clearvars; close all
 %    (3) collision                  : x([1 2]) vs. 2D circular obstacles
 %
 %  Inputs (loaded/defined by a wrapper, or below):
-%    funnelPath{fi} struct with .time, .trajectory_stateSpace (x_nom),
+%    1. [REQUIRED] funnelPath{fi} struct with .time, .trajectory_stateSpace (x_nom),
 %      .invariantSet_stateSpace (P, level<=1), .feedforwardControlInputs (u_nom),
 %      .feedbackControlGains (K), optional .trajectory_workSpace / _workSpace.
-%    quadParameters (.m,.g,.J)  REQUIRED.   obstacles  M x 3 [xc yc r]  optional.
+%    2. [OPTIONAL] obstacles  M x 3 [xc yc r]  .
 
 %% Add directories
 addpath('./lib/');
-
-load('./temp_invariance_verification/sampleFunnelPath.mat'); % must contain funnelPath
 
 % Quadrotor Parameters (imported from funnel computation code) [!!keep both in sync!]
 quadParameters.m = 0.7;                  % mass (kg)
@@ -44,7 +42,9 @@ quadParameters.J = [2e-3, 2e-3, 3.5e-3]; % moment of inertia (kg m^2)
 %  Inputs / parameters (inherited from wrapper if present, else defaulted)
 %  ------------------------------------------------------------------------
 if ~exist('funnelPath','var')
-    error('checkFunnelPath:noPath', 'funnelPath (ordered cell array of funnels) is required.');
+    warning('checkFunnelPath:noPath', 'funnelPath (ordered cell array of funnels) is required.');
+    disp('using presaved funnel path for debugging -- MUST REMOVE!')
+    load('./temp_invariance_verification/sampleFunnelPath.mat'); % must contain funnelPath
 end
 if ~exist('quadParameters','var')
     error('checkFunnelPath:noParams', 'quadParameters (.m, .g, .J) is required.');
@@ -75,6 +75,7 @@ p       = numel(funnelPath);
 n_x     = size(funnelPath{1}.trajectory_stateSpace, 1);
 n_u     = size(funnelPath{1}.feedforwardControlInputs, 1);
 ws_dims = [1 2];
+z_dim = 3;
 
 %% ------------------------------------------------------------------------
 %  Concatenated (coarse) knot timeline for recording/plotting. Consecutive
@@ -92,15 +93,16 @@ fprintf('Funnel path: %d funnels, %d knots, horizon %.3f s.  Nominal collocation
 %% ------------------------------------------------------------------------
 %  Monte Carlo rollouts
 %  ------------------------------------------------------------------------
-trajectories = cell(num_samples, 1);
-input_traj   = cell(num_samples, 1);
-funnelValue  = zeros(num_samples, T);
-inFunnel     = false(num_samples, T);
-collided     = false(num_samples, 1);
-firstExitT   = nan(num_samples, 1);
-firstHitT    = nan(num_samples, 1);
-handoffOK    = true(num_samples, max(p-1,1));
-diverged     = false(num_samples, 1);
+trajectories   = cell(num_samples, 1);
+input_traj     = cell(num_samples, 1);
+funnelValue    = zeros(num_samples, T);
+inFunnel       = false(num_samples, T);
+collided       = false(num_samples, 1);
+firstExitT     = nan(num_samples, 1);
+firstHitT      = nan(num_samples, 1);
+distToFirstHit = nan(num_samples, 1);
+handoffOK      = true(num_samples, max(p-1,1));
+diverged       = false(num_samples, 1);
 
 for s = 1:num_samples
     [X, U, V, hOK, dvg] = rollout_once(funnelPath, dynamics, ...
@@ -119,9 +121,17 @@ for s = 1:num_samples
     if ~isempty(exitIdx), firstExitT(s) = globalTime(exitIdx); end
 
     if hasObstacles
-        [hit, hitIdx] = check_collisions(X(ws_dims,:), obstacles, robotRadius);
+        [hit, hitIdx] = check_collisions(X, obstacles, robotRadius, ws_dims, z_dim);
         collided(s)   = hit;
-        if hit, firstHitT(s) = globalTime(hitIdx); end
+        if hit 
+            firstHitT(s) = globalTime(hitIdx);
+            xyPath = X(ws_dims,1:hitIdx); %(px,py) upto collision
+            distToFirstHit(s) = sum(sqrt(sum(diff(xyPath,1,2).^2,1))); %arc length summed up
+        else
+            firstHitT(s) = globalTime(end);
+            xyPath = X(ws_dims,:); %(px,py) throughout the coarse (without collision)
+            distToFirstHit(s) = sum(sqrt(sum(diff(xyPath,1,2).^2,1))); %arc length summed up
+        end
     end
 end
 
@@ -152,7 +162,16 @@ fprintf('Nominal collocation floor        : %.4g  (planner residual, not a rollo
 if hasObstacles
     fprintf('Rollouts colliding w/ obstacle   : %d / %d  (%.1f%%)\n', ...
             nCollided, num_samples, 100*nCollided/num_samples);
-    if any(~isnan(firstHitT)), fprintf('Earliest collision time          : %.3f s\n', min(firstHitT)); end
+    if any(collided) 
+        fprintf('Mean flight time (w/ collisions): %.3f s\n', mean(firstHitT,'omitnan'));
+        fprintf('Earliest collision time           : %.3f s\n', min(firstHitT));
+        fprintf('xy distance flown till collision  : min %.3f m, median %.3f m\n', ...
+                    min(distToFirstHit,[],'omitnan'), median(distToFirstHit,'omitnan'));
+    else
+        fprintf('Mean flight time (w/o collisions) : %.3f s\n', mean(firstHitT,'omitnan'));
+        fprintf('xy distance flown without collision : min %.3f m, median %.3f m\n', ...
+                    min(distToFirstHit,[],'omitnan'), median(distToFirstHit,'omitnan'));
+    end
 end
 if any(~isnan(firstExitT))
     fprintf('Earliest funnel-exit time        : %.3f s\n', min(firstExitT));
@@ -174,7 +193,8 @@ if saveResults
     rollout.inFunnel    = inFunnel;
     rollout.collided    = collided;
     rollout.firstExitT  = firstExitT;
-    rollout.firstHitT   = firstHitT;
+    rollout.timeFlown   = firstHitT;        %till goal or till collision 
+    rollout.distFlown   = distToFirstHit;   %till goal or till collision 
     rollout.handoffOK   = handoffOK;
     rollout.diverged    = diverged;
     rollout.x_nom       = x_nom_global;
@@ -233,7 +253,8 @@ function [X, U, V, handoffOK, diverged] = rollout_once(funnelPath, dynamics, ...
         Nf = numel(t);
         xn = F.trajectory_stateSpace;
         un = F.feedforwardControlInputs;
-        K  = F.feedbackControlGains;
+        K  = F.feedbackControlGains; %for PiP-X (considers feedback control)
+        % K  = zeros(size(F.feedbackControlGains)); %for RRT-X (no feedback control)
         P  = F.invariantSet_stateSpace;
 
         kmin = max(1, knotRange(1));
@@ -403,15 +424,22 @@ function dw = wrap_dev(d, angleIdx)
     dw(angleIdx) = mod(dw(angleIdx) + pi, 2*pi) - pi;
 end
 
-function [hit, hitIdx] = check_collisions(xy, obstacles, robotRadius)
+function [hit, hitIdx] = check_collisions(X, obstacles, robotRadius, ws_dims, z_dim)
+    xy = X(ws_dims,:);
+    z = X(z_dim,:);
     hit = false; hitIdx = NaN;
     for t = 1:size(xy,2)
+        %check xy collisions with obstacle walls
         pxy = xy(:,t);
         if any(~isfinite(pxy)), continue; end
         for o = 1:size(obstacles,1)
             c = obstacles(o,1:2).'; r = obstacles(o,3) + robotRadius;
             if sum((pxy - c).^2) <= r^2, hit = true; hitIdx = t; return; end
         end
+        %check z collisions with floor or ceiling
+        pz = z(:,t);
+        if any(~isfinite(pz)), continue; end
+        if pz < 0 || pz > 10, hit = true; hitIdx = t; return; end
     end
 end
 

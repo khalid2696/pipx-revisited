@@ -1,6 +1,9 @@
 clc; clearvars; close all
 % return
 
+%adding paths to code libraries
+addpath('./lib/');
+
 %% Experiment settings
 % options: 'forest_sense', 'maze_sense'
 usePresavedEnvironments = true; 
@@ -27,7 +30,6 @@ end
 
 % Plain-text log to check progress remotely using terminal: 'tail -f experiment.log'
 logFile = fullfile(parentDir, 'experiment.log');
-
 
 expNumber = 1;
 while expNumber <= numTrials
@@ -132,18 +134,28 @@ fprintf("\n\n Completed all %d trials in '<strong>%s</strong>' environment\n", .
 %% Post processing
 fprintf("\nPost processing: running trajectory rollouts to verify invariance..\n");
 
+close all
 clearvars -except parentDir
+
+%adding paths to code libraries (required for parsing data structures properly)
+addpath('./lib/');
 
 load(fullfile(parentDir, 'experimentMetadata.mat'), 'numTrials');
 
 numMissing = 0;
 
-for k = 1:numTrials
-    resultFile = fullfile(parentDir, sprintf('trial_%d', k), 'trialResult.mat');
+for trialID = 1:numTrials
+
+    clearvars -except parentDir trialID
+
+    resultFile = fullfile(parentDir, sprintf('trial_%d', trialID), 'trialResult.mat');
     if isfile(resultFile)
         load(resultFile, 'expOutput', 'expDataStructures');
-        expOutput.traversedFunnelPath
-        postProcess(expOutput, expDataStructures);
+
+        % Run perturbations robustness script
+        % Requires var names: 'funnelPath' and 'obstacles' (so extract from experiment output data)
+        [funnelPath, obstacles] = postProcess(expOutput, expDataStructures);
+        run('./checkFunnelPathInvariance_Perturbations.m');
     else
         numMissing = numMissing + 1;
     end
@@ -162,11 +174,11 @@ load(fullfile(parentDir, 'experimentMetadata.mat'), 'numTrials');
 experimentsOutputTable = cell(numTrials);
 numMissing = 0;
 
-for k = 1:numTrials
-    resultFile = fullfile(parentDir, sprintf('trial_%d', k), 'trialResult.mat');
+for trialID = 1:numTrials
+    resultFile = fullfile(parentDir, sprintf('trial_%d', trialID), 'trialResult.mat');
     if isfile(resultFile)
         S = load(resultFile, 'expOutput');
-        experimentsOutputTable{k} = S.expOutput;
+        experimentsOutputTable{trialID} = S.expOutput;
     else
         numMissing = numMissing + 1;
     end
@@ -192,18 +204,31 @@ function logMessage(logFile, msg)
     end
 end
 
-function postProcess(expOutput, expDataStructures)
+function [funnelPath, obstacles] = postProcess(expOutput, expDataStructures)
     F = expDataStructures.funnelRoadmap; G = expDataStructures.searchGraph;
     C = expDataStructures.configSpace; W = expDataStructures.workSpace;
     planner = expDataStructures.planner;
 
-    planner.setupPlot(); W.drawAllObstacles();
-    traversedFunnelPath = expOutput.traversedFunnelPath;
-    
-    expOutput
+    % extracting the traversed funnel path and list of obstacles
+    funnelPath = expOutput.traversedFunnelPath;
 
-    for i=1:numel(traversedFunnelPath)
-        tempFunnel = traversedFunnelPath{i}
+    % Making a list of obstacles to collision check
+    obstacles = NaN(numel(W.obstacles), 3); %3 - [xc yc r]
+    for i=1:numel(W.obstacles)
+        tempObstacle = W.obstacles{i};
+        if tempObstacle.status == 0 %unsensed, so skip collision checking
+            continue
+        end
+        obstacles(i,1:2) = tempObstacle.location;
+        obstacles(i,3) = tempObstacle.radius;
+    end
+    obstacles = rmmissing(obstacles); %remove any inactive obstacles from the list
+
+    % visualizing traversed funnel path
+    planner.setupPlot(); W.drawAllObstacles();
+
+    for i=1:numel(funnelPath)
+        tempFunnel = funnelPath{i};
         if isempty(tempFunnel) %skip empty saved data (happens due to nature of file saving)
             continue
         end
