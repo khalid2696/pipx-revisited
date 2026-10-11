@@ -1,5 +1,5 @@
 clc; clearvars; close all
-% return
+return
 
 %adding paths to code libraries
 addpath('./lib/');
