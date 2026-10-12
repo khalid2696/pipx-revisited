@@ -10,13 +10,13 @@ usePresavedEnvironments = true;
 expType = 'maze_sense';
 % numTreeObstacles = 10; %5:5:75
 numTrials = 50;
-gitCommitTag = '37e64a2';               % for reproducibility / version control
+gitCommitTag = '';               % for reproducibility / version control
 
 %% Folder and file management
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", ...
         expType, numTrials);
 
-parentDir = fullfile('.', 'experiment_data/invariance_verification', expType);
+parentDir = fullfile('.', 'experiment_data/baseline_comparison/RRTX', expType);
 % parentDir = fullfile('.', 'temp_invariance_verification', expType);
 if ~exist(parentDir, 'dir') 
     mkdir(parentDir); 
