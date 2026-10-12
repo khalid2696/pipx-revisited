@@ -39,8 +39,8 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 250; %250 and 300 %no more than 200 for RRT-X!
-totalIterationLimit = 300; %Maximum number of iterations %keep it less than 300 always! %no more than 225 for RRT-X!
+prePlanningIterationLimit = 200; %250 and 300 %no more than 200 for RRT-X!
+totalIterationLimit = 250; %Maximum number of iterations %keep it less than 300 always! %no more than 225 for RRT-X!
 idleTimeLimit = 5;
 
 planningFrequency = 1;
@@ -71,10 +71,10 @@ robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times th
 load('./precomputedFunnelLibrary/library.mat');
 %resolution of the pre-computed funnel library
 funnelLibraryResolution = 1; %higher this resolution, finer the motion plan
-F = searchFunnel(funnelLibrary,epsilon,funnelLibraryResolution);
+% F = searchFunnel(funnelLibrary,epsilon,funnelLibraryResolution);
 
 % !!! for RRT-X comparison instantiate the following class instead of the above
-% F = searchTrajectory(funnelLibrary,epsilon,funnelLibraryResolution);
+F = searchTrajectory(funnelLibrary,epsilon,funnelLibraryResolution);
 
 if usePresavedEnvironments
     fprintf('\nUsing presaved environments for the planning task..\n');
@@ -84,7 +84,7 @@ if usePresavedEnvironments
     
     W.sensorRadius = robotSensorRadius; planner.drawFlag = drawFlag;
     planner.extendDistance = epsilon; planner.resolution = funnelLibraryResolution;
-    % W.toleranceLimit = 0;
+    W.toleranceLimit = 0;
 
     startPose = planner.startConfig; goalPose = planner.goalConfig;
 else
