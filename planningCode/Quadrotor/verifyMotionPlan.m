@@ -10,7 +10,7 @@ usePresavedEnvironments = true;
 expType = 'maze_sense';
 % numTreeObstacles = 10; %5:5:75
 numTrials = 50;
-gitCommitTag = '';               % for reproducibility / version control
+gitCommitTag = 'add5203';               % for reproducibility / version control
 
 %% Folder and file management
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", ...
