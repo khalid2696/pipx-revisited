@@ -39,7 +39,7 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 300; %300 and 350 %no more than 200 for RRT-X!
+prePlanningIterationLimit = 350; %300 and 350 %no more than 200 for RRT-X!
 totalIterationLimit = 450; %Maximum number of iterations %no more than 225 for RRT-X!
 idleTimeLimit = 10;
 
