@@ -16,7 +16,7 @@ gitCommitTag = '';               % for reproducibility / version control
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", ...
         expType, numTrials);
 
-parentDir = fullfile('.', 'experiment_data/baseline_comparison/RRTX', expType);
+parentDir = fullfile('.', 'experiment_data/baseline_comparison/PiPX', expType);
 % parentDir = fullfile('.', 'temp_invariance_verification', expType);
 if ~exist(parentDir, 'dir') 
     mkdir(parentDir); 
