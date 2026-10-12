@@ -23,12 +23,14 @@
 % clc; clearvars; close all
 % keyboard
 
-%TO DO: a switch for RRT-X (to make things easier and future proof)
-%for RRT-X, change tolerance limit (epsilon) in W instantiation to be zero (no need of tolerance)
-
 %adding paths to code libraries
 addpath('./lib/');
 
+%% For RRT-X comparison studies: 
+% 1. (~lines 75-78) Instantiate searchTrajectory instead of searchFunnel 
+% 2. (~lines 43-44) Modify prePlanningIterationLimit and totalIterationLimit 
+% 3. (~line 87) Make tolerance limit in W to be 0 -- no need of safety tolerance 
+%%
 %configurable flags
 drawFlag = 0;
 saveFlag = 0;
@@ -81,7 +83,8 @@ if usePresavedEnvironments
     load(fullfile(environmentsDir, 'planningProblem.mat')); %loads pre-saved W and planner data-structure
     
     W.sensorRadius = robotSensorRadius; planner.drawFlag = drawFlag;
-    planner.extendDistance = epsilon; planner.resolution = funnelLibraryResolution; 
+    planner.extendDistance = epsilon; planner.resolution = funnelLibraryResolution;
+    % W.toleranceLimit = 0;
 
     startPose = planner.startConfig; goalPose = planner.goalConfig;
 else
