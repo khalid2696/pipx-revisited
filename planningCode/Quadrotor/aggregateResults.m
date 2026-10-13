@@ -2,6 +2,8 @@
 % Run this once after (or even during) the experiments. Safe to re-run anytime.
 clc; clearvars
 
+%select experiment setting
+%Options: 'forest_sense', 'forest_dynamic', 'forest_moving', 'maze_sense', 'maze_dynamic'
 expType = 'forest_sense';
 parentDir = fullfile('.', 'experiment_data', expType);
 

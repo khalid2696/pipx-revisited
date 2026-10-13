@@ -10,7 +10,7 @@ usePresavedEnvironments = true;
 expType = 'forest_sense';
 numTreeObstaclesArray = 5:5:75; %5:5:75
 numTrials = 50;
-gitCommitTag = '';               % for reproducibility / version control
+gitCommitTag = '04c9e3a';               % for reproducibility / version control
 
 %% Folder and file management
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", ...
