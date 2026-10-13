@@ -3,7 +3,7 @@ clc; clearvars; close all
 
 %select experiment setting
 %Options: 'forest_sense', 'forest_dynamic', 'forest_moving', 'maze_sense', 'maze_dynamic'
-expType = 'maze_dynamic';
+expType = 'forest_dynamic';
 parentDir = fullfile('.', 'experiment_data', expType);
 
 % Load the metadata and the experiment data 
@@ -79,6 +79,10 @@ switch expType
         xticklabels(plot1, {});                       % shared axis: label once
         
         %subplot 2
+        % Remove Inf and -Inf before calculating the mean
+        %pathLengthMetricTable = pathLengthMetricTable(~isinf(pathLengthMetricTable)); 
+        pathLengthMetricTable(~isfinite(pathLengthMetricTable)) = NaN;   % failed or invalid trials out
+        
         meanPathLength = mean(pathLengthMetricTable, 3, "omitnan"); %along dimension 3 (random trials)
         std_DevPathLength = std(pathLengthMetricTable, 0, 3, "omitnan");
         
@@ -122,7 +126,45 @@ switch expType
         %ijrr_save(fig, 'forest_sense', 'eps', Folder='./paper_figures');
 
     case 'forest_dynamic'
-        disp('yet to come');
+        fig = ijrr_fig('single', 1.25); %single column | ratio of height/width
+        tl  = tiledlayout(fig, 2, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+        
+        NO_DATA = [0.85 0.85 0.85];   % light gray = no successful trial
+        
+        % Metric 1: success rate
+        plot1 = nexttile(tl);
+        meanSuccess = mean(successMetricTable, 3, 'omitnan')';     % rows: C, cols: N_t
+        plotHeatmap(plot1, numTreeObstaclesArray, obstacleDynamicityArray, meanSuccess, NO_DATA);
+        clim(plot1, [0 1]);                                          % fixed: rate is in [0,1]
+        cb1 = colorbar(plot1);
+        cb1.Ticks = 0:0.2:1;
+        title('Success rate');
+        %cb1.Label.String = 'Success rate';
+        xticklabels(plot1, {});                                      % shared x-axis
+        
+        % Metric 2: path length (successful trials only)
+        plot2 = nexttile(tl);
+
+        T = pathLengthMetricTable;
+        T(~isfinite(T)) = NaN;   % failed or invalid trials out
+        meanPathLength = mean(T, 3, 'omitnan')';
+
+        %meanPathLength = mean(pathLengthMetricTable, 3, 'omitnan')';
+        plotHeatmap(plot2, numTreeObstaclesArray, obstacleDynamicityArray, meanPathLength, NO_DATA);
+        clim(plot2, [40 max(meanPathLength(isfinite(meanPathLength)))]);  % floor = nominal 40 m
+        colormap(plot2, flipud(parula));        % short (good) = yellow
+        clim(plot2, [40 100]);
+        cb2 = colorbar(plot2);
+        cb2.Direction = 'reverse';            % good at top, as in panel 1
+        title('Traversed trajectory length [m]');
+        xlabel(plot2, 'Number of obstacles, {\itN_t}');
+        
+        ylabel(tl, 'Change percentage, {\itC} [%]', ... % one label for both panels
+                    'FontName', plot2.XLabel.FontName, 'FontSize', plot2.XLabel.FontSize);
+
+        % Save
+        ijrr_save(fig, 'forest_dynamic', 'png', Folder='./paper_figures');
+
     case 'maze_sense'
         fprintf('\nMaze environment with %d trials..\n', numTrials);
         fprintf('\nSuccess rate: %.2f percent',mean(successMetricTable, 3, "omitnan")*100);
@@ -135,6 +177,20 @@ switch expType
         disp(mean(successMetricTable, 3, "omitnan"));
     otherwise
         error('Unsupported experiment type');
+end
+
+%% Local function (must stay at the end of the script)
+function plotHeatmap(ax, x, y, M, noDataColor)
+    M(~isfinite(M)) = NaN;              % treat Inf like NaN
+    h = imagesc(ax, x, y, M);
+    h.AlphaData = ~isnan(M);            % NaN cells transparent ...
+    ax.Color    = noDataColor;          % ... so the gray background shows
+    ax.YDir     = 'normal';             % y(1) at bottom: C = 0 bottom, 50 top
+    ax.XTick    = x(1:1:end);
+    ax.YTick    = y;
+    ax.TickDir  = 'out';                % ticks off the data
+    ax.Box      = 'off';
+    ax.Layer    = 'top';
 end
 
 % Processing to calculate computation times
