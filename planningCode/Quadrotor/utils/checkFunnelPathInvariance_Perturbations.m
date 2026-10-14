@@ -31,7 +31,7 @@
 %    2. [OPTIONAL] obstacles  M x 3 [xc yc r]  .
 
 %% Add directories
-addpath('./lib/');
+addpath('../lib/');
 
 % Quadrotor Parameters (imported from funnel computation code) [!!keep both in sync!]
 quadParameters.m = 0.7;                  % mass (kg)
