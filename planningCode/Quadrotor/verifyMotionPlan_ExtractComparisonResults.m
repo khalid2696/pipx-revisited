@@ -38,8 +38,8 @@ for trialID = 1:numTrials
         [funnelPath, obstacles] = postProcess(expOutput, expDataStructures);
         
         %script parameters
-        num_samples = 100; n_perturb = 5; perturbLevel = 0.02;
-        run('./utils/checkFunnelPathInvariance_Perturbations.m');
+        num_samples = 100; n_perturb = 5; perturbLevel = 0.01;
+        run('./utils/checkFunnelPath_Invariance_Perturbations.m');
     else
         numMissing = numMissing + 1;
     end

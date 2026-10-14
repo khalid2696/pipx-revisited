@@ -1,4 +1,4 @@
-clc; clearvars; close all
+% clc; clearvars; close all
 
 %% checkFunnelPath_MCRollouts.m
 %  Monte Carlo verification of a funnel-path (sequence of funnels) for a
@@ -42,9 +42,9 @@ quadParameters.J = [2e-3, 2e-3, 3.5e-3]; % moment of inertia (kg m^2)
 %  Inputs / parameters (inherited from wrapper if present, else defaulted)
 %  ------------------------------------------------------------------------
 if ~exist('funnelPath','var')
-    warning('checkFunnelPath:noPath', 'funnelPath (ordered cell array of funnels) is required.');
-    disp('using presaved funnel path for debugging -- MUST REMOVE!')
-    load('../temp_invariance_verification/sampleFunnelPath.mat'); % must contain funnelPath
+    error('checkFunnelPath:noPath', 'funnelPath (ordered cell array of funnels) is required.');
+    % disp('using presaved funnel path for debugging -- MUST REMOVE!')
+    % load('../temp_invariance_verification/sampleFunnelPath.mat'); % must contain funnelPath
 end
 
 if ~exist('quadParameters','var')
@@ -55,7 +55,7 @@ if ~exist('num_samples','var'),      num_samples = 100;         end % # rollouts
 if ~exist('n_perturb','var'),        n_perturb   = 5;           end % perturbations PER funnel
 if ~exist('perturbMode','var'),      perturbMode      = 'additive'; end % 'additive'|'resample'
 if ~exist('perturbPlacement','var'), perturbPlacement = 'interior'; end % 'boundary'|'interior'
-if ~exist('perturbLevel','var'),     perturbLevel     = 0.02;    end % level c in (0,1], boundary=1
+if ~exist('perturbLevel','var'),     perturbLevel     = 0.01;    end % level c in (0,1], boundary=1
 if ~exist('divergeTol','var'),       divergeTol  = 1e6;         end % |e| beyond this (or non-finite) => diverged
 if ~exist('knotRange','var'),        knotRange   = [1 Inf];     end % [kmin kmax] for perturb knots
 if ~exist('robotRadius','var'),      robotRadius = 0.0;         end % obstacle inflation (0 = none)
@@ -107,7 +107,7 @@ handoffOK      = true(num_samples, max(p-1,1));
 diverged       = false(num_samples, 1);
 
 for s = 1:num_samples
-    [X, U, V, hOK, dvg] = rollout_once(funnelPath, dynamics, ...
+    [X, U, V, hOK, dvg] = forward_rollout(funnelPath, dynamics, ...
         n_perturb, perturbMode, perturbPlacement, perturbLevel, knotRange, ...
         divergeTol, angleIdx, newtonTol, newtonMaxIter);
 
@@ -220,7 +220,10 @@ disp('Plotting workspace, funnel value, and input profiles...'); disp(' ');
 
 plot_workspace(trajectories, funnelPath, obstacles, robotRadius, ws_dims, collided);
 
+% plot_Lyapunov_value(funnelValue, globalTime, inFunnelChecks);
+
 % To plot Lyapunov function values (empirical invariance verification)
+% check git commit: 83a9d78 to reproduce
 % fig = ijrr_fig('double', 0.3);            % full text width, short strip
 % plot_Lyapunov_value(fig, funnelValue, globalTime, inFunnelChecks);
 % ijrr_save(fig, 'lyapunov_value', 'png', Folder='../paper_figures')
@@ -230,8 +233,38 @@ plot_workspace(trajectories, funnelPath, obstacles, robotRadius, ws_dims, collid
 %% ========================================================================
 %  Local functions
 %  ========================================================================
+%  GUIDE: How these functions fit together:
+%
+%  We simulate the ERROR e = x - x_nom, not x itself. Because the planner's
+%  nominal satisfies trapezoidal collocation
+%        x_nom(k+1) - x_nom(k) = (H/2)[ f(x_nom,u_nom)|k + |k+1 ],
+%  subtracting it from the same trapezoid applied to the true closed loop
+%  (u = u_nom - K e) gives an exact update for the error alone:
+%        e(k+1) - e(k) = (H/2)[ df_k + df_{k+1} ],
+%        df_j = f(x_nom_j + e_j, u_nom_j - K_j*wrap(e_j)) - f(x_nom_j, u_nom_j).
+%  => on the nominal e=0 stays e=0 (clean V=0 baseline); the planner's
+%     collocation residual never enters; x_nom is the certified reference.
+%
+%  1. trapezoid_dev_step : solves the implicit update G(e1)=0 for e(k+1) by
+%     modified Newton. Implicit trapezoid (Crank-Nicolson) is A-stable, so
+%     coarse knot steps don't blow up -> no upsampling needed. Jacobian
+%     J = I - (H/2)(fx - fu*K) is formed once per step via finite differences.
+%  2. fd_jac             : forward-difference Jacobian, J(:,i)=(G(x+h e_i)-G(x))/h.
+%  3. pick_perturbation_knots : stratified sampling -> n knots spread evenly
+%     across [kmin,kmax], one per bin (guaranteed spread, no clustering).
+%  4. perturb_within_ellipsoid : draws a deviation with d'P d <= level. Uses
+%     A = P^{-1/2}, so d = A y  =>  d'P d = ||y||^2 : sampling the P-ellipsoid
+%     reduces to sampling a Euclidean ball. Uniform direction = normalized
+%     Gaussian; uniform-in-volume radius = level*(rand^(1/n))^2; rescale by
+%     sqrt(level/v) projects onto / into the set (V is quadratic).
+%  5. forward_rollout    : drives it all - per funnel/knot: handoff-inlet check,
+%     perturbation, record (x, u, V=e'Pe), then advance e one knot.
+%     Records at certified knots only; NaN-fills and flags on divergence.
+%  6. wrap_dev           : wraps Euler-angle components of e to [-pi,pi] so a
+%     near-+-pi nominal angle doesn't create a spurious ~2*pi error.
+% ------------------------------------------------------------------------
 
-function [X, U, V, handoffOK, diverged] = rollout_once(funnelPath, dynamics, ...
+function [X, U, V, handoffOK, diverged] = forward_rollout(funnelPath, dynamics, ...
         n_perturb, mode, placement, level, knotRange, divergeTol, angleIdx, nTol, nMax)
     % One rollout in DEVIATION coordinates e = x - x_nom, marched knot-to-knot
     % with an implicit trapezoid anchored to the stored nominal. Perturbations
@@ -251,7 +284,7 @@ function [X, U, V, handoffOK, diverged] = rollout_once(funnelPath, dynamics, ...
     diverged  = false;
     col = 0;
 
-    e = zeros(n_x, 1);   % deviation; start exactly on nominal
+    e = zeros(n_x, 1);   % initial deviation; start exactly on nominal
 
     for fi = 1:p
         F  = funnelPath{fi};
@@ -264,11 +297,12 @@ function [X, U, V, handoffOK, diverged] = rollout_once(funnelPath, dynamics, ...
         P  = F.invariantSet_stateSpace;
 
         kmin = max(1, knotRange(1));
-        kmax = min(Nf, knotRange(2));
+        kmax = min(Nf, knotRange(2)); 
+        %for the considered default knot range [1 inf], this should result in: kmin=1 and kmax=Nf (25);
         pk   = pick_perturbation_knots(kmin, kmax, n_perturb);
 
         for k = 1:Nf
-            % handoff: carried deviation vs child inlet (seams match -> e carries directly)
+            % handoff: does the state at outlet drop into the subsequent inlet? 
             if fi > 1 && k == 1
                 dd = wrap_dev(e, angleIdx);
                 if dd.' * P(:,:,1) * dd > 1 + 1e-6, handoffOK(fi-1) = false; end
@@ -282,55 +316,129 @@ function [X, U, V, handoffOK, diverged] = rollout_once(funnelPath, dynamics, ...
 
             % control + record (skip duplicate shared boundary knot for fi>1)
             u = un(:,k) - K(:,:,k) * wrap_dev(e, angleIdx);
-            if ~(fi > 1 && k == 1)
+            if ~(fi > 1 && k == 1) %skip intermediate duplicates
                 col      = col + 1;
                 dd       = wrap_dev(e, angleIdx);
-                X(:,col) = xn(:,k) + e;
-                U(:,col) = u;
-                V(col)   = dd.' * P(:,:,k) * dd;
+                X(:,col) = xn(:,k) + e; %actual system state: add the deviation error obtained from prev knot point rollout
+                U(:,col) = u;           %total control input
+                V(col)   = dd.' * P(:,:,k) * dd; %associated Lyapunov value
             end
 
             % propagate deviation to the next knot (implicit trapezoid, A-stable)
-            if k < Nf
+            if k < Nf %skip last knot point
                 H = t(k+1) - t(k);
-                [e, ok] = trapezoid_dev_step(dynamics, e, H, ...
+                [e, converged_ok] = trapezoid_dev_step(dynamics, e, H, ...
                     xn(:,k),   un(:,k),   K(:,:,k), ...
                     xn(:,k+1), un(:,k+1), K(:,:,k+1), angleIdx, nTol, nMax);
-                if ~ok || any(~isfinite(e)) || norm(e) > divergeTol
-                    diverged = true; return;
+                
+                if ~converged_ok || any(~isfinite(e)) || norm(e) > divergeTol
+                    diverged = true; 
+                    return
                 end
             end
-        end
-    end
+        end %funnel-edge loop
+    end %funnel-path loop
 end
 
-function [e1, ok] = trapezoid_dev_step(dynamics, e0, H, xn0, un0, ...
+function [e1, converged_ok] = trapezoid_dev_step(dynamics, e0, H, xn0, un0, ...
                                                 K0, xn1, un1, K1, angleIdx, tol, maxit)
-    % Implicit trapezoid on the deviation dynamics, matching computeSOSFunnels'
-    % collocation:  e1 - e0 = (H/2)(df0 + df1),  dfj = f(xnj+ej, unj - Kj*wrap(ej)) - f(xnj,unj).
-    % Modified Newton (Jacobian formed once at the predictor).
-    dfun = @(e, xn, un, Kk) dynamics(xn + e, un - Kk*wrap_dev(e, angleIdx)) - dynamics(xn, un);
-    df0  = dfun(e0, xn0, un0, K0);                    % fixed over the step
-    G    = @(e1) e1 - e0 - (H/2)*(df0 + dfun(e1, xn1, un1, K1));
+    % Implicit trapezoid on the DEVIATION dynamics, matching computeSOSFunnels'
+    % collocation.  Subtracting the nominal's own trapezoid relation from the
+    % true closed-loop trapezoid gives, for e = x - x_nom:
+    %     e1 - e0 = (H/2)(df0 + df1),   dfj = f(xnj+ej, unj - Kj*wrap(ej)) - f(xnj,unj)
+    % df1 depends on the unknown e1 -> implicit -> solve G(e1)=0 by Newton.
 
-    e1 = e0;                                          % predictor (e=0 on nominal -> G(e0)=0)
+    % dfun(e,.) = closed-loop deviation rate: how much faster/slower the TRUE
+    % state moves than the nominal when the error is e and u = un - K*wrap(e).
+    % On the nominal (e=0) it is exactly 0, so the nominal is a fixed point.
+    dfun = @(e, xn, un, Kk) dynamics(xn + e, un - Kk*wrap_dev(e, angleIdx)) - dynamics(xn, un);
+    df0  = dfun(e0, xn0, un0, K0);      % left endpoint: known, fixed over the step
+    
+    % G(e1) = 0 is the implicit-trapezoid residual we must drive to zero.
+    % (= e1 - e0 - half-step * [left rate + right rate])
+    G    = @(e1) e1 - e0 - (H/2)*(df0 + dfun(e1, xn1, un1, K1));
+    
+    % Newton: e1 <- e1 - J\G(e1), with J = dG/de1 = I - (H/2)*d(df1)/de1
+    %       = I - (H/2)(fx - fu*K1) = I - (H/2)*A_closed-loop.
+    % Modified Newton: J is built ONCE at the predictor e1=e0 (fd_jac) and reused.
+    % A-stable, so coarse H does not blow up (no upsampling needed).
+    e1 = e0;                 % predictor: warm start (on nominal, G(e0)=0 already)
     Gv = G(e1);
-    J  = fd_jac(G, e1, Gv);
-    ok = false;
+    J  = fd_jac(G, e1, Gv);  % frozen Jacobian (swap into the loop for full Newton)
+    converged_ok = false;
     for it = 1:maxit
-        if norm(Gv) < tol, ok = true; break; end
-        e1 = e1 - J \ Gv;
+        if norm(Gv) < tol, converged_ok = true; break; end % converged: residual below tol
+        e1 = e1 - J \ Gv;       % Newton correction
         Gv = G(e1);
     end
-    if norm(Gv) < tol, ok = true; end
+    if norm(Gv) < tol, converged_ok = true; end % catch convergence on the final iterate
 end
 
 function J = fd_jac(fun, x, f0)
+    % Forward-difference Jacobian of fun at x:  J(:,i) ~= d fun / d x_i.
+    % Column i perturbs ONE component (x + h*e_i) and reuses f0 = fun(x),
+    % so the whole n x n Jacobian costs n extra evaluations of fun.
+    % J(:,i) = ( fun(x + h e_i) - fun(x) ) / h -- O(h) truncation error: h = 1e-6 ~ sqrt(eps)
     n = numel(x); J = zeros(n); h = 1e-6;
     for i = 1:n
-        xp = x; xp(i) = xp(i) + h;
-        J(:,i) = (fun(xp) - f0) / h;
+        xp = x; xp(i) = xp(i) + h; % bump the i-th coordinate only
+        J(:,i) = (fun(xp) - f0) / h; % finite-difference slope in that direction
     end
+end
+
+function pk = pick_perturbation_knots(kmin, kmax, n)
+    % Stratified: split [kmin,kmax] into n bins, one random knot each.
+    if n <= 0, pk = []; return; end
+    span = kmax - kmin + 1;
+    n    = min(n, span);
+    edges = round(linspace(kmin, kmax + 1, n + 1));
+    pk = zeros(1, n);
+    for b = 1:n
+        lo = edges(b); hi = max(lo, edges(b+1) - 1);
+        pk(b) = randi([lo, hi]);
+    end
+    pk = unique(pk);
+end
+
+function x_pert = perturb_within_ellipsoid(x_cur, x_nom, P, mode, placement, level, angleIdx)
+    % Perturb so the result lies in { d : d'Pd <= level } (level<=1), shaped by
+    % the ellipsoid. mode: 'resample' (fresh deviation) | 'additive' (kick current).
+    % placement: 'boundary' (on the level surface) | 'interior' (anywhere inside).
+    n  = numel(x_nom);
+    A  = ellipsoid_map(P);
+    yd = randn(n,1); yd = yd / norm(yd);
+
+    switch lower(placement)
+        case 'boundary', c = level;
+        case 'interior', c = level * (rand^(1/n))^2; %rand^(1/n) for inverse-CDF sampling -- uniform-in-volume sampling
+        otherwise, error('perturb:placement', 'Unknown placement "%s".', placement);
+    end
+
+    switch lower(mode)
+        case 'resample' %fresh deviation off the nominal
+            d = A * (sqrt(c) * yd);
+        case 'additive' %a "kick" added to the current deviation
+            d = wrap_dev(x_cur - x_nom, angleIdx) + A * (sqrt(c) * yd);
+            v = d.' * P * d;
+            %scaling back if the "kick" happens to leave the set
+            if strcmpi(placement, 'boundary')
+                d = d * sqrt(level / v);
+            elseif v > level
+                d = d * sqrt(level / v);
+            end
+        otherwise, error('perturb:mode', 'Unknown mode "%s".', mode);
+    end
+
+    % d'*P*d --> to verify the actual deviation
+    x_pert = x_nom + d;
+end
+
+%computes A = P^{-1/2}: maps the unit ball onto { d : d'Pd <= 1 }.
+function A = ellipsoid_map(P)
+    P = (P + P.') / 2;
+    [Vv, Dv] = eig(P);
+    d = max(real(diag(Dv)), 1e-12);
+    A = Vv * diag(1 ./ sqrt(d)) * Vv.';
 end
 
 function r = nominal_colloc_residual(funnelPath, dynamics, angleIdx)
@@ -371,58 +479,6 @@ function [globalTime, knotMap, x_nom_global, u_nom_global] = build_global_timeli
         end
         tOffset = tOffset + t(end);
     end
-end
-
-function pk = pick_perturbation_knots(kmin, kmax, n)
-    % Stratified: split [kmin,kmax] into n bins, one random knot each.
-    if n <= 0, pk = []; return; end
-    span = kmax - kmin + 1;
-    n    = min(n, span);
-    edges = round(linspace(kmin, kmax + 1, n + 1));
-    pk = zeros(1, n);
-    for b = 1:n
-        lo = edges(b); hi = max(lo, edges(b+1) - 1);
-        pk(b) = randi([lo, hi]);
-    end
-    pk = unique(pk);
-end
-
-function x_pert = perturb_within_ellipsoid(x_cur, x_nom, P, mode, placement, level, angleIdx)
-    % Perturb so the result lies in { d : d'Pd <= level } (level<=1), shaped by
-    % the ellipsoid. mode: 'resample' (fresh deviation) | 'additive' (kick current).
-    % placement: 'boundary' (on the level surface) | 'interior' (anywhere inside).
-    n  = numel(x_nom);
-    A  = ellipsoid_map(P);
-    yd = randn(n,1); yd = yd / norm(yd);
-
-    switch lower(placement)
-        case 'boundary', c = level;
-        case 'interior', c = level * (rand^(1/n))^2;
-        otherwise, error('perturb:placement', 'Unknown placement "%s".', placement);
-    end
-
-    switch lower(mode)
-        case 'resample'
-            d = A * (sqrt(c) * yd);
-        case 'additive'
-            d = wrap_dev(x_cur - x_nom, angleIdx) + A * (sqrt(c) * yd);
-            v = d.' * P * d;
-            if strcmpi(placement, 'boundary')
-                d = d * sqrt(level / v);
-            elseif v > level
-                d = d * sqrt(level / v);
-            end
-        otherwise, error('perturb:mode', 'Unknown mode "%s".', mode);
-    end
-    x_pert = x_nom + d;
-end
-
-function A = ellipsoid_map(P)
-    % A = P^{-1/2}: maps the unit ball onto { d : d'Pd <= 1 }.
-    P = (P + P.') / 2;
-    [Vv, Dv] = eig(P);
-    d = max(real(diag(Dv)), 1e-12);
-    A = Vv * diag(1 ./ sqrt(d)) * Vv.';
 end
 
 function dw = wrap_dev(d, angleIdx)
@@ -489,72 +545,72 @@ function draw_circle(xc, yc, r, faceColor, alpha)
 end
 
 % Rough plotting
-% function plot_Lyapunov_value(funnelValue, time, inFunnelChecks)
-%     figure; hold on; grid on;
-%     yline(fig, 1, 'k--', 'LineWidth', 1.5);
-%     plot(fig, time, mean(funnelValue,1,'omitnan'), 'k.-', 'LineWidth', 2);
-% 
-%     for s = 1:size(funnelValue,1)
-%         col = [0.5 0.5 0.9 0.4];
-%         if ~all(inFunnelChecks(s,:)), col = [0.9 0.3 0.3 0.6]; end
-%         plot(fig, time, funnelValue(s,:), '.-', 'Color', col, 'LineWidth', 0.4);
-%     end
-% 
-%     plot(fig, time, mean(funnelValue,1,'omitnan'), 'k.-', 'LineWidth', 2);
-% 
-%     xlabel(fig, 'Time [s]'); ylabel(fig, '(x-x_{nom})^T P/\rho (x-x_{nom})');
-%     title(fig, 'Normalized Lyapunov certificate value over global time horizon'); 
-%     xlim(fig, [time(1) time(end)]);
-%     legend(fig, 'Sublevel set boundary value = 1','Ensemble mean');
-% end
+function plot_Lyapunov_value(funnelValue, time, inFunnelChecks)
+    figure; hold on; grid on;
+    yline(1, 'k--', 'LineWidth', 1.5);
+    plot(time, mean(funnelValue,1,'omitnan'), 'k.-', 'LineWidth', 2);
 
-%Plotting for IJRR paper
-function fig = plot_Lyapunov_value(fig, funnelValue, time, inFunnel)
-    %PLOT_LYAPUNOV_VALUE Normalized funnel value of each rollout over time.
-    %   fig = plot_Lyapunov_value(funnelValue, time, inFunnel)
-    %   funnelValue : nSamples x nTime, (x - x_nom)' P (x - x_nom) / rho
-    %   time        : 1 x nTime
-    %   inFunnel    : nSamples x nTime logical
-    %
-    %   Save with: ijrr_save(fig, 'lyapunov_value', 'eps', Folder='./paper_figures')
-    ax  = axes(fig);
-    hold(ax, 'on'); grid(ax, 'on');
-    
-    % Solid tints instead of RGBA alpha: EPS-safe, and dense overlaps stay legible
-    C_IN   = [0.30 0.35 0.85 0.75];   % translucent blue: stays in funnel
-    C_OUT  = [0.85 0.20 0.20];        % solid red: exits funnel at least once
-    C_MEAN = [0 0 0];
-    % C_BND  = [0.30 0.30 0.30];
-    C_BND = [0.70 0.13 0.02];
-    
-    violates = ~all(inFunnel, 2);
-    nIn  = nnz(~violates);
-    nOut = nnz(violates);
-    
-    % Draw order: in-funnel rollouts, violators on top, then mean, then boundary
-    hIn  = plot(ax, time, funnelValue(~violates, :)', '.-', 'Color', C_IN,  'LineWidth', 0.75);
-    hOut = plot(ax, time, funnelValue( violates, :)', 'Color', C_OUT, 'LineWidth', 0.75);
-    hMean = plot(ax, time, mean(funnelValue, 1, 'omitnan'), 'Color', C_MEAN, 'LineWidth', 1.5);
-    hBnd  = yline(ax, 1, '--', 'Color', C_BND, 'LineWidth', 1.25);
-    
-    xlabel(ax, 'Time [s]');
-    ylabel(ax, '{\itV} / \rho');              % match the symbol used in the paper
-    xlim(ax, time([1 end])); ylim(ax, ([0 1.2]));
-    
-    % Legend from explicit handles; skip empty groups
-    h   = [hBnd, hMean];
-    lbl = {'Funnel boundary', 'Ensemble mean'};
-    % if nIn > 0
-    %     h(end+1)   = hIn(1);
-    %     lbl{end+1} = sprintf('Inside funnel (%d)', nIn);
-    % end
-    % if nOut > 0
-    %     h(end+1)   = hOut(1);
-    %     lbl{end+1} = sprintf('Exits funnel (%d)', nOut);
-    % end
-    legend(ax, h, lbl, 'Location', 'northeast', 'NumColumns', numel(h));
-    title(ax, 'Normalized Lyapunov certificate value over global time horizon');
+    for s = 1:size(funnelValue,1)
+        col = [0.5 0.5 0.9 0.4];
+        if ~all(inFunnelChecks(s,:)), col = [0.9 0.3 0.3 0.6]; end
+        plot(time, funnelValue(s,:), '.-', 'Color', col, 'LineWidth', 0.4);
+    end
+
+    plot(time, mean(funnelValue,1,'omitnan'), 'k.-', 'LineWidth', 2);
+
+    xlabel('Time [s]'); ylabel('(x-x_{nom})^T P/\rho (x-x_{nom})');
+    title('Normalized Lyapunov certificate value over global time horizon'); 
+    xlim([time(1) time(end)]);
+    legend('Sublevel set boundary value = 1','Ensemble mean');
 end
+
+% %Plotting for IJRR paper
+% function fig = plot_Lyapunov_value(fig, funnelValue, time, inFunnel)
+%     %PLOT_LYAPUNOV_VALUE Normalized funnel value of each rollout over time.
+%     %   fig = plot_Lyapunov_value(funnelValue, time, inFunnel)
+%     %   funnelValue : nSamples x nTime, (x - x_nom)' P (x - x_nom) / rho
+%     %   time        : 1 x nTime
+%     %   inFunnel    : nSamples x nTime logical
+%     %
+%     %   Save with: ijrr_save(fig, 'lyapunov_value', 'eps', Folder='./paper_figures')
+%     ax  = axes(fig);
+%     hold(ax, 'on'); grid(ax, 'on');
+% 
+%     % Solid tints instead of RGBA alpha: EPS-safe, and dense overlaps stay legible
+%     C_IN   = [0.30 0.35 0.85 0.75];   % translucent blue: stays in funnel
+%     C_OUT  = [0.85 0.20 0.20];        % solid red: exits funnel at least once
+%     C_MEAN = [0 0 0];
+%     % C_BND  = [0.30 0.30 0.30];
+%     C_BND = [0.70 0.13 0.02];
+% 
+%     violates = ~all(inFunnel, 2);
+%     nIn  = nnz(~violates);
+%     nOut = nnz(violates);
+% 
+%     % Draw order: in-funnel rollouts, violators on top, then mean, then boundary
+%     hIn  = plot(ax, time, funnelValue(~violates, :)', '.-', 'Color', C_IN,  'LineWidth', 0.75);
+%     hOut = plot(ax, time, funnelValue( violates, :)', 'Color', C_OUT, 'LineWidth', 0.75);
+%     hMean = plot(ax, time, mean(funnelValue, 1, 'omitnan'), 'Color', C_MEAN, 'LineWidth', 1.5);
+%     hBnd  = yline(ax, 1, '--', 'Color', C_BND, 'LineWidth', 1.25);
+% 
+%     xlabel(ax, 'Time [s]');
+%     ylabel(ax, '{\itV} / \rho');              % match the symbol used in the paper
+%     xlim(ax, time([1 end])); ylim(ax, ([0 1.2]));
+% 
+%     % Legend from explicit handles; skip empty groups
+%     h   = [hBnd, hMean];
+%     lbl = {'Funnel boundary', 'Ensemble mean'};
+%     % if nIn > 0
+%     %     h(end+1)   = hIn(1);
+%     %     lbl{end+1} = sprintf('Inside funnel (%d)', nIn);
+%     % end
+%     % if nOut > 0
+%     %     h(end+1)   = hOut(1);
+%     %     lbl{end+1} = sprintf('Exits funnel (%d)', nOut);
+%     % end
+%     legend(ax, h, lbl, 'Location', 'northeast', 'NumColumns', numel(h));
+%     title(ax, 'Normalized Lyapunov certificate value over global time horizon');
+% end
 
 
 function plot_input_profiles(input_traj, time, u_nom_global)
