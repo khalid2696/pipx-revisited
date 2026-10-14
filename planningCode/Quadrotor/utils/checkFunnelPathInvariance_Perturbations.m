@@ -1,4 +1,4 @@
-% clc; clearvars; close all
+clc; clearvars; close all
 
 %% checkFunnelPath_MCRollouts.m
 %  Monte Carlo verification of a funnel-path (sequence of funnels) for a
@@ -9,15 +9,14 @@
 %  on the original knots, so x_nom is NOT a forward-RK4 trajectory of f. This
 %  script therefore propagates in DEVIATION coordinates e = x - x_nom with an
 %  IMPLICIT TRAPEZOID step anchored to the stored x_nom:
-%     - on-nominal e=0 stays e=0 exactly (funnel value = 0 at zero perturbation)
+%     - on-nominal e=0 stays e=0 exactly (Lyapunov function value = 0 at zero perturbation)
 %     - implicit trapezoid is A-stable, so coarse knot steps stay bounded
 %     - perturbed deviations are checked against the same discrete closed loop
 %       the invariance certificate was built on
-%  No upsampling: containment is verified at the certified knots.
 %
 %  For each of num_samples rollouts we propagate from the start of the path to
-%  its end, injecting n state-perturbations per funnel (n*p total) at
-%  stratified-random knots, each kept inside { e : e'P e <= level } (level<=1).
+%  its end, injecting n state-perturbations per funnel (n*p total, p - number of funnels in path) at
+%  random knots, each kept inside { e : e'P e <= level } (level<=1).
 %
 %  Verified at each knot:
 %    (1) funnel containment        : e'P e <= 1
@@ -32,6 +31,7 @@
 
 %% Add directories
 addpath('../lib/');
+addpath('./plottingFns/');
 
 % Quadrotor Parameters (imported from funnel computation code) [!!keep both in sync!]
 quadParameters.m = 0.7;                  % mass (kg)
@@ -44,8 +44,9 @@ quadParameters.J = [2e-3, 2e-3, 3.5e-3]; % moment of inertia (kg m^2)
 if ~exist('funnelPath','var')
     warning('checkFunnelPath:noPath', 'funnelPath (ordered cell array of funnels) is required.');
     disp('using presaved funnel path for debugging -- MUST REMOVE!')
-    load('./temp_invariance_verification/sampleFunnelPath.mat'); % must contain funnelPath
+    load('../temp_invariance_verification/sampleFunnelPath.mat'); % must contain funnelPath
 end
+
 if ~exist('quadParameters','var')
     error('checkFunnelPath:noParams', 'quadParameters (.m, .g, .J) is required.');
 end
@@ -74,21 +75,22 @@ dynamics = @(x,u) quadrotor_dynamics(x, u, quadParameters);
 p       = numel(funnelPath);
 n_x     = size(funnelPath{1}.trajectory_stateSpace, 1);
 n_u     = size(funnelPath{1}.feedforwardControlInputs, 1);
-ws_dims = [1 2];
-z_dim = 3;
+ws_dims = [1 2]; %workspace dimensions: x,y
+z_dim = 3;       %height dimension
 
 %% ------------------------------------------------------------------------
-%  Concatenated (coarse) knot timeline for recording/plotting. Consecutive
+%  Concatenated knot global timeline for recording/plotting. Consecutive
 %  funnels share a boundary knot -> keep funnel-1 knots 1..N, others 2..N.
 %  ------------------------------------------------------------------------
-[globalTime, knotMap, x_nom_global, u_nom_global] = build_coarse_timeline(funnelPath);
-T = numel(globalTime);
+[globalTime, knotMap, x_nom_global, u_nom_global] = build_global_timeline(funnelPath);
+T = numel(globalTime); %aggregate number of knot points
 
-% planner's own trapezoidal-collocation residual (disclosed floor, not a bug)
+% calculate residual due to trapezoidal-collocation numerical integration scheme
 collocFloor = nominal_colloc_residual(funnelPath, dynamics, angleIdx);
 
-fprintf('Funnel path: %d funnels, %d knots, horizon %.3f s.  Nominal collocation floor (P-metric): %.4g\n', ...
-    p, T, globalTime(end), collocFloor);
+fprintf('Funnel path: %d funnels, %d knots, horizon %.3f s.', p, T, globalTime(end));
+
+%fprintf('\nMax residual due to collocation-based numerical integration scheme: %.4g\n', collocFloor),
 
 %% ------------------------------------------------------------------------
 %  Monte Carlo rollouts
@@ -96,11 +98,11 @@ fprintf('Funnel path: %d funnels, %d knots, horizon %.3f s.  Nominal collocation
 trajectories   = cell(num_samples, 1);
 input_traj     = cell(num_samples, 1);
 funnelValue    = zeros(num_samples, T);
-inFunnel       = false(num_samples, T);
+inFunnelChecks = false(num_samples, T);
 collided       = false(num_samples, 1);
 firstExitT     = nan(num_samples, 1);
 firstHitT      = nan(num_samples, 1);
-distToFirstHit = nan(num_samples, 1);
+distFlown      = nan(num_samples, 1);
 handoffOK      = true(num_samples, max(p-1,1));
 diverged       = false(num_samples, 1);
 
@@ -116,7 +118,7 @@ for s = 1:num_samples
     handoffOK(s,:)  = hOK;
 
     inside        = V <= 1 + containTol;
-    inFunnel(s,:) = inside;
+    inFunnelChecks(s,:) = inside;
     exitIdx = find(V > 1 + containTol, 1, 'first');   % true exit; NaN tail ignored
     if ~isempty(exitIdx), firstExitT(s) = globalTime(exitIdx); end
 
@@ -126,11 +128,11 @@ for s = 1:num_samples
         if hit 
             firstHitT(s) = globalTime(hitIdx);
             xyPath = X(ws_dims,1:hitIdx); %(px,py) upto collision
-            distToFirstHit(s) = sum(sqrt(sum(diff(xyPath,1,2).^2,1))); %arc length summed up
+            distFlown(s) = sum(sqrt(sum(diff(xyPath,1,2).^2,1))); %arc length summed up
         else
             firstHitT(s) = globalTime(end);
             xyPath = X(ws_dims,:); %(px,py) throughout the coarse (without collision)
-            distToFirstHit(s) = sum(sqrt(sum(diff(xyPath,1,2).^2,1))); %arc length summed up
+            distFlown(s) = sum(sqrt(sum(diff(xyPath,1,2).^2,1))); %arc length summed up
         end
     end
 end
@@ -141,8 +143,8 @@ disp('-- End of Monte Carlo funnel-path rollouts --'); disp(' ');
 %  Verification summary
 %  ------------------------------------------------------------------------
 valid           = isfinite(funnelValue);                       % knots actually reached
-knotOutRate     = 1 - sum(inFunnel(:)) / max(nnz(valid), 1);   % rate over reached knots
-nFullyContained = sum( ~diverged & all(inFunnel, 2) );         % contained = didn't diverge & never exited
+knotOutRate     = 1 - sum(inFunnelChecks(:)) / max(nnz(valid), 1);   % rate over reached knots
+nFullyContained = sum( ~diverged & all(inFunnelChecks, 2) );         % contained = didn't diverge & never exited
 nCollided       = sum(collided);
 nHandoffFail    = sum(any(~handoffOK, 2));
 
@@ -158,7 +160,6 @@ if any(diverged)
     fprintf(2, 'Diverged / Newton failed         : %d rollout(s)\n', sum(diverged));
 end
 fprintf('Max funnel value observed        : %.4g  (level = 1)\n', max(funnelValue(:), [], 'omitnan'));
-fprintf('Nominal collocation floor        : %.4g  (planner residual, not a rollout error)\n', collocFloor);
 if hasObstacles
     fprintf('Rollouts colliding w/ obstacle   : %d / %d  (%.1f%%)\n', ...
             nCollided, num_samples, 100*nCollided/num_samples);
@@ -166,11 +167,11 @@ if hasObstacles
         fprintf('Mean flight time (w/ collisions): %.3f s\n', mean(firstHitT,'omitnan'));
         fprintf('Earliest collision time           : %.3f s\n', min(firstHitT));
         fprintf('xy distance flown till collision  : min %.3f m, median %.3f m\n', ...
-                    min(distToFirstHit,[],'omitnan'), median(distToFirstHit,'omitnan'));
+                    min(distFlown,[],'omitnan'), median(distFlown,'omitnan'));
     else
         fprintf('Mean flight time (w/o collisions) : %.3f s\n', mean(firstHitT,'omitnan'));
         fprintf('xy distance flown without collision : min %.3f m, median %.3f m\n', ...
-                    min(distToFirstHit,[],'omitnan'), median(distToFirstHit,'omitnan'));
+                    min(distFlown,[],'omitnan'), median(distFlown,'omitnan'));
     end
 end
 if any(~isnan(firstExitT))
@@ -190,11 +191,11 @@ if saveResults
     rollout.states      = cat(3, trajectories{:});
     rollout.inputs      = cat(3, input_traj{:});
     rollout.lyapunov    = funnelValue;
-    rollout.inFunnel    = inFunnel;
+    rollout.inFunnel    = inFunnelChecks;
     rollout.collided    = collided;
     rollout.firstExitT  = firstExitT;
     rollout.timeFlown   = firstHitT;        %till goal or till collision 
-    rollout.distFlown   = distToFirstHit;   %till goal or till collision 
+    rollout.distFlown   = distFlown;   %till goal or till collision 
     rollout.handoffOK   = handoffOK;
     rollout.diverged    = diverged;
     rollout.x_nom       = x_nom_global;
@@ -218,8 +219,13 @@ end
 disp('Plotting workspace, funnel value, and input profiles...'); disp(' ');
 
 plot_workspace(trajectories, funnelPath, obstacles, robotRadius, ws_dims, collided);
-plot_funnel_value(funnelValue, globalTime, inFunnel);
-plot_input_profiles(input_traj, globalTime, u_nom_global);
+
+% To plot Lyapunov function values (empirical invariance verification)
+% fig = ijrr_fig('double', 0.3);            % full text width, short strip
+% plot_Lyapunov_value(fig, funnelValue, globalTime, inFunnelChecks);
+% ijrr_save(fig, 'lyapunov_value', 'png', Folder='../paper_figures')
+
+%plot_input_profiles(input_traj, globalTime, u_nom_global);
 
 %% ========================================================================
 %  Local functions
@@ -298,9 +304,9 @@ function [X, U, V, handoffOK, diverged] = rollout_once(funnelPath, dynamics, ...
     end
 end
 
-function [e1, ok] = trapezoid_dev_step(dynamics, e0, H, ...
-        xn0, un0, K0, xn1, un1, K1, angleIdx, tol, maxit)
-    % Implicit trapezoid on the deviation dynamics, matching the planner's
+function [e1, ok] = trapezoid_dev_step(dynamics, e0, H, xn0, un0, ...
+                                                K0, xn1, un1, K1, angleIdx, tol, maxit)
+    % Implicit trapezoid on the deviation dynamics, matching computeSOSFunnels'
     % collocation:  e1 - e0 = (H/2)(df0 + df1),  dfj = f(xnj+ej, unj - Kj*wrap(ej)) - f(xnj,unj).
     % Modified Newton (Jacobian formed once at the predictor).
     dfun = @(e, xn, un, Kk) dynamics(xn + e, un - Kk*wrap_dev(e, angleIdx)) - dynamics(xn, un);
@@ -347,7 +353,7 @@ function r = nominal_colloc_residual(funnelPath, dynamics, angleIdx)
     end
 end
 
-function [globalTime, knotMap, x_nom_global, u_nom_global] = build_coarse_timeline(funnelPath)
+function [globalTime, knotMap, x_nom_global, u_nom_global] = build_global_timeline(funnelPath)
     p = numel(funnelPath);
     globalTime = []; knotMap = []; x_nom_global = []; u_nom_global = [];
     tOffset = 0;
@@ -356,11 +362,12 @@ function [globalTime, knotMap, x_nom_global, u_nom_global] = build_coarse_timeli
         t  = F.time(:).'; Nf = numel(t);
         xn = F.trajectory_stateSpace; un = F.feedforwardControlInputs;
         if fi == 1, kStart = 1; else, kStart = 2; end
+        
         for k = kStart:Nf
-            globalTime(end+1)     = tOffset + t(k);   %#ok<AGROW>
-            knotMap(end+1,:)      = [fi, k];          %#ok<AGROW>
-            x_nom_global(:,end+1) = xn(:,k);          %#ok<AGROW>
-            u_nom_global(:,end+1) = un(:,k);          %#ok<AGROW>
+            globalTime(end+1)     = tOffset + t(k);   
+            knotMap(end+1,:)      = [fi, k];          
+            x_nom_global(:,end+1) = xn(:,k);          
+            u_nom_global(:,end+1) = un(:,k);          
         end
         tOffset = tOffset + t(end);
     end
@@ -432,10 +439,13 @@ function [hit, hitIdx] = check_collisions(X, obstacles, robotRadius, ws_dims, z_
         %check xy collisions with obstacle walls
         pxy = xy(:,t);
         if any(~isfinite(pxy)), continue; end
+        
+        %collisions in xy-plane
         for o = 1:size(obstacles,1)
             c = obstacles(o,1:2).'; r = obstacles(o,3) + robotRadius;
             if sum((pxy - c).^2) <= r^2, hit = true; hitIdx = t; return; end
         end
+        
         %check z collisions with floor or ceiling
         pz = z(:,t);
         if any(~isfinite(pz)), continue; end
@@ -445,22 +455,27 @@ end
 
 function plot_workspace(trajectories, funnelPath, obstacles, robotRadius, ws_dims, collided)
     figure; hold on; grid on; axis equal;
+    xlim([0, 50]); ylim([0, 50]); %hard-coded for now
+    %draw obstacles
     for o = 1:size(obstacles,1)
         draw_circle(obstacles(o,1), obstacles(o,2), obstacles(o,3), [0.85 0.33 0.33], 0.35);
         if robotRadius > 0
             draw_circle(obstacles(o,1), obstacles(o,2), obstacles(o,3)+robotRadius, [0.85 0.33 0.33], 0.10);
         end
     end
+    %draw projected funnel-path
     for fi = 1:numel(funnelPath)
-        if ~isfield(funnelPath{fi},'invariantSet_workSpace') || isempty(funnelPath{fi}.invariantSet_workSpace), continue; end
+        if isempty(funnelPath{fi}.invariantSet_workSpace), continue; end
         xw = funnelPath{fi}.trajectory_workSpace; Mw = funnelPath{fi}.invariantSet_workSpace;
-        step = max(1, round(size(xw,2)/6));
+        % step = max(1, round(size(xw,2)/3));
+        step = 1;
         for k = 1:step:size(xw,2)
             eb = ellipsoid_map(Mw(:,:,k)) * [cos(linspace(0,2*pi,60)); sin(linspace(0,2*pi,60))];
-            plot(xw(1,k)+eb(1,:), xw(2,k)+eb(2,:), '-', 'Color', [0.6 0.6 0.6 0.5], 'LineWidth', 0.5);
+            plot(xw(1,k)+eb(1,:), xw(2,k)+eb(2,:), '-', 'Color', [0.6 0.6 0.6 0.5], 'LineWidth', 1.2);
         end
-        plot(xw(1,:), xw(2,:), 'k--', 'LineWidth', 1.5);
+        plot(xw(1,:), xw(2,:), 'g--', 'LineWidth', 1.5);
     end
+    %draw trajectory rollouts
     for s = 1:numel(trajectories)
         X = trajectories{s}; col = 'b'; if collided(s), col = 'r'; end
         plot(X(ws_dims(1),:), X(ws_dims(2),:), '-', 'Color', col, 'LineWidth', 0.4);
@@ -473,18 +488,74 @@ function draw_circle(xc, yc, r, faceColor, alpha)
     fill(xc + r*cos(th), yc + r*sin(th), faceColor, 'EdgeColor', faceColor*0.7, 'FaceAlpha', alpha);
 end
 
-function plot_funnel_value(funnelValue, time, inFunnel)
-    figure; hold on; grid on;
-    for s = 1:size(funnelValue,1)
-        col = [0.5 0.5 0.9 0.4];
-        if ~all(inFunnel(s,:)), col = [0.9 0.3 0.3 0.6]; end
-        plot(time, funnelValue(s,:), '.-', 'Color', col, 'LineWidth', 0.4);
-    end
-    plot(time, mean(funnelValue,1,'omitnan'), 'k.-', 'LineWidth', 2);
-    yline(1, 'r--', 'funnel level = 1', 'LineWidth', 1.5);
-    xlabel('Time (s)'); ylabel('(x-x_{nom})^T P (x-x_{nom})');
-    title('Funnel Containment Value Over Time'); xlim([time(1) time(end)]);
+% Rough plotting
+% function plot_Lyapunov_value(funnelValue, time, inFunnelChecks)
+%     figure; hold on; grid on;
+%     yline(fig, 1, 'k--', 'LineWidth', 1.5);
+%     plot(fig, time, mean(funnelValue,1,'omitnan'), 'k.-', 'LineWidth', 2);
+% 
+%     for s = 1:size(funnelValue,1)
+%         col = [0.5 0.5 0.9 0.4];
+%         if ~all(inFunnelChecks(s,:)), col = [0.9 0.3 0.3 0.6]; end
+%         plot(fig, time, funnelValue(s,:), '.-', 'Color', col, 'LineWidth', 0.4);
+%     end
+% 
+%     plot(fig, time, mean(funnelValue,1,'omitnan'), 'k.-', 'LineWidth', 2);
+% 
+%     xlabel(fig, 'Time [s]'); ylabel(fig, '(x-x_{nom})^T P/\rho (x-x_{nom})');
+%     title(fig, 'Normalized Lyapunov certificate value over global time horizon'); 
+%     xlim(fig, [time(1) time(end)]);
+%     legend(fig, 'Sublevel set boundary value = 1','Ensemble mean');
+% end
+
+%Plotting for IJRR paper
+function fig = plot_Lyapunov_value(fig, funnelValue, time, inFunnel)
+    %PLOT_LYAPUNOV_VALUE Normalized funnel value of each rollout over time.
+    %   fig = plot_Lyapunov_value(funnelValue, time, inFunnel)
+    %   funnelValue : nSamples x nTime, (x - x_nom)' P (x - x_nom) / rho
+    %   time        : 1 x nTime
+    %   inFunnel    : nSamples x nTime logical
+    %
+    %   Save with: ijrr_save(fig, 'lyapunov_value', 'eps', Folder='./paper_figures')
+    ax  = axes(fig);
+    hold(ax, 'on'); grid(ax, 'on');
+    
+    % Solid tints instead of RGBA alpha: EPS-safe, and dense overlaps stay legible
+    C_IN   = [0.30 0.35 0.85 0.75];   % translucent blue: stays in funnel
+    C_OUT  = [0.85 0.20 0.20];        % solid red: exits funnel at least once
+    C_MEAN = [0 0 0];
+    % C_BND  = [0.30 0.30 0.30];
+    C_BND = [0.70 0.13 0.02];
+    
+    violates = ~all(inFunnel, 2);
+    nIn  = nnz(~violates);
+    nOut = nnz(violates);
+    
+    % Draw order: in-funnel rollouts, violators on top, then mean, then boundary
+    hIn  = plot(ax, time, funnelValue(~violates, :)', '.-', 'Color', C_IN,  'LineWidth', 0.75);
+    hOut = plot(ax, time, funnelValue( violates, :)', 'Color', C_OUT, 'LineWidth', 0.75);
+    hMean = plot(ax, time, mean(funnelValue, 1, 'omitnan'), 'Color', C_MEAN, 'LineWidth', 1.5);
+    hBnd  = yline(ax, 1, '--', 'Color', C_BND, 'LineWidth', 1.25);
+    
+    xlabel(ax, 'Time [s]');
+    ylabel(ax, '{\itV} / \rho');              % match the symbol used in the paper
+    xlim(ax, time([1 end])); ylim(ax, ([0 1.2]));
+    
+    % Legend from explicit handles; skip empty groups
+    h   = [hBnd, hMean];
+    lbl = {'Funnel boundary', 'Ensemble mean'};
+    % if nIn > 0
+    %     h(end+1)   = hIn(1);
+    %     lbl{end+1} = sprintf('Inside funnel (%d)', nIn);
+    % end
+    % if nOut > 0
+    %     h(end+1)   = hOut(1);
+    %     lbl{end+1} = sprintf('Exits funnel (%d)', nOut);
+    % end
+    legend(ax, h, lbl, 'Location', 'northeast', 'NumColumns', numel(h));
+    title(ax, 'Normalized Lyapunov certificate value over global time horizon');
 end
+
 
 function plot_input_profiles(input_traj, time, u_nom_global)
     m = size(u_nom_global, 1); figure; labels = {'T','M_x','M_y','M_z'};

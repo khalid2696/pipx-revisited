@@ -36,6 +36,9 @@ for trialID = 1:numTrials
         % Run perturbations robustness script
         % Requires var names: 'funnelPath' and 'obstacles' (so extract from experiment output data)
         [funnelPath, obstacles] = postProcess(expOutput, expDataStructures);
+        
+        %script parameters
+        num_samples = 100; n_perturb = 5; perturbLevel = 0.02;
         run('./utils/checkFunnelPathInvariance_Perturbations.m');
     else
         numMissing = numMissing + 1;
