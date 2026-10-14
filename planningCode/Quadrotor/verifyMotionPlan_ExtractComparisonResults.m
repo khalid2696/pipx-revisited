@@ -6,10 +6,10 @@ addpath('./lib/');
 
 %% Experiment settings
 % options: 'forest_sense', 'maze_sense' 
-expType = 'forest_sense';
+expType = 'maze_sense';
 
-parentDir = fullfile('.', 'experiment_data/baseline_comparison/PiPX', expType);
-% parentDir = fullfile('.', 'temp_invariance_verification', expType);
+% parentDir = fullfile('.', 'experiment_data/baseline_comparison/PiPX', expType);
+parentDir = fullfile('.', 'temp_invariance_verification', expType);
 
 %% Post processing
 fprintf("\nPost processing: running trajectory rollouts to verify invariance..\n");
@@ -24,7 +24,7 @@ load(fullfile(parentDir, 'experimentMetadata.mat'), 'numTrials');
 
 numMissing = 0;
 
-for trialID = 1:1
+for trialID = 1:numTrials
 
     clearvars -except parentDir trialID numMissing
 
@@ -33,7 +33,6 @@ for trialID = 1:1
     if isfile(resultFile)
         load(resultFile, 'expOutput', 'expDataStructures');
         
-        %%
         % Run perturbations robustness script
         % Requires var names: 'funnelPath' and 'obstacles' (so extract from experiment output data)
         [funnelPath, obstacles] = postProcess(expOutput, expDataStructures);

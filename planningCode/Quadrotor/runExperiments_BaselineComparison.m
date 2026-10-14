@@ -7,10 +7,11 @@ addpath('./lib/');
 %% Experiment settings
 % options: 'forest_sense', 'maze_sense'
 usePresavedEnvironments = true; 
-expType = 'forest_sense';
-numTreeObstaclesArray = 5:5:75; %5:5:75
-numTrials = 10;
-gitCommitTag = '04c9e3a';               % for reproducibility / version control
+expType = 'maze_sense';
+% numTreeObstaclesArray = 5:5:75; %5:5:75
+numTreeObstaclesArray = NaN; %5:5:75
+numTrials = 5;
+gitCommitTag = '';               % for reproducibility / version control
 
 %% Folder and file management
 fprintf("\n Running experiments in '<strong>%s</strong>' environment (%d trials each)\n\n", ...
