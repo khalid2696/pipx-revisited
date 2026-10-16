@@ -179,7 +179,7 @@ switch expType
         error('Unsupported experiment type');
 end
 
-%% Local function (must stay at the end of the script)
+%% Local functions
 function plotHeatmap(ax, x, y, M, noDataColor)
     M(~isfinite(M)) = NaN;              % treat Inf like NaN
     h = imagesc(ax, x, y, M);
@@ -192,19 +192,3 @@ function plotHeatmap(ax, x, y, M, noDataColor)
     ax.Box      = 'off';
     ax.Layer    = 'top';
 end
-
-% Processing to calculate computation times
-% 
-% replanningComputeTimeQuantiles = quantile(replanningComputeTimeHistory, [0.1, 0.5, 0.9]);
-% 
-% % Printing some metadata and results
-% fprintf('\n\nEnvironment: %s, Number of obstacles: %d (%d trials)', expType, numTreeObstacles, numTrials);
-% fprintf('\nSuccess rate                  -- mean: <strong>%0.2f</strong>, std dev: <strong>%0.2f</strong>', ...
-%                     mean(successArray),std(successArray));
-% fprintf('\nTraversed trajectory length -- mean: <strong>%0.2f</strong>, std dev: <strong>%0.2f</strong>', ...
-%                     mean(lengthArray, 'omitnan'),std(lengthArray, 'omitnan'));
-% fprintf('\nReplanning compute times -- median: <strong>%0.3f</strong> s, (0.1,0.9)-quant: (<strong>%0.3f</strong>, <strong>%0.3f</strong>) s', ...
-%                     replanningComputeTimeQuantiles(2),replanningComputeTimeQuantiles(1),replanningComputeTimeQuantiles(3));
-% fprintf('\nReplanning frquencies -- median: <strong>%0.2f</strong> Hz, (0.1,0.9)-quant: (<strong>%0.2f</strong>, <strong>%0.2f</strong>) Hz', ...
-%                     1/replanningComputeTimeQuantiles(2),1/replanningComputeTimeQuantiles(1),1/replanningComputeTimeQuantiles(3));
-% fprintf('\n\n');
