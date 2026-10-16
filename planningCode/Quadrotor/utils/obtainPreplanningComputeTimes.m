@@ -5,7 +5,7 @@ clc; clearvars; close all
 expType = 'forest_sense';
 numTreeObstaclesArray = 15;            % e.g. 45
 preplanningIterationLimitArray = 0:50:400; preplanningIterationLimitArray(1) = 25;
-numTrials = 1;
+numTrials = 100;
 gitCommitTag = 'bce96e1';               % for reproducibility / version control
 
 %% Folder and file management
@@ -66,7 +66,7 @@ end % numObstacles loop
 
 %% Prints metrics
 
-clearvars -except expType preplanningComputeTimeData preplanningIterationLimitArray numTrials
+clearvars -except expType preplanningComputeTimeData preplanningIterationLimitArray numTrials numTreeObstaclesArray gitCommitTag
 switch expType
     case 'forest_sense'
         fprintf("\nMetrics from forest environment:\n\n");   
@@ -85,3 +85,11 @@ switch expType
     otherwise
         error('Unsupported experiment type');
 end
+
+%% Printed output (for future reference and paper writing)
+% load('preplanningComputeTimeAnalysis.mat');
+% Metrics from forest environment:
+% Preplanning iteration limits
+%     25    50   100   150   200   250   300   350   400
+% Median preplanning times (in s):
+%     0.1721    0.5436    2.0061    4.9789    9.3465   15.6966   25.4752   38.5861   55.2600
