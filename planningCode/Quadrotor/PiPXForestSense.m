@@ -39,7 +39,7 @@ fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-% prePlanningIterationLimit = 250; %250 and 300 %no more than 200 for RRT-X!
+prePlanningIterationLimit = 250; %250 and 300 %no more than 200 for RRT-X!
 totalIterationLimit = 300; %Maximum number of iterations %keep it less than 300 always! %no more than 225 for RRT-X!
 idleTimeLimit = 5;
 
@@ -249,8 +249,6 @@ while iteration < prePlanningIterationLimit %&& ~startFound
     end
 end
 preplanningComputeTime = toc; %this is the time taken to offline build the funnel RRG
-
-return
 
 if exist('progressBar', 'var') 
     close(progressBar);
