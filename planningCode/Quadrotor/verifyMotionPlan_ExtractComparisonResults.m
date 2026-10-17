@@ -6,36 +6,38 @@ addpath('./lib/');
 
 %% Experiment settings
 % options: 'forest_sense', 'maze_sense' 
-expType = 'maze_sense';
+expType = 'forest_sense';
 
 parentDir = fullfile('.', 'experiment_data/baseline_comparison/PiPX', expType);
 % parentDir = fullfile('.', 'temp_invariance_verification', expType);
 
 %% MC Rollouts
 
-load(fullfile(parentDir, 'experimentMetadata.mat'), 'numTrials');
+load(fullfile(parentDir, 'experimentMetadata.mat'), 'numTrials', 'numTreeObstaclesArray');
 
-numMissing = 0;
+for expSetting1 = 1:numel(numTreeObstaclesArray)
+    numTreeObstacles = numTreeObstaclesArray(expSetting1)
 
-for trialID = 1:numTrials
-
-    clearvars -except parentDir trialID numMissing
-
-    rolloutsResultFile = fullfile(parentDir, sprintf('trial_%d', trialID), 'trialResult.mat');
-    %Add this -- sprintf('obstacles_%g', numTreeObstacles) -- to previous line after parentDir (in case of forest_sense environment) 
-    if isfile(rolloutsResultFile)
-        load(rolloutsResultFile, 'expOutput', 'expDataStructures');
+    for trialID = 1:numTrials
+    
+        clearvars -except parentDir trialID numMissing expSetting1 numTreeObstacles numTreeObstaclesArray
         
-        % Run perturbations robustness script
-        % Requires var names: 'funnelPath' and 'obstacles' (so extract from experiment output data)
-        [funnelPath, obstacles] = postProcess(expOutput, expDataStructures);
-
-        %script parameters
-        num_samples = 100; n_perturb = 5; perturbLevel = 0.01;
-        outputFile = fullfile('..', parentDir, sprintf('trial_%d', trialID), 'funnelPath_MCRollouts.mat');
-        run('./utils/checkFunnelPath_Invariance_Perturbations.m');
-    else
-        numMissing = numMissing + 1;
+        fileSaveDir = fullfile(parentDir, ...
+            sprintf('obstacles_%g', numTreeObstacles), sprintf('trial_%d', trialID));
+        expOutputFile = fullfile(fileSaveDir, 'trialResult.mat');
+        %Add this -- sprintf('obstacles_%g', numTreeObstacles) -- to previous line after parentDir (in case of forest_sense environment) 
+        if isfile(expOutputFile)
+            load(expOutputFile, 'expOutput', 'expDataStructures');
+            
+            % Run perturbations robustness script
+            % Requires var names: 'funnelPath' and 'obstacles' (so extract from experiment output data)
+            [funnelPath, obstacles] = postProcess(expOutput, expDataStructures);
+    
+            %script parameters
+            num_samples = 100; n_perturb = 5; perturbLevel = 0.01;
+            outputFile = fullfile('..', fileSaveDir, 'funnelPath_MCRollouts.mat');
+            run('./utils/checkFunnelPath_Invariance_Perturbations.m');
+        end
     end
 end
 
@@ -47,23 +49,27 @@ fprintf("\nBuilding the master experimentsOutputTable.\n");
 
 clearvars -except parentDir
 
-load(fullfile(parentDir, 'experimentMetadata.mat'), 'numTrials');
+load(fullfile(parentDir, 'experimentMetadata.mat'), 'numTrials', 'numTreeObstaclesArray');
 
-experimentsOutputTable = cell(numTrials,1);
-MCRolloutsOutputTable = cell(numTrials,1);
+experimentsOutputTable = cell(numel(numTreeObstaclesArray), numTrials);
+MCRolloutsOutputTable = cell(numel(numTreeObstaclesArray), numTrials);
 numMissing = 0;
 
-for trialID = 1:numTrials
-    resultFile = fullfile(parentDir, sprintf('trial_%d', trialID), 'trialResult.mat');
-    rolloutsResultFile = fullfile(parentDir, sprintf('trial_%d', trialID), 'funnelPath_MCRollouts.mat');
-    if isfile(rolloutsResultFile) && isfile(resultFile)
-        temp = load(rolloutsResultFile);
-        MCRolloutsOutputTable{trialID} = temp.rollout;
-        
-        temp = load(resultFile, 'expOutput');
-        experimentsOutputTable{trialID} = temp.expOutput;
-    else
-        numMissing = numMissing + 1;
+for expSetting1 = 1:numel(numTreeObstaclesArray)
+    numTreeObstacles = numTreeObstaclesArray(expSetting1);
+
+    for trialID = 1:numTrials
+        resultFile = fullfile(parentDir, sprintf('obstacles_%g', numTreeObstacles), sprintf('trial_%d', trialID), 'trialResult.mat');
+        rolloutsResultFile = fullfile(parentDir, sprintf('obstacles_%g', numTreeObstacles), sprintf('trial_%d', trialID), 'funnelPath_MCRollouts.mat');
+        if isfile(rolloutsResultFile) && isfile(resultFile)
+            temp = load(rolloutsResultFile);
+            MCRolloutsOutputTable{expSetting1, trialID} = temp.rollout;
+            
+            temp = load(resultFile, 'expOutput');
+            experimentsOutputTable{expSetting1, trialID} = temp.expOutput;
+        else
+            numMissing = numMissing + 1;
+        end
     end
 end
 
