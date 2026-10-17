@@ -51,6 +51,15 @@ if ~exist('quadParameters','var')
     error('checkFunnelPath:noParams', 'quadParameters (.m, .g, .J) is required.');
 end
 
+if ~exist('saveResults','var'), saveResults = true; end
+if ~exist('outputFile','var'), outputFile = fullfile('./funnelPath_MCRollouts.mat'); end
+
+if isempty(funnelPath) %if funnel-path is empty, instantiate an empty output and return
+    rollout = {};
+    save(outputFile, 'rollout', '-v7.3');
+    return
+end
+
 if ~exist('num_samples','var'),      num_samples = 100;         end % # rollouts
 if ~exist('n_perturb','var'),        n_perturb   = 5;           end % perturbations PER funnel
 if ~exist('perturbMode','var'),      perturbMode      = 'additive'; end % 'additive'|'resample'
@@ -182,8 +191,6 @@ fprintf('======================================================\n\n');
 %% ------------------------------------------------------------------------
 %  Save trajectory data + normalized Lyapunov values (e'Pe, boundary = 1)
 %  ------------------------------------------------------------------------
-if ~exist('saveResults','var'), saveResults = true; end
-if ~exist('outputFile','var'),  outputFile  = 'funnelPath_MCRollouts.mat'; end
 
 if saveResults
     rollout = struct();
@@ -216,9 +223,9 @@ end
 %% ------------------------------------------------------------------------
 %  Visualization
 %  ------------------------------------------------------------------------
-disp('Plotting workspace, funnel value, and input profiles...'); disp(' ');
-
-plot_workspace(trajectories, funnelPath, obstacles, robotRadius, ws_dims, collided);
+% disp('Plotting workspace, funnel value, and input profiles...'); disp(' ');
+% 
+% plot_workspace(trajectories, funnelPath, obstacles, robotRadius, ws_dims, collided);
 
 % plot_Lyapunov_value(funnelValue, globalTime, inFunnelChecks);
 
