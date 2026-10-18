@@ -299,8 +299,8 @@ function [X, U, V, handoffOK, diverged] = forward_rollout(funnelPath, dynamics, 
         Nf = numel(t);
         xn = F.trajectory_stateSpace;
         un = F.feedforwardControlInputs;
-        K  = F.feedbackControlGains; %for PiP-X (considers feedback control)
-        % K  = zeros(size(F.feedbackControlGains)); %for RRT-X (no feedback control)
+        % K  = F.feedbackControlGains; %for PiP-X (considers feedback control)
+        K  = zeros(size(F.feedbackControlGains)); %for RRT-X (no feedback control)
         P  = F.invariantSet_stateSpace;
 
         kmin = max(1, knotRange(1));

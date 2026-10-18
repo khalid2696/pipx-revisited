@@ -8,7 +8,7 @@ addpath('./lib/');
 % options: 'forest_sense', 'maze_sense' 
 expType = 'forest_sense';
 
-parentDir = fullfile('.', 'experiment_data/baseline_comparison/PiPX', expType);
+parentDir = fullfile('.', 'experiment_data/baseline_comparison/RRTX', expType);
 % parentDir = fullfile('.', 'temp_invariance_verification', expType);
 
 %% MC Rollouts
@@ -16,11 +16,11 @@ parentDir = fullfile('.', 'experiment_data/baseline_comparison/PiPX', expType);
 load(fullfile(parentDir, 'experimentMetadata.mat'), 'numTrials', 'numTreeObstaclesArray');
 
 for expSetting1 = 1:numel(numTreeObstaclesArray)
-    numTreeObstacles = numTreeObstaclesArray(expSetting1)
+    numTreeObstacles = numTreeObstaclesArray(expSetting1);
 
     for trialID = 1:numTrials
     
-        clearvars -except parentDir trialID numMissing expSetting1 numTreeObstacles numTreeObstaclesArray
+        clearvars -except parentDir trialID numTrials expSetting1 numTreeObstacles numTreeObstaclesArray
         
         fileSaveDir = fullfile(parentDir, ...
             sprintf('obstacles_%g', numTreeObstacles), sprintf('trial_%d', trialID));
@@ -74,7 +74,7 @@ for expSetting1 = 1:numel(numTreeObstaclesArray)
 end
 
 % Written once, at the end
-save(fullfile(parentDir, 'experimentData.mat'), 'experimentsOutputTable', 'MCRolloutsOutputTable');
+save(fullfile(parentDir, 'experimentData.mat'), 'experimentsOutputTable', 'MCRolloutsOutputTable', '-v7.3');
 
 fprintf('Aggregated table saved. %d trial(s) missing/incomplete.\n', numMissing);
 
