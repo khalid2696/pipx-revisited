@@ -21,7 +21,6 @@
 % the software.
 
 clc; clearvars; close all
-%keyboard
 
 %adding paths to code libraries
 addpath('./lib/');

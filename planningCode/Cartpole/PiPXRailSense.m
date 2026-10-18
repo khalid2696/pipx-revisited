@@ -20,14 +20,13 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-%clc; clearvars; close all
-%keyboard
+clc; clearvars; close all
 
 %adding paths to code libraries
 addpath('./lib/');
 
 %configurable flags
-drawFlag = 0;
+drawFlag = 1;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
@@ -45,7 +44,7 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numObstacles', 'var') 
-    numObstacles = 3; %7
+    numObstacles = 3; 
 end
 
 if ~exist('fileSaveDir', 'var')
