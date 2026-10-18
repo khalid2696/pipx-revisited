@@ -8,7 +8,7 @@ addpath('./lib/');
 % options: 'forest_sense', 'maze_sense' 
 expType = 'forest_sense';
 
-parentDir = fullfile('.', 'experiment_data/baseline_comparison/RRTX', expType);
+parentDir = fullfile('.', 'experiment_data/baseline_comparison/PiPX/', expType);
 % parentDir = fullfile('.', 'temp_invariance_verification', expType);
 
 %% MC Rollouts
