@@ -177,3 +177,7 @@ end
 % Distance flown in xy-plane (in m):   77.9999   78.0377   78.0936   79.9383   80.0086
 % Time flown (in s):  180.4443  180.4636  180.4822  184.7392  184.7392
 %% Forest environment with 50 trials..
+
+% Results stored in two structs: pipxResults and rrtxResults
+% Each have the following fields: successRate, pathLengthAggregate, timeFlownAggregate
+% load('./experiment_data/baseline_comparison/aggregates_forestsense.mat');

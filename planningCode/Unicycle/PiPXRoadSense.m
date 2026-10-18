@@ -20,14 +20,14 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-% clc; clearvars; close all
+clc; clearvars; close all
 %keyboard
 
 %adding paths to code libraries
 addpath('./lib/');
 
 %configurable flags
-drawFlag = 0;
+drawFlag = 1;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
