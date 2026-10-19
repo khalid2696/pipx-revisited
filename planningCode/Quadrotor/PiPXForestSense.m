@@ -20,8 +20,7 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-% clc; clearvars; close all
-% keyboard
+clc; clearvars; close all
 
 %adding paths to code libraries
 addpath('./lib/');
@@ -32,7 +31,7 @@ addpath('./lib/');
 % 3. (~line 87) Make tolerance limit in W to be 0 -- no need of safety tolerance 
 %%
 %configurable flags
-drawFlag = 0;
+drawFlag = 1;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder

@@ -20,21 +20,20 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-% clc; clearvars; close all
-%keyboard
+clc; clearvars; close all
 
 %adding paths to code libraries
 addpath('./lib/');
 
 %configurable flags
-drawFlag = 0;
+drawFlag = 1;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 200; %300 and 350
+prePlanningIterationLimit = 250; %300 and 350
 totalIterationLimit = 450; %Maximum number of iterations %keep it less than 300 always!
 idleTimeLimit = 5;
 
@@ -47,7 +46,7 @@ if ~exist('numTreeObstacles', 'var')
 end
 
 if ~exist('obstacleDynamicity', 'var') 
-    obstacleDynamicity = 50; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
+    obstacleDynamicity = 25; % D percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end
 
 if ~exist('fileSaveDir', 'var')
