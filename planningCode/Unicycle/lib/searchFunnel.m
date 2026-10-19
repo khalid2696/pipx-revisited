@@ -43,6 +43,9 @@ classdef searchFunnel < handle
         
         startNode
         goalNode
+
+        %temporary for paper plotting
+        newColorForPlotting
     end
     methods
         function obj = searchFunnel(library, extendDistance, libraryResolution)
@@ -76,7 +79,8 @@ classdef searchFunnel < handle
             obj.stateSpaceDimensionIndices = 1:3;     %3-state system
             obj.CspaceDimensionIndices = [1 2];  %x-y configuration space
             obj.workspaceDimensionIndices = [1 2]; %x-y workspace
-
+            
+            obj.newColorForPlotting = 1; %temporary for paper plotting
         end
         
         function obj = addNode(obj,node)
@@ -455,6 +459,30 @@ classdef searchFunnel < handle
         %-------------------------------------------------------%
         function drawSearchFunnel(obj)
             
+            
+            if obj.newColorForPlotting
+                C = newColorScheme();
+                for i=1:obj.numNodes
+                    thisNode = obj.graphNodes(i);
+                    if thisNode.withinObstacle || isnan(thisNode.bestInlet)
+                        continue
+                    end
+                    thisFunnel = obj.funnelEdges(thisNode.parentFunnelEdge);
+                    if ~isempty(thisFunnel)
+                        obj.drawFunnel(thisFunnel,1);
+                    end
+                end
+                %draw goal region
+                r = 1; theta = linspace(0, 2*pi, 100);
+                x = obj.goalNode.pose(1) + r * cos(theta);
+                y = obj.goalNode.pose(2) + r * sin(theta);
+                fill(x, y, C.goal, 'FaceAlpha', 0.3, 'EdgeColor', 'none');
+                plot(obj.goalNode.pose(1), obj.goalNode.pose(2), 'x', 'Color', C.goal, ...
+                    'MarkerSize', 4, 'LineWidth', 1.5);
+                
+                return
+            end
+            
             for i=1:obj.numNodes
                 thisNode = obj.graphNodes(i);
                 
@@ -465,7 +493,7 @@ classdef searchFunnel < handle
                 thisFunnel = obj.funnelEdges(thisNode.parentFunnelEdge);
                 
                 if ~isempty(thisFunnel)
-                    drawFunnel(obj,thisFunnel,1);
+                    obj.drawFunnel(thisFunnel,1);
                 end
             end
             
@@ -508,6 +536,36 @@ classdef searchFunnel < handle
         %draws the goal branch by backtracking through the parent pointers
         function drawGoalBranch(obj)
 
+            
+            if obj.newColorForPlotting
+                C = newColorScheme();
+                start = obj.startNode.pose;
+                goal = obj.goalNode.pose;
+                delta = 0.01;
+                tempNode = obj.startNode;
+                while 1
+                    if abs(tempNode.pose - goal) < delta
+                        break
+                    end
+                    if (isnan(tempNode.parent))
+                        disp('There does not exist a feasible path currently!');
+                        return
+                    end
+                    tempFunnel = obj.funnelEdges(tempNode.parentFunnelEdge);
+                    x = tempFunnel.trajectory_workSpace;
+                    obj.drawFunnel(tempFunnel,2);
+                    plot(x(1,:), x(2,:), '-', 'Color', C.branchTraj, 'LineWidth', 0.9);
+                    tempNode = obj.graphNodes(tempNode.parent);
+                end
+                plot(start(1), start(2), 'd', 'MarkerFaceColor', C.robot, ...
+                    'MarkerEdgeColor', 'k', 'MarkerSize', 5, 'LineWidth', 0.5);   % robot
+                plot(goal(1), goal(2), 'x', 'Color', C.goal, ...
+                    'MarkerSize', 4, 'LineWidth', 1.2);                            % goal
+
+                return
+            end
+            
+
             start = obj.startNode.pose;
             goal = obj.goalNode.pose;
             delta = 0.01;
@@ -529,7 +587,7 @@ classdef searchFunnel < handle
                 tempFunnel = obj.funnelEdges(tempNode.parentFunnelEdge);
                 
                 x = tempFunnel.trajectory_workSpace;
-                drawFunnel(obj,tempFunnel,2);
+                obj.drawFunnel(tempFunnel,2);
                 plot(x(1,:),x(2,:),'-.c','LineWidth',1.5);
                 
                 tempNode = obj.graphNodes(tempNode.parent);
@@ -537,8 +595,7 @@ classdef searchFunnel < handle
 
             %plot(start(1),start(2),'sg','LineWidth',3,'MarkerSize',7);
             plot(start(1),start(2),'dm', 'MarkerSize', 4, 'LineWidth', 2.5);
-            plot(goal(1),goal(2),'xr','LineWidth', 3,'MarkerSize',7);
-           
+            plot(goal(1),goal(2),'xr','LineWidth', 3,'MarkerSize',7);  
         end
         
         function drawAllFunnels(obj)
@@ -577,6 +634,18 @@ classdef searchFunnel < handle
 
         %draws trajectory, x in 2D space
         function drawTrajectory(obj,funnel)
+
+            if obj.newColorForPlotting
+                C = newColorScheme();
+                traj = funnel.trajectory_workSpace';
+                plot(traj(:,1), traj(:,2), '-', 'Color', C.treeTraj, 'LineWidth', 0.4);
+                plot(traj(1,1), traj(1,2), 'o', 'Color', C.treeTraj, ...
+                    'MarkerFaceColor', 'w', 'MarkerSize', 1.5, 'LineWidth', 0.4);  % inlet / node
+                % outlet dot removed: it coincides with the parent's inlet marker
+                
+                return
+            end
+
             traj = funnel.trajectory_workSpace';
             plot(traj(:,1),traj(:,2),':k','LineWidth',1.4);
             %Plotting the end and start points
@@ -586,6 +655,16 @@ classdef searchFunnel < handle
 
         %draws deleted trajectory, x in white
         function drawDeletedTrajectory(obj,funnel)
+            
+            if obj.newColorForPlotting
+                traj = funnel.trajectory_workSpace';
+                plot(traj(:,1), traj(:,2), '-w', 'LineWidth', 0.9);
+                plot(traj(1,1), traj(1,2), 'ow', 'MarkerFaceColor', 'w', ...
+                    'MarkerSize', 2.2, 'LineWidth', 0.6);
+
+                return
+            end
+
             traj = funnel.trajectory_workSpace';
             plot(traj(:,1),traj(:,2),':w','LineWidth',2.4);
             %Plotting the end and start points
@@ -597,6 +676,27 @@ classdef searchFunnel < handle
         %draws an ellipse defined by xTMx<1 with centre c
         %status - 2 - goal branch; 1 - normal edge; 0 - deleted edge
         function drawEllipse(obj, ellipseCenter, ellipseMatrix, status)
+            
+            
+            if obj.newColorForPlotting
+                C = newColorScheme();
+                [eig_vec, eig_val] = eig(ellipseMatrix);
+                theta = linspace(0, 2*pi, 20);
+                ellipse_boundary = eig_val^(-1/2) * [cos(theta); sin(theta)];
+                rotated_ellipse = eig_vec * ellipse_boundary;
+                if status == 2
+                    color = C.branch;  alpha = 0.45;   % translucent: trajectory stays visible
+                elseif status == 1
+                    color = C.tree;    alpha = 1;      % solid: overlaps don't stack into dark blotches
+                else
+                    color = [1 1 1];   alpha = 1;      % erase
+                end
+                fill(ellipseCenter(1) + rotated_ellipse(1,:), ...
+                     ellipseCenter(2) + rotated_ellipse(2,:), ...
+                     color, 'EdgeColor', 'none', 'FaceAlpha', alpha);
+
+                return
+            end
             
             [eig_vec, eig_val] = eig(ellipseMatrix);
             

@@ -41,7 +41,10 @@ classdef forestEnvironment < handle
         obstacleTree
      
         %internal use
-        indexOfLast        
+        indexOfLast
+
+        %temporary for paper plotting
+        newColorForPlotting
     end
 
     methods
@@ -58,6 +61,8 @@ classdef forestEnvironment < handle
             obj.toleranceLimit = epsilon/2; %extra-padding       
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
             obj.mode = mode;
+
+            obj.newColorForPlotting = 1; %temporary for paper plotting
 
             if strcmpi(obj.mode, 'sensing')
                 obj.dynamicity = 0; %no obstacles get deleted
@@ -505,15 +510,27 @@ classdef forestEnvironment < handle
                 thisObstacle = obj.obstacles{i};
                 if(thisObstacle.status == 0)
                     obj.drawDeletedObstacle(thisObstacle);
-                else %plot inactive obstacles with dashed circles
+                else %plot inactive/unsensed obstacles
                     obj.drawActiveObstacle(thisObstacle);
                 end
             end
         end
-        
+
         %Function to draw shaded circular obstacles
         function drawActiveObstacle(obj,obstacle)
             
+            if obj.newColorForPlotting
+                C = newColorScheme();
+                center = obstacle.location;
+                radius = obstacle.radius;
+                th = 0:pi/50:2*pi;
+                xunit = radius * cos(th) + center(1);
+                yunit = radius * sin(th) + center(2);
+                fill(xunit, yunit, C.obstacle, 'EdgeColor', 'none');
+                % center 'x' removed: clutter at panel size
+                return
+            end
+
             center = obstacle.location;
             radius = obstacle.radius;
 
@@ -528,6 +545,20 @@ classdef forestEnvironment < handle
         
         %function to draw a deleted obstacle with dashed line
         function drawDeletedObstacle(obj,obstacle)
+            
+            if obj.newColorForPlotting
+                C = newColorScheme();
+                c = obstacle.location;
+                r = obstacle.radius;
+                th = 0:pi/50:2*pi;
+                xunit = r * cos(th) + c(1);
+                yunit = r * sin(th) + c(2);
+                % white fills removed: they punched holes in the sensor tint and
+                % hid parts of the tree that the planner (correctly) placed there
+                plot(xunit, yunit, '--', 'Color', C.obstacleUnsensed, 'LineWidth', 0.6);
+                
+                return
+            end
             
             color = [1 1 1];
             c = obstacle.location;
@@ -545,6 +576,22 @@ classdef forestEnvironment < handle
         
         %Function to draw circle representing sensor radius
         function drawSensorRadius(obj,c)
+            
+            if obj.newColorForPlotting
+                C = newColorScheme();
+                r = obj.sensorRadius;
+                hold on
+                th = 0:pi/50:2*pi;
+                xunit = r * cos(th) + c(1);
+                yunit = r * sin(th) + c(2);
+                h = fill(xunit, yunit, C.sensorFill, ...
+                    'EdgeColor', C.sensorEdge, 'LineWidth', 0.5);
+                uistack(h, 'bottom');   % stays behind everything, whatever the call order
+                % center 'x' removed: the robot marker already shows the position
+
+                return
+            end
+
             r = obj.sensorRadius;
             hold on
             th = 0:pi/50:2*pi;

@@ -321,6 +321,26 @@ traversedFunnelPath = cell(totalIterationLimit - prePlanningIterationLimit,1);
 count = 1;
 while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
     
+    if drawForPaper %pretty plots for the paper
+        if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
+            %instantiate an empty figure (for IJRR paper)
+            fig = ijrr_fig('single', 1); %single column | ratio of height/width
+            axis equal; hold on
+            xlim([W.envLB_x W.envUB_x])
+            ylim([W.envLB_y W.envUB_y])
+            %rectangle('Position',[W.envLB_x, W.envLB_y, W.envUB_x - W.envLB_x, W.envUB_y - W.envLB_y]) %lower-left corner, width, height
+            
+            xticks(0:25:50); yticks(0:25:50);
+
+            W.drawSensorRadius(C.startNode.pose);
+            F.drawSearchFunnel();
+            F.drawGoalBranch();
+            W.drawAllObstacles();
+            drawnow
+
+            ijrr_save(fig, ['forest_sense_' num2str(iteration)], 'png', Folder='./paper_figures');
+        end
+    end
     
     %sense obstacles
     if mod(iteration,sensingFrequency) == 0
@@ -358,20 +378,6 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
 
     %move the robot
     if mod(iteration,robotMovementFrequency) == 0
-       
-        if drawForPaper %pretty plots for the paper
-            %instantiate an empty figure (for IJRR paper)
-            fig = ijrr_fig('single', 1); %single column | ratio of height/width
-            
-            axis equal; hold on
-            xlim([W.envLB_x W.envUB_x])
-            ylim([W.envLB_y W.envUB_y])
-            %rectangle('Position',[W.envLB_x, W.envLB_y, W.envUB_x - W.envLB_x, W.envUB_y - W.envLB_y]) %lower-left corner, width, height
-            
-            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
-            F.drawSearchFunnel();
-            drawnow
-        end
 
         %robot-motion
         disp(' '); disp(' ');
@@ -442,19 +448,6 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 frame = getframe(gcf);
                 writeVideo(writerObj, frame);
             end
-        end
-    end
-    
-    if drawForPaper
-        if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
-
-            W.drawAllObstacles(); F.drawGoalBranch();
-            %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
-            % 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
-            drawnow
-    
-            %args: fig handle, file name, format (png/eps), and folder to be saved
-            ijrr_save(fig, ['forest_sense_' num2str(iteration)], 'png', Folder='./paper_figures');
         end
     end
 
