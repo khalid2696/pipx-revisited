@@ -26,10 +26,11 @@ clc; clearvars; close all
 addpath('./lib/');
 
 %configurable flags
-drawFlag = 1;
+drawFlag = 0;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
+drawForPaper = 1;
 
 %Assigning values to algorithm parameters
 extendDistance = 4;          %extend-distance
@@ -48,6 +49,10 @@ end
 if ~exist('fileSaveDir', 'var')
     fileSaveDir = './temp/forest_sense/';
     mkdir(fileSaveDir);
+end
+
+if drawForPaper
+    addpath('./utils/plottingFns/');
 end
 
 envLB_x = 0; envLB_y = 0;
@@ -70,7 +75,7 @@ F = searchFunnel(funnelLibrary,extendDistance,funnelLibraryResolution);
 C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
 
-planner = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,extendDistance,funnelLibraryResolution,drawFlag);
+planner = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,extendDistance,funnelLibraryResolution,drawFlag||drawForPaper);
 if drawFlag
     planner.setupPlot()
 end
@@ -351,10 +356,23 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         %break
     end
 
-
     %move the robot
     if mod(iteration,robotMovementFrequency) == 0
-        
+       
+        if drawForPaper %pretty plots for the paper
+            %instantiate an empty figure (for IJRR paper)
+            fig = ijrr_fig('single', 1); %single column | ratio of height/width
+            
+            axis equal; hold on
+            xlim([W.envLB_x W.envUB_x])
+            ylim([W.envLB_y W.envUB_y])
+            %rectangle('Position',[W.envLB_x, W.envLB_y, W.envUB_x - W.envLB_x, W.envUB_y - W.envLB_y]) %lower-left corner, width, height
+            
+            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+            F.drawSearchFunnel();
+            drawnow
+        end
+
         %robot-motion
         disp(' '); disp(' ');
         movementSkip = 2; %simulate higher robot-speed by increasing movementSkip parameter
@@ -411,7 +429,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     if drawFlag
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
             %figure; hold on; axis equal
-            planner.setupPlot(); F.drawSearchFunnel();
+            %planner.setupPlot(); F.drawSearchFunnel();
             W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
             %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
@@ -427,6 +445,19 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         end
     end
     
+    if drawForPaper
+        if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
+
+            W.drawAllObstacles(); F.drawGoalBranch();
+            %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
+            % 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+            drawnow
+    
+            %args: fig handle, file name, format (png/eps), and folder to be saved
+            ijrr_save(fig, ['forest_sense_' num2str(iteration)], 'png', Folder='./paper_figures');
+        end
+    end
+
     iteration = iteration+1; %updating the iteration count
 
     %if goal reached

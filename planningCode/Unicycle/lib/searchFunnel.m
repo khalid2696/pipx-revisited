@@ -474,7 +474,7 @@ classdef searchFunnel < handle
             x = obj.goalNode.pose(1) + r * cos(theta); y = obj.goalNode.pose(2) + r * sin(theta);
             fill(x, y, 'r', 'FaceAlpha', 0.4, 'EdgeColor', 'none', 'LineWidth', 1);
             plot(obj.goalNode.pose(1), obj.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
-            plot(obj.startNode.pose(1), obj.startNode.pose(2), 'dm', 'MarkerSize', 6, 'LineWidth', 3.5)
+            %plot(obj.startNode.pose(1), obj.startNode.pose(2), 'dm', 'MarkerSize', 6, 'LineWidth', 3.5)
         end
         
         function drawSearchTrajectories(obj)
