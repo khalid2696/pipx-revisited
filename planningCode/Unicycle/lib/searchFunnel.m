@@ -464,14 +464,17 @@ classdef searchFunnel < handle
                 
                 thisFunnel = obj.funnelEdges(thisNode.parentFunnelEdge);
                 
-                if ~thisFunnel.withinObstacle
+                if ~isempty(thisFunnel)
                     drawFunnel(obj,thisFunnel,1);
                 end
             end
-
+            
+            %draw goal region and start
+            r = 1; theta = linspace(0, 2*pi, 100);
+            x = obj.goalNode.pose(1) + r * cos(theta); y = obj.goalNode.pose(2) + r * sin(theta);
+            fill(x, y, 'r', 'FaceAlpha', 0.4, 'EdgeColor', 'none', 'LineWidth', 1);
             plot(obj.goalNode.pose(1), obj.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
-            plot(obj.startNode.pose(1), obj.startNode.pose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
-            %plot(C.startNode.pose(1), C.startNode.pose(2), 'dm', 'MarkerSize', 6, 'LineWidth', 3.5)
+            plot(obj.startNode.pose(1), obj.startNode.pose(2), 'dm', 'MarkerSize', 6, 'LineWidth', 3.5)
         end
         
         function drawSearchTrajectories(obj)
@@ -538,6 +541,20 @@ classdef searchFunnel < handle
            
         end
         
+        function drawAllFunnels(obj)
+            
+            for i=1:obj.numFunnelEdges
+                thisFunnel = obj.funnelEdges(i);     
+                
+                if ~isempty(thisFunnel)
+                    drawFunnel(obj,thisFunnel,1);
+                end
+            end
+            
+            plot(obj.goalNode.pose(1), obj.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
+            plot(obj.startNode.pose(1), obj.startNode.pose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
+        end
+
         %draws funnel defined by trajectory, x and ellipsoids, P along the knot points
         function drawFunnel(obj,funnel,status)
             if nargin < 3

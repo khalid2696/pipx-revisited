@@ -490,17 +490,6 @@ classdef searchFunnel < handle
         %-------------------------------------------------------%
         %plotting functions
         %-------------------------------------------------------%
-        function drawAllFunnels(obj)
-            
-            for i=1:obj.numFunnelEdges               
-                thisFunnel = obj.funnelEdges(i);
-                obj.drawFunnel(thisFunnel,1);
-            end
-
-            plot(obj.goalNode.pose(1), obj.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
-            plot(obj.startNode.pose(1), obj.startNode.pose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
-        end
-
         function drawSearchFunnel(obj)
             
             for i=1:obj.numNodes
@@ -512,13 +501,13 @@ classdef searchFunnel < handle
                 
                 thisFunnel = obj.funnelEdges(thisNode.parentFunnelEdge);
                 
-                if ~thisFunnel.withinObstacle
-                    obj.drawFunnel(thisFunnel,1);
+                if ~isempty(thisFunnel)
+                    drawFunnel(obj,thisFunnel,1);
                 end
             end
 
             plot(obj.goalNode.pose(1), obj.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
-            plot(obj.startNode.pose(1), obj.startNode.pose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
+            plot(obj.startNode.pose(1), obj.startNode.pose(2), 'dm', 'MarkerSize', 6, 'LineWidth', 3.5)    
         end
         
         function drawSearchTrajectories(obj)
@@ -589,6 +578,20 @@ classdef searchFunnel < handle
             plot(start(1),start(2),'dm', 'MarkerSize', 4, 'LineWidth', 2.5);
             plot(goal(1),goal(2),'xr','LineWidth', 3,'MarkerSize',7);
            
+        end
+
+        function drawAllFunnels(obj)
+            
+            for i=1:obj.numFunnelEdges
+                thisFunnel = obj.funnelEdges(i);     
+                
+                if ~isempty(thisFunnel)
+                    drawFunnel(obj,thisFunnel,1);
+                end
+            end
+            
+            plot(obj.goalNode.pose(1), obj.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
+            plot(obj.startNode.pose(1), obj.startNode.pose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
         end
         
         % draws funnel defined by trajectory, x and ellipsoids, P along the knot points
