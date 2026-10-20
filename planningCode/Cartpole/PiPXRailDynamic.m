@@ -26,10 +26,11 @@ clc; clearvars; close all;
 addpath('./lib/');
 
 %configurable flags
-drawFlag = 1;
+drawFlag = 0;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
+drawForPaper = 1;
 
 %Assigning values to algorithm parameters
 extendDistance = 3.5;          %extend-distance along one direction
@@ -54,6 +55,11 @@ end %by default all obstacles change position and direction
 if ~exist('fileSaveDir', 'var')
     fileSaveDir = './temp/rail_dynamic/';
     mkdir(fileSaveDir);
+end
+
+if drawForPaper
+    addpath('./utils/plottingFns/');
+    colorScheme = newColorScheme();
 end
 
 cartPoleLength = 1.0; envPadding = 0.5;
@@ -81,7 +87,7 @@ W.updateSwingManeuverToleranceLimits(F);
 C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
 
-planner = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,extendDistance,funnelLibraryResolution,drawFlag);
+planner = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,extendDistance,funnelLibraryResolution,drawFlag||drawForPaper);
 if drawFlag
     planner.setupPlot()
 end
@@ -309,7 +315,7 @@ end
 %PiP-X algorithm: Online motion planning/replanning using Funnels
 replanningComputeTimes = NaN(totalIterationLimit - prePlanningIterationLimit,1);
 traversedFunnelPath = cell(totalIterationLimit - prePlanningIterationLimit,1);
-count = 1;
+count = 1; elapsedTime = 0;
 while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
 
     %sense obstacles
@@ -354,6 +360,24 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
     %move the robot
     if mod(iteration,robotMovementFrequency) == 0
         
+        if drawForPaper %pretty plots for the paper
+            %instantiate an empty figure (for IJRR paper)
+            fig = ijrr_fig('single', 0.25); %single column | ratio of height/width
+            axis equal; hold on
+            xlim([W.envLB_x W.envUB_x])
+            ylim([W.envLB_y W.envUB_y])
+            %rectangle('Position',[W.envLB_x, W.envLB_y, W.envUB_x - W.envLB_x, W.envUB_y - W.envLB_y]) %lower-left corner, width, height
+            
+            title(sprintf('{\\itt} = %.2f s', elapsedTime));
+            
+            %xticks(0:25:50); yticks(0:25:50);
+
+            W.drawSensorRadius(C.startNode.pose);
+            F.drawSearchFunnel();
+            plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', colorScheme.robot, ...
+                    'MarkerEdgeColor', 'k', 'MarkerSize', 5, 'LineWidth', 0.5);   % robot
+        end
+        
         %robot-motion
         disp(' '); disp(' ');
         for movement = 1:movementSkip
@@ -365,6 +389,7 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
             replanningComputeTimes(count) = toc; 
             if robotMoveStatus
                 traversedFunnelPath{count} = traversedFunnelEdge;
+                elapsedTime = elapsedTime + traversedFunnelEdge.time(end);
             end
             count = count+1;
 
@@ -383,7 +408,7 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
 
                 break
             end
-
+            
             if robotMoveStatus
                 traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
                 remainingPathLength = C.startNode.cost;
@@ -392,6 +417,14 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
                 fprintf('\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
                     traversedPathLength,remainingPathLength);
             end
+        end
+
+        %save
+        if drawForPaper
+            F.drawGoalBranch(); W.drawAllObstacles();
+            drawnow
+
+            ijrr_save(fig, ['rail_dynamic_' num2str(iteration)], 'png', Folder='./paper_figures');
         end
 
         %print some status message and update progress variables
@@ -410,10 +443,11 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
             %planner.setupPlot(); C.drawSearchTree();
             %planner.setupPlot(); F.drawSearchFunnel();
-            %W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
+            plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', [0.80 0.47 0.65], ...
+                    'MarkerEdgeColor', 'm', 'MarkerSize', 5, 'LineWidth', 0.5);   % robot
             F.drawGoalBranch(); %C.drawPathToGoal();
-            %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
-            % 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
+            plot(C.goalNode.pose(1), C.goalNode.pose(2), 'x', 'Color', [0.84 0.37 0.00], ...
+                    'MarkerSize', 4, 'LineWidth', 1.5);
             drawnow
             
             if videoFlag
