@@ -32,6 +32,7 @@ classdef PiPxPlanner < handle
         drawFlag
         startConfig
         goalConfig
+        useNewColorForPlotting %new color scheme for pretty plotting
     end %end of properties
 
     methods
@@ -49,6 +50,8 @@ classdef PiPxPlanner < handle
             else
                 obj.drawFlag = drawFlag;
             end
+
+            obj.useNewColorForPlotting = true; %true for paper plotting
 
             if(nargin == 0)
             
@@ -153,8 +156,15 @@ classdef PiPxPlanner < handle
             
             traversingFunnelEdge = F.funnelEdges(C.currentRobotNode.parentFunnelEdge);
 
-            if obj.drawFlag  
-                F.drawFunnel(traversingFunnelEdge,2);
+            if obj.drawFlag
+                if obj.useNewColorForPlotting
+                    colorScheme = newColorScheme();
+                    F.drawFunnel(traversingFunnelEdge,2);
+                    x = traversingFunnelEdge.trajectory_workSpace;
+                    plot(x(1,:), x(2,:), '-', 'Color', colorScheme.branchTraj, 'LineWidth', 0.8);
+                else
+                    F.drawFunnel(traversingFunnelEdge,2);
+                end
             end
             
             %move the robot to its parent node

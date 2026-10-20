@@ -35,6 +35,7 @@ drawFlag = 1;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
+drawForPaper = 0;
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
@@ -57,6 +58,11 @@ end
 if ~exist('fileSaveDir', 'var') && saveFlag
     fileSaveDir = './temp/maze_sense/';
     mkdir(fileSaveDir);
+end
+
+if drawForPaper
+    addpath('./utils/plottingFns/');
+    colorScheme = newColorScheme();
 end
 
 envLB = 0; envUB = 50;
@@ -87,7 +93,7 @@ else
     %obstacle class:  epsilon - tolerance
     %type - 1, 2 (different maze spaces)
     %mode: 'sensing' or 'dynamic' (addition and deletion)
-    planner = PiPxPlanner(envLB,envUB,epsilon,funnelLibraryResolution,drawFlag);
+    planner = PiPxPlanner(envLB,envUB,epsilon,funnelLibraryResolution,drawFlag||drawForPaper);
 
     %--------------------------------%
     %random start and goal locations 
@@ -336,7 +342,7 @@ end
 %PiP-X algorithm: Online motion planning/replanning using Funnels
 replanningComputeTimes = NaN(totalIterationLimit - prePlanningIterationLimit,1);
 traversedFunnelPath = cell(totalIterationLimit - prePlanningIterationLimit,1);
-count = 1;
+count = 1; elapsedTime = 0;
 while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
 
     %sense obstacles
@@ -374,6 +380,23 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     %move the robot
     if mod(iteration,robotMovementFrequency) == 0
         
+        if drawForPaper %pretty plots for the paper
+            %instantiate an empty figure (for IJRR paper)
+            fig = ijrr_fig('single', 1); %single column | ratio of height/width
+            axis equal; hold on
+            xlim([W.envLB W.envUB])
+            ylim([W.envLB W.envUB])
+            %rectangle('Position',[W.envLB_x, W.envLB_y, W.envUB_x - W.envLB_x, W.envUB_y - W.envLB_y]) %lower-left corner, width, height
+            
+            xticks(0:25:50); yticks(0:25:50);
+            title(sprintf('{\\itt} = %.2f s', elapsedTime));
+
+            W.drawSensorRadius(C.startNode.pose);
+            F.drawSearchFunnel();
+            plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', colorScheme.robot, ...
+                    'MarkerEdgeColor', 'k', 'MarkerSize', 7, 'LineWidth', 0.5);   % robot
+        end
+        
         %robot-motion
         disp(' '); disp(' ');
         movementSkip = 2; %simulate higher robot-speed by increasing movementSkip parameter
@@ -386,6 +409,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             replanningComputeTimes(count) = toc; 
             if robotMoveStatus
                 traversedFunnelPath{count} = traversedFunnelEdge;
+                elapsedTime = elapsedTime + traversedFunnelEdge.time(end);
             end
             count = count+1;
 
@@ -415,6 +439,14 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             end
         end
 
+        %save
+        if drawForPaper
+            F.drawGoalBranch(); W.drawAllObstacles();
+            drawnow
+
+            ijrr_save(fig, ['maze_sense_' num2str(iteration)], 'png', Folder='./paper_figures/maze');
+        end
+        
         %print some status message and update progress variables
         if ~robotMoveStatus
             C.startNode = C.previousRobotNode; F.startNode = C.startNode;
@@ -431,6 +463,8 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
             %figure; hold on; axis equal
             % planner.setupPlot(); F.drawSearchFunnel();
+            plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', [0.80 0.47 0.65], ...
+                    'MarkerEdgeColor', 'm', 'MarkerSize', 7, 'LineWidth', 0.5);   % robot
             W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
             %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...

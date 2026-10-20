@@ -26,11 +26,11 @@ clc; clearvars; close all
 addpath('./lib/');
 
 %configurable flags
-drawFlag = 0;
+drawFlag = 1;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
-drawForPaper = 1;
+drawForPaper = 0;
 
 %Assigning values to algorithm parameters
 extendDistance = 4;          %extend-distance along one direction
@@ -303,7 +303,7 @@ end
 %PiP-X algorithm: Online motion planning/replanning using Funnels
 replanningComputeTimes = NaN(totalIterationLimit - prePlanningIterationLimit,1);
 traversedFunnelPath = cell(totalIterationLimit - prePlanningIterationLimit,1);
-count = 1;
+count = 1; elapsedTime = 0;
 while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
     
     
@@ -358,7 +358,8 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
 
             %[fig, ax] = sliverFig(C.currentRobotNode.pose, NPerColumn=6);   % before drawing
             [fig, ax] = sliverFig(C.currentRobotNode.pose, NPerColumn=3, Ahead=20, Behind=5);
-
+            title(sprintf('{\\itt} = %.2f s', elapsedTime));
+            
             W.drawSensorRadius(C.currentRobotNode.pose);
             F.drawSearchFunnel();
             plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', colorScheme.robot, ...
@@ -377,6 +378,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             replanningComputeTimes(count) = toc; 
             if robotMoveStatus
                 traversedFunnelPath{count} = traversedFunnelEdge;
+                elapsedTime = elapsedTime + traversedFunnelEdge.time(end);
             end
             count = count+1;
 

@@ -91,9 +91,11 @@ classdef rectangleStruct < handle
             obj.upperVertices = c+temp2*R;
         end
         
+
         %plotting functions
         %Function to draw sensed rectangle
-        function drawSensedRectangle(obj)
+        function drawSensedRectangle(obj, useNewColorForPlotting)
+            
             c = obj.location;
             l = obj.length;
             b = obj.breadth;
@@ -104,10 +106,16 @@ classdef rectangleStruct < handle
                  -l/2  b/2;]; %vertex co-ordinates in local obstacle frame 
 
             vertices = c + v*R;
-            fill(vertices(:,1),vertices(:,2),[0.3 0.3 0.3],'FaceAlpha',1)
+            
+            if useNewColorForPlotting
+                colorScheme = newColorScheme();
+                fill(vertices(:,1),vertices(:,2),colorScheme.obstacle, 'EdgeColor', 'none');
+            else
+                fill(vertices(:,1),vertices(:,2),[0.3 0.3 0.3],'FaceAlpha',1);
+            end
         end
 
-        function drawUnSensedRectangle(obj)
+        function drawUnSensedRectangle(obj, useNewColorForPlotting)
             c = obj.location;
             l = obj.length;
             b = obj.breadth;
@@ -118,12 +126,16 @@ classdef rectangleStruct < handle
                  -l/2  b/2;]; %vertex co-ordinates in local obstacle frame 
 
             vertices = c + v*R;
-            fill(vertices(:,1),vertices(:,2),[1 1 1],'LineStyle','--','FaceAlpha',0.1) %fill with white
-            %vertices(end+1,:) = vertices(1,:);
-            %plot(vertices(:,1),vertices(:,2),'--k')
+
+            if useNewColorForPlotting
+                colorScheme = newColorScheme(); %colorScheme.obstacleUnsensed
+                fill(vertices(:,1),vertices(:,2),[1 1 1],'LineStyle','--','FaceAlpha',0.1) %fill with white
+            else
+                fill(vertices(:,1),vertices(:,2),[1 1 1],'LineStyle','--','FaceAlpha',0.1) %fill with white
+            end
         end
 
-        function drawWindowRectangle(obj)
+        function drawWindowRectangle(obj, useNewColorForPlotting)
             c = obj.location;
             l = obj.length;
             b = obj.breadth;
@@ -134,10 +146,16 @@ classdef rectangleStruct < handle
                  -l/2  b/2;]; %vertex co-ordinates in local obstacle frame 
 
             vertices = c + v*R;
-            %fill(vertices(:,1),vertices(:,2),'g','LineStyle','--','FaceAlpha',0.5)
-            fill(vertices(:,1),vertices(:,2),[1 1 1],'LineStyle','--') %fill with white
-            %vertices(end+1,:) = vertices(1,:);
-            %plot(vertices(:,1),vertices(:,2),'--k')
+
+            if useNewColorForPlotting
+                colorScheme = newColorScheme(); %colorScheme.obstacleUnsensed
+                fill(vertices(:,1),vertices(:,2),[1 1 1],'LineStyle','--','FaceAlpha',0.1) %fill with white
+            else
+                %fill(vertices(:,1),vertices(:,2),'g','LineStyle','--','FaceAlpha',0.5)
+                fill(vertices(:,1),vertices(:,2),[1 1 1],'LineStyle','--') %fill with white
+                %vertices(end+1,:) = vertices(1,:);
+                %plot(vertices(:,1),vertices(:,2),'--k')
+            end
         end
         
         %function to draw a deleted obstacle with dashed line

@@ -560,7 +560,6 @@ classdef searchFunnel < handle
                 return
             end
             
-
             start = obj.startNode.pose;
             goal = obj.goalNode.pose;
             delta = 0.01;

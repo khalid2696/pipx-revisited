@@ -47,6 +47,8 @@ classdef mazeEnvironment < handle
         %internal use
         indexOfLast
         
+        %new color scheme for pretty plotting
+        useNewColorForPlotting
     end
 
     methods
@@ -66,6 +68,8 @@ classdef mazeEnvironment < handle
             obj.windowPadding = 4;
             obj.toleranceLimit = epsilon/2; %extra-padding
             obj.mode = mode;
+
+            obj.useNewColorForPlotting = true; %true for paper plotting
             
             obj.sensedWindows = [];
             obj.unsensedWindows = [];
@@ -628,9 +632,9 @@ classdef mazeEnvironment < handle
                 %drawActiveObstacle(obj,obj.obstacles{i})
                 thisRectangle = obj.obstacles{i}.rectangleWithin;
                 if(thisRectangle.status == 1)
-                    thisRectangle.drawSensedRectangle();
+                    thisRectangle.drawSensedRectangle(obj.useNewColorForPlotting);
                 else %plot inactive obstacles with dashed circles
-                    thisRectangle.drawUnSensedRectangle();
+                    thisRectangle.drawUnSensedRectangle(obj.useNewColorForPlotting);
                 end
             end
             
@@ -647,7 +651,7 @@ classdef mazeEnvironment < handle
                     %thisWindow(j), j = 1 to length(window)
                     thisRectangle = thisWindow(j).rectangleWithin;
                     if thisRectangle.status == 0
-                        thisRectangle.drawWindowRectangle();
+                        thisRectangle.drawWindowRectangle(obj.useNewColorForPlotting);
                     end
                 end
             end
@@ -687,12 +691,28 @@ classdef mazeEnvironment < handle
         
         %Function to draw circle representing sensor radius
         function drawSensorRadius(obj,c)
+            
+            if obj.useNewColorForPlotting
+                colorScheme = newColorScheme();
+                r = obj.sensorRadius;
+                hold on
+                th = 0:pi/50:2*pi;
+                xunit = r * cos(th) + c(1);
+                yunit = r * sin(th) + c(2);
+                h = fill(xunit, yunit, colorScheme.sensorFill, ...
+                    'EdgeColor', colorScheme.sensorEdge, 'LineWidth', 0.5);
+                uistack(h, 'bottom');   % stays behind everything, whatever the call order
+                % center 'x' removed: the robot marker already shows the position
+
+                return
+            end
+            
             r = obj.sensorRadius;
             hold on
             th = 0:pi/50:2*pi;
             xunit = r * cos(th) + c(1);
             yunit = r * sin(th) + c(2);
-            plot(c(1),c(2),'xk')
+            %plot(c(1),c(2),'xk')
             plot(xunit, yunit,'-.k');
         end
         
