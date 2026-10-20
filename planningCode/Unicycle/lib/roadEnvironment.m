@@ -42,7 +42,10 @@ classdef roadEnvironment < handle
         obstacleTree
      
         %internal use
-        indexOfLast        
+        indexOfLast
+
+        %new color scheme for pretty plotting
+        useNewColorForPlotting
     end
 
     methods
@@ -60,6 +63,8 @@ classdef roadEnvironment < handle
             obj.toleranceLimit = 1.5;
             obj.sizeRange = sizeRange; %specify the size range of circular obstacles
             obj.mode = mode;
+
+            obj.useNewColorForPlotting = true; %true for paper plotting
 
             if strcmpi(obj.mode, 'sensing')
                 obj.dynamicity = 0; %no obstacles get deleted
@@ -546,9 +551,9 @@ classdef roadEnvironment < handle
             for i=1:3:obj.indexOfLast
                 thisRectangleObstacle = obj.boundingRectangles{ceil(i/3)};
                 if(obj.obstacles{i}.status == 1 || obj.obstacles{i+1}.status == 1 || obj.obstacles{i+2}.status == 1)
-                    thisRectangleObstacle.drawSensedRectangle()
+                    thisRectangleObstacle.drawSensedRectangle(obj.useNewColorForPlotting)
                 else %plot inactive obstacles with dashed lines
-                    thisRectangleObstacle.drawUnSensedRectangle()
+                    thisRectangleObstacle.drawUnSensedRectangle(obj.useNewColorForPlotting)
                 end
             end
         end
@@ -556,6 +561,18 @@ classdef roadEnvironment < handle
         %Function to draw shaded circular obstacles
         function drawActiveObstacle(obj,obstacle)
             
+            if obj.useNewColorForPlotting
+                colorScheme = newColorScheme();
+                center = obstacle.location;
+                radius = obstacle.radius;
+                th = 0:pi/50:2*pi;
+                xunit = radius * cos(th) + center(1);
+                yunit = radius * sin(th) + center(2);
+                fill(xunit, yunit, colorScheme.obstacle, 'EdgeColor', 'none');
+                % center 'x' removed: clutter at panel size
+                return
+            end
+
             center = obstacle.location;
             radius = obstacle.radius;
 
@@ -570,6 +587,20 @@ classdef roadEnvironment < handle
         
         %function to draw a deleted obstacle with dashed line
         function drawDeletedObstacle(obj,obstacle)
+            
+            if obj.useNewColorForPlotting
+                colorScheme = newColorScheme();
+                c = obstacle.location;
+                r = obstacle.radius;
+                th = 0:pi/50:2*pi;
+                xunit = r * cos(th) + c(1);
+                yunit = r * sin(th) + c(2);
+                % white fills removed: they punched holes in the sensor tint and
+                % hid parts of the tree that the planner (correctly) placed there
+                plot(xunit, yunit, '--', 'Color', colorScheme.obstacleUnsensed, 'LineWidth', 0.6);
+                
+                return
+            end
             
             color = [1 1 1];
             c = obstacle.location;
@@ -587,12 +618,28 @@ classdef roadEnvironment < handle
         
         %Function to draw circle representing sensor radius
         function drawSensorRadius(obj,c)
+
+            if obj.useNewColorForPlotting
+                colorScheme = newColorScheme();
+                r = obj.sensorRadius;
+                hold on
+                th = 0:pi/50:2*pi;
+                xunit = r * cos(th) + c(1);
+                yunit = r * sin(th) + c(2);
+                h = fill(xunit, yunit, colorScheme.sensorFill, ...
+                    'EdgeColor', colorScheme.sensorEdge, 'LineWidth', 0.5);
+                uistack(h, 'bottom');   % stays behind everything, whatever the call order
+                % center 'x' removed: the robot marker already shows the position
+
+                return
+            end
+
             r = obj.sensorRadius;
             hold on
             th = 0:pi/50:2*pi;
             xunit = r * cos(th) + c(1);
             yunit = r * sin(th) + c(2);
-            plot(c(1),c(2),'xk')
+            %plot(c(1),c(2),'xk')
             plot(xunit, yunit,'-.k');
         end
 

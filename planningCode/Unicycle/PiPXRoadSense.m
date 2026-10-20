@@ -26,10 +26,11 @@ clc; clearvars; close all
 addpath('./lib/');
 
 %configurable flags
-drawFlag = 1;
+drawFlag = 0;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
+drawForPaper = 1;
 
 %Assigning values to algorithm parameters
 extendDistance = 4;          %extend-distance along one direction
@@ -48,6 +49,11 @@ end
 if ~exist('fileSaveDir', 'var')
     fileSaveDir = './temp/road_sense/';
     mkdir(fileSaveDir);
+end
+
+if drawForPaper
+    addpath('./utils/plottingFns/');
+    colorScheme = newColorScheme();
 end
 
 envLB_x = -2; envUB_x = 2;
@@ -71,7 +77,7 @@ F = searchFunnel(funnelLibrary,extendDistance,funnelLibraryResolution);
 C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
 
-planner = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,extendDistance,funnelLibraryResolution,drawFlag);
+planner = PiPxPlanner(envLB_x,envUB_x,envLB_y,envUB_y,extendDistance,funnelLibraryResolution,drawFlag||drawForPaper);
 if drawFlag
     planner.setupPlot()
 end
@@ -340,6 +346,25 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     %move the robot
     if mod(iteration,robotMovementFrequency) == 0
         
+        if drawForPaper %pretty plots for the paper
+            % %instantiate an empty figure (for IJRR paper)
+            % fig = ijrr_fig('single', 1); %single column | ratio of height/width
+            % axis equal; hold on
+            % xlim([W.envLB_x W.envUB_x])
+            % ylim([W.envLB_y W.envUB_y])
+            % %rectangle('Position',[W.envLB_x, W.envLB_y, W.envUB_x - W.envLB_x, W.envUB_y - W.envLB_y]) %lower-left corner, width, height
+            % 
+            % xticks(0:25:50); yticks(0:20:70);
+
+            %[fig, ax] = sliverFig(C.currentRobotNode.pose, NPerColumn=6);   % before drawing
+            [fig, ax] = sliverFig(C.currentRobotNode.pose, NPerColumn=3, Ahead=20, Behind=5);
+
+            W.drawSensorRadius(C.currentRobotNode.pose);
+            F.drawSearchFunnel();
+            plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', colorScheme.robot, ...
+                    'MarkerEdgeColor', 'k', 'MarkerSize', 10, 'LineWidth', 0.5);   % robot
+        end
+        
         %robot-motion
         disp(' '); disp(' ');
         movementSkip = 1; %simulate higher robot-speed by increasing movementSkip parameter
@@ -381,6 +406,16 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             end
         end
 
+        %save
+        if drawForPaper
+            F.drawGoalBranch(); W.drawAllObstacles();
+            drawnow
+            
+            saveSliver(fig, ['./paper_figures/road_sense_' num2str(iteration)]);
+            % print(fig, ['./paper_figures/road_sense_' num2str(iteration)], '-dpng', '-r1000');
+            % ijrr_save(fig, ['road_sense_' num2str(iteration)], 'png', Folder='./paper_figures');
+        end
+
         %print some status message and update progress variables
         if ~robotMoveStatus
             C.startNode = C.previousRobotNode; F.startNode = C.startNode;
@@ -397,6 +432,8 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
             %figure; hold on; axis equal
             %planner.setupPlot(); F.drawSearchFunnel();
+            plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', [0.80 0.47 0.65], ...
+                    'MarkerEdgeColor', 'm', 'MarkerSize', 6, 'LineWidth', 0.5);   % robot
             W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
             %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...

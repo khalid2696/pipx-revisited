@@ -53,6 +53,7 @@ end
 
 if drawForPaper
     addpath('./utils/plottingFns/');
+    colorScheme = newColorScheme();
 end
 
 envLB_x = 0; envLB_y = 0;
@@ -320,28 +321,7 @@ replanningComputeTimes = NaN(totalIterationLimit - prePlanningIterationLimit,1);
 traversedFunnelPath = cell(totalIterationLimit - prePlanningIterationLimit,1);
 count = 1;
 while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
-    
-    if drawForPaper %pretty plots for the paper
-        if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
-            %instantiate an empty figure (for IJRR paper)
-            fig = ijrr_fig('single', 1); %single column | ratio of height/width
-            axis equal; hold on
-            xlim([W.envLB_x W.envUB_x])
-            ylim([W.envLB_y W.envUB_y])
-            %rectangle('Position',[W.envLB_x, W.envLB_y, W.envUB_x - W.envLB_x, W.envUB_y - W.envLB_y]) %lower-left corner, width, height
-            
-            xticks(0:25:50); yticks(0:25:50);
-
-            W.drawSensorRadius(C.startNode.pose);
-            F.drawSearchFunnel();
-            F.drawGoalBranch();
-            W.drawAllObstacles();
-            drawnow
-
-            ijrr_save(fig, ['forest_sense_' num2str(iteration)], 'png', Folder='./paper_figures');
-        end
-    end
-    
+        
     %sense obstacles
     if mod(iteration,sensingFrequency) == 0
         planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
@@ -378,6 +358,22 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
 
     %move the robot
     if mod(iteration,robotMovementFrequency) == 0
+        
+        if drawForPaper %pretty plots for the paper
+            %instantiate an empty figure (for IJRR paper)
+            fig = ijrr_fig('single', 1); %single column | ratio of height/width
+            axis equal; hold on
+            xlim([W.envLB_x W.envUB_x])
+            ylim([W.envLB_y W.envUB_y])
+            %rectangle('Position',[W.envLB_x, W.envLB_y, W.envUB_x - W.envLB_x, W.envUB_y - W.envLB_y]) %lower-left corner, width, height
+            
+            xticks(0:25:50); yticks(0:25:50);
+
+            W.drawSensorRadius(C.startNode.pose);
+            F.drawSearchFunnel();
+            plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', colorScheme.robot, ...
+                    'MarkerEdgeColor', 'k', 'MarkerSize', 5, 'LineWidth', 0.5);   % robot
+        end
 
         %robot-motion
         disp(' '); disp(' ');
@@ -418,6 +414,15 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 fprintf('\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
                     traversedPathLength,remainingPathLength);
             end
+            
+        end
+
+        %save
+        if drawForPaper
+            F.drawGoalBranch(); W.drawAllObstacles();
+            drawnow
+
+            ijrr_save(fig, ['forest_sense_' num2str(iteration)], 'png', Folder='./paper_figures');
         end
 
         %print some status message and update progress variables
@@ -436,6 +441,8 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
             %figure; hold on; axis equal
             %planner.setupPlot(); F.drawSearchFunnel();
+            plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', [0.80 0.47 0.65], ...
+                    'MarkerEdgeColor', 'm', 'MarkerSize', 6, 'LineWidth', 0.5);   % robot
             W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
             %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
