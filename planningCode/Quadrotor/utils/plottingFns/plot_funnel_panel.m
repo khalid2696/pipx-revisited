@@ -83,7 +83,7 @@ hold(ax, 'on');
 ax.Box = 'on';  ax.Layer = 'top';  ax.TickDir = 'in';
 
 %% Draw
-if ~is3D
+if ~is3D %draw 2D funnels
     % Layered drawing so no funnel's envelope hides another's ellipses
     for k = 1:numel(F), drawEnvelope2D(ax, F{k}, d, S); end
     for k = 1:numel(F), drawEllipses2D(ax, F{k}, d, S, opts.EllipseEvery); end
@@ -101,7 +101,7 @@ if ~is3D
 else
     for k = 1:numel(F), drawTube3D(ax, F{k}, d, S, opts.Every); end
     axis(ax, 'equal');  axis(ax, 'tight');
-    zl = zlim(ax);  zFloor = zl(1) - 0.15 * diff(zl);
+    zl = zlim(ax);  zFloor = -0.1; %zFloor = zl(1) - 0.15 * diff(zl);
     for k = 1:numel(F), drawShadow(ax, F{k}, d(1:2), zFloor); end
     zlim(ax, [zFloor zl(2)]);
     view(ax, -35, 32);
