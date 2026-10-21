@@ -20,7 +20,7 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-clc; clearvars; close all
+clc; clearvars; close all; clear functions
 
 %adding paths to code libraries
 addpath('./lib/');
@@ -113,6 +113,7 @@ else
     
     W.senseObstacles(startPose);
 end
+W.useNewColorForPlotting = false;
 
 distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
@@ -328,6 +329,13 @@ end
 if drawFlag
     planner.setupPlot()
     F.drawGoalBranch(); W.drawAllObstacles();
+    %draw goal region
+    r = 1; theta = linspace(0, 2*pi, 100);
+    x = C.goalNode.pose(1) + r * cos(theta);
+    y = C.goalNode.pose(2) + r * sin(theta);
+    fill(x, y, 'r', 'FaceAlpha', 0.3, 'EdgeColor', 'none');
+    plot(C.goalNode.pose(1), C.goalNode.pose(2), 'x', 'Color', 'r', ...
+        'MarkerSize', 4, 'LineWidth', 1.5);
     title('Robot motion along the solution funnel-path')
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
     drawnow

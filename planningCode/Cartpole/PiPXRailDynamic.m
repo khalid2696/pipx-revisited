@@ -20,17 +20,17 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-clc; clearvars; close all;
+clc; clearvars; close all; clear functions
 
 %adding paths to code libraries
 addpath('./lib/');
 
 %configurable flags
-drawFlag = 0;
+drawFlag = 1;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
-drawForPaper = 1;
+drawForPaper = 0;
 
 %Assigning values to algorithm parameters
 extendDistance = 3.5;          %extend-distance along one direction
@@ -326,7 +326,7 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
             if videoFlag %get new frames, if writing onto a video
                 planner.setupPlot();
             end
-
+            
             W.drawAllObstacles();
             drawnow
 

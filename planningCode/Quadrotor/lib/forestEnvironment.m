@@ -616,9 +616,15 @@ classdef forestEnvironment < handle
         end
         
         %Function to draw circle representing sensor radius
-        function drawSensorRadius(obj,c)
-
-            if obj.useNewColorForPlotting
+        function drawSensorRadius(obj,c,colorSchemeFlag)
+            
+            if nargin < 3
+                useNewColorScheme = true;
+            else
+                useNewColorScheme = false;
+            end
+    
+            if useNewColorScheme
                 colorScheme = newColorScheme();
                 r = obj.sensorRadius;
                 hold on

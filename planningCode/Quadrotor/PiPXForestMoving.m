@@ -20,7 +20,7 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-clc; clearvars; close all
+clc; clearvars; close all; clear functions
 
 %adding paths to code libraries
 addpath('./lib/');
@@ -60,6 +60,7 @@ obstacleSizeRange = [1 3]; %radius of circular obstacles
 robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
 
 W = forestEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,'moving',obstacleDynamicity); 
+W.useNewColorForPlotting = false;
 %obstacle class:  epsilon - tolerance
 %mode: 'sensing' or 'dynamic' (addition and deletion) or 'moving'
 
@@ -176,7 +177,7 @@ if drawFlag
     %Plotting start and goal positions
     plot(goalPose(1), goalPose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
     plot(startPose(1), startPose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
-    W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+    W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
     drawnow
 end
 
@@ -323,7 +324,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
         planner.makeDynamicChangesToGraph(F,C,G,Q,W,T);
         
         if drawFlag
-            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+            W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
             drawnow
             
             if videoFlag

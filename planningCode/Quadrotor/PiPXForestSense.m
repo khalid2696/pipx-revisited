@@ -20,7 +20,7 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-clc; clearvars; close all
+clc; clearvars; close all; clear functions
 
 %adding paths to code libraries
 addpath('./lib/');
@@ -31,11 +31,11 @@ addpath('./lib/');
 % 3. (~line 87) Make tolerance limit in W to be 0 -- no need of safety tolerance 
 %%
 %configurable flags
-drawFlag = 0;
+drawFlag = 1;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
-drawForPaper = 1;
+drawForPaper = 0;
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
@@ -213,7 +213,7 @@ if drawFlag
     %Plotting start and goal positions
     plot(goalPose(1), goalPose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
     plot(startPose(1), startPose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
-    W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+    W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose, 'oldColorScheme');
     drawnow
 end
 
@@ -364,7 +364,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 planner.setupPlot();
             end
 
-            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose, 'oldColorScheme');
             drawnow
             
             if videoFlag
@@ -480,7 +480,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             % planner.setupPlot(); F.drawSearchFunnel();
             plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', [0.80 0.47 0.65], ...
                     'MarkerEdgeColor', 'm', 'MarkerSize', 7, 'LineWidth', 0.5);   % robot
-            W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
+            W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose, 'oldColorScheme');
             F.drawGoalBranch(); %C.drawPathToGoal();
             %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
             % 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);

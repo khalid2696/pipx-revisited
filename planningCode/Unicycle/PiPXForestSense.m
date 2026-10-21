@@ -20,7 +20,7 @@
 % out of or in connection with the software or the use or other dealings in
 % the software.
 
-clc; clearvars; close all
+clc; clearvars; close all; clear functions
 
 % adding paths to code libraries (local and shared cross-system libs)
 addpath('./lib/');
@@ -332,6 +332,8 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             end
 
             W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose);
+            plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', [0.80 0.47 0.65], ...
+                    'MarkerEdgeColor', 'k', 'MarkerSize', 5, 'LineWidth', 0.5);   % robot
             drawnow
             
             if videoFlag
