@@ -362,18 +362,40 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
         
         if drawForPaper %pretty plots for the paper
             %instantiate an empty figure (for IJRR paper)
-            fig = ijrr_fig('single', 0.25); %single column | ratio of height/width
-            axis equal; hold on
-            xlim([W.envLB_x W.envUB_x])
-            ylim([W.envLB_y W.envUB_y])
-            %rectangle('Position',[W.envLB_x, W.envLB_y, W.envUB_x - W.envLB_x, W.envUB_y - W.envLB_y]) %lower-left corner, width, height
+            % fig = ijrr_fig('single', 0.22);         
+            % ax  = axes(fig);
+            XL = [-5 50];  YL = [-2.5 4.7];  DA = 0.7;
+            axW = 2.98;                                      % plot box width (in)
+            axH = axW * (diff(YL) / DA) / diff(XL);          % height matching daspect
+            mL = 0.25;  mR = 0.12;  mB = 0.18;  mT = 0.18;   % margins: y ticks, edge markers, x ticks, title
+            width = mL + axW + mR;  height = mB + axH + mT;           % W = 3.35 in (one column)
             
+            fig = ijrr_fig('single');
+            set(fig, 'Position', [1 1 width height], 'PaperSize', [width height], ...
+                'PaperPositionMode', 'manual', 'PaperPosition', [0 0 width height]);
+            ax = axes(fig, 'Units', 'inches', 'Position', [mL mB axW axH]);
+            ax.PositionConstraint = 'innerposition';   % the plot box stays exactly where you put it
+            fig.Resize = 'off';
+
+            set(fig, 'CurrentAxes', ax);            % your draw methods plot into gca
+            hold(ax, 'on');
+
+            xlim(ax, XL);  ylim(ax, YL);  daspect(ax, [1 DA 1]);
+            ax.Box     = 'on';
+            ax.Layer   = 'top';
+            ax.TickDir = 'in';
+            ax.XTick   = 0:10:50;
+            ax.YTick   = [0 pi];
+            ax.YTickLabel = {'0', '\pi'};
+            %ylabel(ax, '\theta [rad]');
+            %xlabel(ax, '{\itp} [m]');
+
             title(sprintf('{\\itt} = %.2f s', elapsedTime));
             
             %xticks(0:25:50); yticks(0:25:50);
 
-            W.drawSensorRadius(C.startNode.pose);
-            F.drawSearchFunnel();
+            %W.drawSensorRadius(C.startNode.pose);
+            %F.drawSearchFunnel();
             plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', colorScheme.robot, ...
                     'MarkerEdgeColor', 'k', 'MarkerSize', 5, 'LineWidth', 0.5);   % robot
         end
@@ -423,8 +445,10 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
         if drawForPaper
             F.drawGoalBranch(); W.drawAllObstacles();
             drawnow
-
+            
+            %print(fig, fullfile('./paper_figures/', ['rail_dynamic_' num2str(iteration)]), '-dpng', '-r1000');
             ijrr_save(fig, ['rail_dynamic_' num2str(iteration)], 'png', Folder='./paper_figures');
+            close(fig)
         end
 
         %print some status message and update progress variables
