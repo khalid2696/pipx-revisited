@@ -442,7 +442,7 @@ classdef searchFunnel < handle
                     end
                 end
                 %draw goal region
-                r = 1; theta = linspace(0, 2*pi, 100);
+                r = obj.resolution; theta = linspace(0, 2*pi, 100);
                 x = obj.goalNode.pose(1) + r * cos(theta);
                 y = obj.goalNode.pose(2) + r * sin(theta);
                 fill(x, y, colorScheme.goal, 'FaceAlpha', 0.3, 'EdgeColor', 'none');
@@ -469,9 +469,9 @@ classdef searchFunnel < handle
             %plot(obj.startNode.pose(1), obj.startNode.pose(2), 'dm', 'MarkerSize', 6, 'LineWidth', 3.5)    
             
             %draw goal region and start
-            r = 1; theta = linspace(0, 2*pi, 100);
+            r = obj.resolution; theta = linspace(0, 2*pi, 100);
             x = obj.goalNode.pose(1) + r * cos(theta); y = obj.goalNode.pose(2) + r * sin(theta);
-            fill(x, y, 'r', 'FaceAlpha', 0.4, 'EdgeColor', 'none', 'LineWidth', 1);
+            fill(x, y, [0.84 0.37 0.00], 'FaceAlpha', 0.3, 'EdgeColor', 'none', 'LineWidth', 1);
             plot(obj.goalNode.pose(1), obj.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
             %plot(obj.startNode.pose(1), obj.startNode.pose(2), 'dm', 'MarkerSize', 6, 'LineWidth', 3.5)
         end
@@ -527,9 +527,13 @@ classdef searchFunnel < handle
                     plot(x(1,:), x(2,:), '-', 'Color', colorScheme.branchTraj, 'LineWidth', 0.8);
                     tempNode = obj.graphNodes(tempNode.parent);
                 end
-                plot(goal(1), goal(2), 'x', 'Color', colorScheme.goal, ...
-                    'MarkerSize', 4, 'LineWidth', 1.2);                            % goal
 
+                % %draw goal region
+                % r = obj.resolution; theta = linspace(0, 2*pi, 100);
+                % x = obj.goalNode.pose(1) + r * cos(theta); y = obj.goalNode.pose(2) + r * sin(theta);
+                % fill(x, y, colorScheme.goal, 'FaceAlpha', 0.3, 'EdgeColor', 'none');
+                % plot(obj.goalNode.pose(1), obj.goalNode.pose(2), 'x', 'Color', colorScheme.goal, ...
+                %     'MarkerSize', 4, 'LineWidth', 1.5);
                 return
             end
             
@@ -562,7 +566,12 @@ classdef searchFunnel < handle
 
             %plot(start(1),start(2),'sg','LineWidth',3,'MarkerSize',7);
             plot(start(1),start(2),'dm', 'MarkerSize', 4, 'LineWidth', 2.5);
-            plot(goal(1),goal(2),'xr','LineWidth', 3,'MarkerSize',7);
+            % %draw goal region
+            % r = obj.resolution; theta = linspace(0, 2*pi, 100);
+            % x = obj.goalNode.pose(1) + r * cos(theta); y = obj.goalNode.pose(2) + r * sin(theta);
+            % fill(x, y, [0.84 0.37 0.00], 'FaceAlpha', 0.3, 'EdgeColor', 'none');
+            % plot(obj.goalNode.pose(1), obj.goalNode.pose(2), 'x', 'Color', 'r', ...
+            %     'MarkerSize', 4, 'LineWidth', 1.5);
            
         end
         

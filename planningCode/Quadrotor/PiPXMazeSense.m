@@ -329,13 +329,6 @@ end
 if drawFlag
     planner.setupPlot()
     F.drawGoalBranch(); W.drawAllObstacles();
-    %draw goal region
-    r = 1; theta = linspace(0, 2*pi, 100);
-    x = C.goalNode.pose(1) + r * cos(theta);
-    y = C.goalNode.pose(2) + r * sin(theta);
-    fill(x, y, 'r', 'FaceAlpha', 0.3, 'EdgeColor', 'none');
-    plot(C.goalNode.pose(1), C.goalNode.pose(2), 'x', 'Color', 'r', ...
-        'MarkerSize', 4, 'LineWidth', 1.5);
     title('Robot motion along the solution funnel-path')
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
     drawnow

@@ -321,7 +321,7 @@ if drawFlag
     set(gca,'FontName','Helvetica','FontSize',10, 'FontWeight','bold');
 end
 
-%return
+% return
 
 %-----------------------------------------------------------%
 %% start of robot motion and online re-planning phase

@@ -285,8 +285,10 @@ classdef PiPxPlanner < handle
             
             %Shrinking rate from RRT* paper
             r0 = obj.initial_rBall_radius; iteration = iteration+1;
+            %Converting infinity norm to 2-norm (based on pre-computed funnel library)
             epsilon = obj.extendDistance * obj.CspaceDimensionality^(1/obj.CspaceDimensionality); %L_infinity-norm to L2-norm
-            
+            %epsilon = obj.extendDistance;
+
             r = min(r0*(log(iteration)/(iteration))^(1/obj.CspaceDimensionality), epsilon);
             r = max(r, 1/obj.resolution);
             
@@ -304,6 +306,13 @@ classdef PiPxPlanner < handle
             ylim([obj.envLB obj.envUB])
             hold on
             rectangle('Position',[obj.envLB obj.envLB obj.envUB obj.envUB])
+
+            %draw goal region
+            r = obj.resolution; theta = linspace(0, 2*pi, 100);
+            x = obj.goalConfig(1) + r * cos(theta); y = obj.goalConfig(2) + r * sin(theta);
+            fill(x, y, [0.84 0.37 0.00], 'FaceAlpha', 0.3, 'EdgeColor', 'none');
+            plot(obj.goalConfig(1), obj.goalConfig(2), 'x', 'Color', [0.84 0.37 0.00], ...
+                'MarkerSize', 4, 'LineWidth', 1.5);
         end
         
         %-------------------------------------------------------------------------%
