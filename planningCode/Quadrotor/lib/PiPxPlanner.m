@@ -315,6 +315,46 @@ classdef PiPxPlanner < handle
                 'MarkerSize', 4, 'LineWidth', 1.5);
         end
         
+        function ax = preplanningPhasePlotting(obj,ax,C,G,F,W,totalIterationLimit)
+            Q = heap(totalIterationLimit); %initialise the priority queue with the total iteration limit
+            C.previousRobotNode = C.startNode; C.currentRobotNode = C.startNode;
+            
+            G.startVertex = G.graphVertices(C.startNode.inletVertices(1));
+            
+            %Graph-search initialisation
+            %all nodes have infinite g and lmc value by default (constructor definition)
+            G.initialiseGraphSearch(Q);
+            
+            %determine the best inlet to take at the start configuration
+            %disp(' ');
+            robotMoveStatus = C.findBestInletAtStartNode(G,F,Q);
+            
+            C.findParentInletsAtEachNode(G);
+            F.constructShortestFunnelPath(G);
+
+            % Plot all elements
+            colorScheme = newColorScheme();
+
+            %view(ax, -45, 45);                    % azimuth, elevation in degrees; close to your old figure
+            axis(ax, 'equal'); % keep the plane undistorted
+            ax.Box = 'off';                        % no 3D box edges
+            xlim(ax, [W.envLB W.envUB])
+            ylim(ax, [W.envLB W.envUB])
+            %zlim(ax, [0 1e-3]);                    % essentially zero thickness
+            %ax.ZAxis.Visible = 'off';              % no z-axis line, ticks or labels
+            ax.XTick = [0 25 50];  ax.YTick = [0, 25 50]; ax.YTickLabel = {'', '25', '50'};  % same ticks in every panel
+
+            % % Outline of the 50 x 50 workspace on the ground plane
+            rectangle('Position',[W.envLB W.envLB W.envUB W.envUB]);
+        
+            F.drawSearchFunnel(); F.drawGoalBranch();
+            W.drawAllObstacles();
+
+            plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', colorScheme.robot, ...
+                    'MarkerEdgeColor', 'k', 'MarkerSize', 4, 'LineWidth', 0.5);   % robot
+            drawnow
+        end
+
         %-------------------------------------------------------------------------%
         %Saving data functions
         function fileCount = saveData(obj,F,C,G,W,dir,fileCount)

@@ -224,6 +224,12 @@ if drawFlag
     progressBar = waitbar(0, 'Funnel RRG construction progress');
 end
 
+%Plot precomputation progress
+if drawForPaper
+    fig = ijrr_fig('double', 0.4);   % 6.85 x 3.3 in
+    tl  = tiledlayout(fig, 1, 3, 'TileSpacing', 'compact', 'Padding', 'tight');
+end
+
 tic
 while iteration < prePlanningIterationLimit %&& ~startFound
     
@@ -252,6 +258,15 @@ while iteration < prePlanningIterationLimit %&& ~startFound
         %     fprintf('\nGenerated %0.2f percent of the funnel RRG!',iteration*100/prePlanningIterationLimit);
         end
     end
+
+    if drawForPaper
+        if mod(iteration,100) == 0 && ~flag %if new configurations were added
+
+            disp('Plotting..'); disp(iteration)
+            ax = nexttile(tl); hold on; title(sprintf('{%d iterations}', iteration));
+            planner.preplanningPhasePlotting(ax,C,G,F,W,totalIterationLimit);
+        end
+    end
 end
 preplanningComputeTime = toc; %this is the time taken to offline build the funnel RRG
 
@@ -266,6 +281,10 @@ if ~startFound
     errorType = 'exit in pre-planning phase';
     error(['Couldnot compute an initial funnel-path.. Exiting in pre-planning phase itself! ' ...
         'Increase the number of samples in the next run!']);
+end
+
+if drawForPaper
+    print(fig, './paper_figures/forest_sense_preplanning', '-dpng', '-r1000');
 end
 
 %-----------------------------------------------------------%
