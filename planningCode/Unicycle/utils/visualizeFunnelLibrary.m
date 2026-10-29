@@ -11,6 +11,7 @@ for x = -2:1:2
     end
 end
 
+return
 % for x = -1:1:1
 %     for y = -2:4:2
 %         unicycleLibrary{end+1} = funnelLibrary(num2str([x y]));
