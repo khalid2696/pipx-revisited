@@ -355,6 +355,24 @@ classdef PiPxPlanner < handle
             drawnow
         end
 
+        % inset figures for magnigication
+        function drawInsetScene(obj, a, F, W, region)
+            fig = ancestor(a, 'figure');
+            set(fig, 'CurrentAxes', a);       % class methods draw into gca
+            hold(a, 'on');
+            W.drawAllObstacles();             % same obstacles as the global view
+            drawRoadmapDetail(a, F, region, EllipseEvery=1); %TreeEvery=Inf
+        end
+
+        function P = solutionNodesXY(obj, F)
+            P = [];  node = F.startNode;  goal = F.goalNode.pose;
+            for k = 1:F.numNodes
+                P(end+1, :) = node.pose(1:2);
+                if all(abs(node.pose - goal) < 0.01) || isnan(node.parent), break; end
+                node = F.graphNodes(node.parent);
+            end
+        end
+
         %-------------------------------------------------------------------------%
         %Saving data functions
         function fileCount = saveData(obj,F,C,G,W,dir,fileCount)

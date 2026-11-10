@@ -31,11 +31,11 @@ addpath('./lib/');
 % 3. (~line 82) Make tolerance limit in W to be 0 -- no need of safety tolerance
 %%
 %configurable flags
-drawFlag = 1;
+drawFlag = 0;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
-drawForPaper = 0;
+drawForPaper = 1;
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
@@ -101,7 +101,8 @@ else
     %--------------------------------%
     workspaceCenter = (W.envLB + W.envUB)/2;
     fixedDistance = 45;
-    randTheta = rand()*pi;
+    %randTheta = rand()*pi; 
+    randTheta = 0.9*pi;
     
     startPose = [workspaceCenter + fixedDistance/2*cos(randTheta), workspaceCenter + fixedDistance/2*sin(randTheta)];  
     goalPose  = [workspaceCenter - fixedDistance/2*cos(randTheta), workspaceCenter - fixedDistance/2*sin(randTheta)];  
@@ -113,7 +114,7 @@ else
     
     W.senseObstacles(startPose);
 end
-W.useNewColorForPlotting = false;
+W.useNewColorForPlotting = drawForPaper; %use the same flag to specify what color scheme to use for plotting
 
 distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
@@ -393,11 +394,41 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             title(sprintf('{\\itt} = %.2f s', elapsedTime));
 
             W.drawSensorRadius(C.startNode.pose);
-            F.drawSearchFunnel();
-            plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', colorScheme.robot, ...
-                    'MarkerEdgeColor', 'k', 'MarkerSize', 7, 'LineWidth', 0.5);   % robot
+            
+            %compute the shortest funnel-path just for visualization
+            status = C.findBestInletAtStartNode(G,F,Q);
+            
+            if status
+                C.findParentInletsAtEachNode(G);
+                F.constructShortestFunnelPath(G);
+    
+                F.drawSearchFunnel();
+                plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', colorScheme.robot, ...
+                        'MarkerEdgeColor', 'k', 'MarkerSize', 7, 'LineWidth', 0.5);   % robot
+            
+                F.drawGoalBranch(); W.drawAllObstacles();
+                %drawnow
+            end
+            
+            % Save the figures:
+            % 1) Global view, no inset
+            % ijrr_save(fig, ['maze_sense_' num2str(iteration)], 'png', Folder='./paper_figures/maze');
+            fig_name = ['./paper_figures/maze/maze_sense_' num2str(iteration)];
+            print(fig, fig_name, '-dpng', '-r1000');            
+            
+            % 2) Same figure with a zoom inset near the robot
+            ax = gca;                               
+            robotXY = F.startNode.pose(1:2);
+            insetSize = 7; %in meters (workspace)  % +/- 7 m window
+            region = [robotXY(1) + [-insetSize insetSize], robotXY(2) + [-insetSize insetSize]];
+            
+            funnelPathXY = planner.solutionNodesXY(F); % N x 2: robot -> goal node positions
+            addZoomInset(ax, robotXY, HalfWidth=insetSize, Size=0.4, Corner='auto', Avoid=[F.goalNode.pose; funnelPathXY], ...
+                DrawFcn=@(a) planner.drawInsetScene(a, F, W, region));
+             
+            print(fig, [fig_name '_inset'], '-dpng', '-r1000');
         end
-        
+
         %robot-motion
         disp(' '); disp(' ');
         movementSkip = 2; %simulate higher robot-speed by increasing movementSkip parameter
@@ -440,14 +471,6 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             end
         end
 
-        %save
-        if drawForPaper
-            F.drawGoalBranch(); W.drawAllObstacles();
-            drawnow
-
-            ijrr_save(fig, ['maze_sense_' num2str(iteration)], 'png', Folder='./paper_figures/maze');
-        end
-        
         %print some status message and update progress variables
         if ~robotMoveStatus
             C.startNode = C.previousRobotNode; F.startNode = C.startNode;
@@ -455,6 +478,10 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             fprintf(['\nNo path exists currently -- Staying at the same position! ' ...
                      '\nWaiting for sampling new configurations!']);
             fprintf('\nRobot idle for %d time-steps\n',idleTime);
+        end
+
+        if drawForPaper
+            close(fig);
         end
     end   
 
