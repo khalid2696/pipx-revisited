@@ -228,8 +228,12 @@ end
 
 %Plot precomputation progress
 if drawForPaper
-    fig = ijrr_fig('double', 0.4);   % 6.85 x 3.3 in
-    tl  = tiledlayout(fig, 1, 3, 'TileSpacing', 'compact', 'Padding', 'tight');
+    % fig = ijrr_fig('double', 0.4);   % 6.85 x 3.3 in
+    % tl  = tiledlayout(fig, 1, 3, 'TileSpacing', 'compact', 'Padding', 'tight');
+    INSET_ITERS = [100, 200, 300];                       % which panels get an inset
+    [figA, axA] = planner.makePreplanFig();        % global view only
+    [figB, axB] = planner.makePreplanFig();        % same panels + insets
+    p = 0;
 end
 
 tic
@@ -265,8 +269,30 @@ while iteration < prePlanningIterationLimit %&& ~startFound
         if mod(iteration,100) == 0 && ~flag %if new configurations were added
 
             disp('Plotting..'); disp(iteration)
-            ax = nexttile(tl); hold on; title(sprintf('{%d iterations}', iteration));
-            planner.preplanningPhasePlotting(ax,C,G,F,W,totalIterationLimit);
+            % ax = nexttile(tl); hold on; title(sprintf('{%d iterations}', iteration));
+            % planner.preplanningPhasePlotting(ax,C,G,F,W,totalIterationLimit);
+
+            p = p + 1;
+            for ax = [axA(p), axB(p)]              % identical drawing into both figures
+                fig_ = ancestor(ax, 'figure');
+                set(groot, 'CurrentFigure', fig_);   % gca now resolves to this figure...
+                set(fig_, 'CurrentAxes', ax);        % ...and to this axes
+                hold(ax, 'on');
+                planner.preplanningPhasePlotting(ax, C, G, F, W, totalIterationLimit);
+                title(ax, sprintf('%d iterations', iteration));
+                axis(ax, 'equal');  axis(ax, [0 50 0 50]);
+                drawnow
+            end
+
+            %overlay insets
+            if ismember(iteration, INSET_ITERS)    
+                funnelPathXY = planner.solutionNodesXY(F);
+                center = funnelPathXY(round(size(funnelPathXY, 1) / 2), :);
+                insetSize = 7; %in meters (workspace)  % +/- 7 m window
+                region = [center(1) + [-insetSize insetSize], center(2) + [-insetSize insetSize]];
+                addZoomInset(axB(p), center, HalfWidth=insetSize, Size=0.4, Avoid=[F.goalNode.pose(1:2); funnelPathXY], ...
+                    DrawFcn=@(a) planner.drawInsetScene(a, F, W, region));
+            end
         end
     end
 end
@@ -286,7 +312,9 @@ if ~startFound
 end
 
 if drawForPaper
-    print(fig, './paper_figures/forest_sense_preplanning', '-dpng', '-r1000');
+    %print(fig, './paper_figures/forest_sense_preplanning', '-dpng', '-r1000');
+    print(figA, './paper_figures/forest_sense_preplanning',       '-dpng', '-r1000');
+    print(figB, './paper_figures/forest_sense_preplanning_inset', '-dpng', '-r1000');
 end
 
 return

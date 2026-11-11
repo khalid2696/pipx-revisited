@@ -315,6 +315,21 @@ classdef PiPxPlanner < handle
                 'MarkerSize', 4, 'LineWidth', 1.5);
         end
         
+        % Fixed 1x3 layout for preplanning figure, full text width
+        function [fig, ax] = makePreplanFig(obj)
+            W = 6.85;  s = 2.00;                           % figure width, panel side (in)
+            mL = 0.30;  gap = 0.25;  mB = 0.25;  mT = 0.20; % margins; gap holds next panel's y ticks
+            H = mB + s + mT;                               % = 2.45 in
+            fig = ijrr_fig('double');
+            set(fig, 'Position', [1 1 W H], 'PaperSize', [W H], 'Resize', 'off', ...
+                'PaperPositionMode', 'manual', 'PaperPosition', [0 0 W H]);
+            ax = gobjects(1, 3);
+            for k = 1:3
+                ax(k) = axes(fig, 'Units', 'inches', 'Position', [mL + (k-1)*(s + gap), mB, s, s], ...
+                    'PositionConstraint', 'innerposition');
+            end
+        end
+
         function ax = preplanningPhasePlotting(obj,ax,C,G,F,W,totalIterationLimit)
             Q = heap(totalIterationLimit); %initialise the priority queue with the total iteration limit
             C.previousRobotNode = C.startNode; C.currentRobotNode = C.startNode;
@@ -357,8 +372,11 @@ classdef PiPxPlanner < handle
 
         % inset figures for magnigication
         function drawInsetScene(obj, a, F, W, region)
-            fig = ancestor(a, 'figure');
-            set(fig, 'CurrentAxes', a);       % class methods draw into gca
+            % fig = ancestor(a, 'figure');
+            % set(fig, 'CurrentAxes', a);       % class methods draw into gca
+            fig_ = ancestor(a, 'figure');
+            set(groot, 'CurrentFigure', fig_);
+            set(fig_, 'CurrentAxes', a);
             hold(a, 'on');
             W.drawAllObstacles();             % same obstacles as the global view
             drawRoadmapDetail(a, F, region, EllipseEvery=1); %TreeEvery=Inf
