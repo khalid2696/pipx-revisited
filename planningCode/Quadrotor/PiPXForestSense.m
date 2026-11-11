@@ -31,15 +31,15 @@ addpath('./lib/');
 % 3. (~line 87) Make tolerance limit in W to be 0 -- no need of safety tolerance 
 %%
 %configurable flags
-drawFlag = 0;
+drawFlag = 1;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
-drawForPaper = 1;
+drawForPaper = 0;
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 305; %250 and 300 %no more than 200 for RRT-X!
+prePlanningIterationLimit = 250; %250 and 300 %no more than 200 for RRT-X!
 totalIterationLimit = 300; %Maximum number of iterations %keep it less than 300 always! %no more than 225 for RRT-X!
 idleTimeLimit = 5;
 
@@ -56,7 +56,7 @@ if usePresavedEnvironments && ~exist('environmentID', 'var')
 end
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 20; %15
+    numTreeObstacles = 15; %15
 end
 
 if ~exist('fileSaveDir', 'var') && saveFlag
@@ -71,8 +71,7 @@ end
 
 envLB = 0; envUB = 50;
 obstacleSizeRange = [1 3]; %radius of circular obstacles
-robotSensorRadius = inf; %assuming robot can sense obstacles in 3 times the max move distance
-%3*epsilon
+robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
 
 load('./precomputedFunnelLibrary/library.mat');
 %resolution of the pre-computed funnel library
@@ -112,8 +111,8 @@ else
     %--------------------------------%
     workspaceCenter = (W.envLB + W.envUB)/2;
     fixedDistance = 40;
-    %randTheta = rand()*2*pi;
-    randTheta = 0.25*pi;
+    randTheta = rand()*2*pi;
+    %randTheta = 0.25*pi; %for debugging purposes
     
     startPose = [workspaceCenter + fixedDistance/2*cos(randTheta), workspaceCenter + fixedDistance/2*sin(randTheta)];  
     goalPose  = [workspaceCenter - fixedDistance/2*cos(randTheta), workspaceCenter - fixedDistance/2*sin(randTheta)];  
@@ -228,8 +227,6 @@ end
 
 %Plot precomputation progress
 if drawForPaper
-    % fig = ijrr_fig('double', 0.4);   % 6.85 x 3.3 in
-    % tl  = tiledlayout(fig, 1, 3, 'TileSpacing', 'compact', 'Padding', 'tight');
     INSET_ITERS = [100, 200, 300];                       % which panels get an inset
     [figA, axA] = planner.makePreplanFig();        % global view only
     [figB, axB] = planner.makePreplanFig();        % same panels + insets
@@ -269,9 +266,7 @@ while iteration < prePlanningIterationLimit %&& ~startFound
         if mod(iteration,100) == 0 && ~flag %if new configurations were added
 
             disp('Plotting..'); disp(iteration)
-            % ax = nexttile(tl); hold on; title(sprintf('{%d iterations}', iteration));
-            % planner.preplanningPhasePlotting(ax,C,G,F,W,totalIterationLimit);
-
+            
             p = p + 1;
             for ax = [axA(p), axB(p)]              % identical drawing into both figures
                 fig_ = ancestor(ax, 'figure');
@@ -312,12 +307,10 @@ if ~startFound
 end
 
 if drawForPaper
-    %print(fig, './paper_figures/forest_sense_preplanning', '-dpng', '-r1000');
     print(figA, './paper_figures/forest_sense_preplanning',       '-dpng', '-r1000');
     print(figB, './paper_figures/forest_sense_preplanning_inset', '-dpng', '-r1000');
 end
 
-return
 %-----------------------------------------------------------%
 % end of pre-planning phase
 %% ----------------------------------------------------------%
