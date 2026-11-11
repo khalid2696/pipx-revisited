@@ -31,15 +31,15 @@ addpath('./lib/');
 % 3. (~line 87) Make tolerance limit in W to be 0 -- no need of safety tolerance 
 %%
 %configurable flags
-drawFlag = 1;
+drawFlag = 0;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
-drawForPaper = 0;
+drawForPaper = 1;
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 250; %250 and 300 %no more than 200 for RRT-X!
+prePlanningIterationLimit = 305; %250 and 300 %no more than 200 for RRT-X!
 totalIterationLimit = 300; %Maximum number of iterations %keep it less than 300 always! %no more than 225 for RRT-X!
 idleTimeLimit = 5;
 
@@ -56,7 +56,7 @@ if usePresavedEnvironments && ~exist('environmentID', 'var')
 end
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 15; %15
+    numTreeObstacles = 20; %15
 end
 
 if ~exist('fileSaveDir', 'var') && saveFlag
@@ -71,7 +71,8 @@ end
 
 envLB = 0; envUB = 50;
 obstacleSizeRange = [1 3]; %radius of circular obstacles
-robotSensorRadius = 3*epsilon; %assuming robot can sense obstacles in 3 times the max move distance
+robotSensorRadius = inf; %assuming robot can sense obstacles in 3 times the max move distance
+%3*epsilon
 
 load('./precomputedFunnelLibrary/library.mat');
 %resolution of the pre-computed funnel library
@@ -111,7 +112,8 @@ else
     %--------------------------------%
     workspaceCenter = (W.envLB + W.envUB)/2;
     fixedDistance = 40;
-    randTheta = rand()*2*pi;
+    %randTheta = rand()*2*pi;
+    randTheta = 0.25*pi;
     
     startPose = [workspaceCenter + fixedDistance/2*cos(randTheta), workspaceCenter + fixedDistance/2*sin(randTheta)];  
     goalPose  = [workspaceCenter - fixedDistance/2*cos(randTheta), workspaceCenter - fixedDistance/2*sin(randTheta)];  
@@ -287,6 +289,7 @@ if drawForPaper
     print(fig, './paper_figures/forest_sense_preplanning', '-dpng', '-r1000');
 end
 
+return
 %-----------------------------------------------------------%
 % end of pre-planning phase
 %% ----------------------------------------------------------%

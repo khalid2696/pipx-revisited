@@ -30,14 +30,15 @@ function drawRoadmapDetail(ax, F, region, opts)
     th = linspace(0, 2*pi, 60);
     
     % ---- Styles: tree recedes, solution path carries the figure ---------------
-    ST.tree.tube    = [0.84 0.84 0.84];
-    ST.tree.slice   = [0.66 0.66 0.66];
-    ST.tree.inlet   = [0.74 0.74 0.74];
-    ST.tree.outlet  = [0.40 0.40 0.40];
-    ST.tree.traj    = [0.50 0.50 0.50];
+    ST.tree.tube    = [0.90 0.90 0.90];
+    ST.tree.slice   = [0.78 0.78 0.78];
+    ST.tree.inlet   = [0.82 0.82 0.82];
+    ST.tree.outlet  = [0.55 0.55 0.55];
+    ST.tree.traj    = [0.68 0.68 0.68];
     ST.tree.every   = opts.TreeEvery;
     ST.tree.outlets = opts.TreeOutlets;
-    ST.tree.lw      = struct('slice', 0.3, 'outlet', 0.6, 'traj', 0.5);
+    ST.tree.halo    = false;
+    ST.tree.lw      = struct('slice', 0.25, 'outlet', 0.6, 'traj', 0.4);
     
     ST.branch.tube    = 0.45 + 0.55 * C.branch;   % green tube
     ST.branch.slice   = C.branchTraj;             % dark green cross-sections
@@ -46,7 +47,8 @@ function drawRoadmapDetail(ax, F, region, opts)
     ST.branch.traj    = 0.55 + 0.45 * C.branch;   % light green centerline
     ST.branch.every   = opts.EllipseEvery;
     ST.branch.outlets = true;
-    ST.branch.lw      = struct('slice', 0.45, 'outlet', 0.9, 'traj', 0.6);
+    ST.branch.halo    = true;
+    ST.branch.lw      = struct('slice', 0.45, 'outlet', 0.5, 'traj', 0.6);
     
     % ---- Solution branch: backtrack parent pointers (as drawGoalBranch) -------
     branchIdx = [];
@@ -82,10 +84,10 @@ function drawRoadmapDetail(ax, F, region, opts)
     plot(ax, r(1), r(2), 'd', 'MarkerFaceColor', C.robot, 'MarkerEdgeColor', 'k', ...
         'MarkerSize', 6, 'LineWidth', 0.6);
     plot(ax, goal(1), goal(2), 'x', 'Color', C.goal, 'MarkerSize', 7, 'LineWidth', 1.5);
-end
-
-% ===================== Local functions ======================================
-function drawGroup(ax, F, idx, s, th)
+    end
+    
+    % ===================== Local functions ======================================
+    function drawGroup(ax, F, idx, s, th)
     % Layers within one group: tube fills -> slices -> inlet fills -> outlets -> trajectories
     for j = idx                                             % 1. tube fills
         [c, P] = edgeData(F, j);
@@ -109,16 +111,19 @@ function drawGroup(ax, F, idx, s, th)
         E = ell(c(:, 1), P(:, :, 1), th);
         fill(ax, E(1, :), E(2, :), s.inlet, 'EdgeColor', 'none');
     end
-    if s.outlets                                            % 4. outlets (outline)
+    for j = idx                                             % 4. nominal trajectories
+        c = F.funnelEdges(j).trajectory_workSpace;
+        plot(ax, c(1, :), c(2, :), '-', 'Color', s.traj, 'LineWidth', s.lw.traj);
+    end
+    if s.outlets                                            % 5. outlets: last, on top of everything
         for j = idx
             [c, P] = edgeData(F, j);
             E = ell(c(:, end), P(:, :, end), th);
+            if s.halo                                       % white halo separates outline from inlet fill
+                plot(ax, E(1, :), E(2, :), '-', 'Color', 'w', 'LineWidth', s.lw.outlet + 0.7);
+            end
             plot(ax, E(1, :), E(2, :), '-', 'Color', s.outlet, 'LineWidth', s.lw.outlet);
         end
-    end
-    for j = idx                                             % 5. nominal trajectories
-        c = F.funnelEdges(j).trajectory_workSpace;
-        plot(ax, c(1, :), c(2, :), '-', 'Color', s.traj, 'LineWidth', s.lw.traj);
     end
 end
 

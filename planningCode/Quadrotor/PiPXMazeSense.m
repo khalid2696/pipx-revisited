@@ -31,11 +31,11 @@ addpath('./lib/');
 % 3. (~line 82) Make tolerance limit in W to be 0 -- no need of safety tolerance
 %%
 %configurable flags
-drawFlag = 0;
+drawFlag = 1;
 saveFlag = 0;
 videoFlag = 0;
 fileCount = 1; %for saving files in /temp/ folder
-drawForPaper = 1;
+drawForPaper = 0;
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
@@ -101,8 +101,8 @@ else
     %--------------------------------%
     workspaceCenter = (W.envLB + W.envUB)/2;
     fixedDistance = 45;
-    %randTheta = rand()*pi; 
-    randTheta = 0.9*pi;
+    randTheta = rand()*pi; 
+    %randTheta = 0.9*pi; %for debugging purposes
     
     startPose = [workspaceCenter + fixedDistance/2*cos(randTheta), workspaceCenter + fixedDistance/2*sin(randTheta)];  
     goalPose  = [workspaceCenter - fixedDistance/2*cos(randTheta), workspaceCenter - fixedDistance/2*sin(randTheta)];  
