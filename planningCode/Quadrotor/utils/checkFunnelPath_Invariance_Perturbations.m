@@ -1,6 +1,5 @@
 % clc; clearvars; close all
-
-%% checkFunnelPath_MCRollouts.m
+%
 %  Monte Carlo verification of a funnel-path (sequence of funnels) for a
 %  12-state quadrotor under TVLQR feedback.
 %

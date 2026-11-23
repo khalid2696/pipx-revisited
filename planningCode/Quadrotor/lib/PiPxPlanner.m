@@ -30,6 +30,8 @@ classdef PiPxPlanner < handle
         CspaceDimensionality
         initial_rBall_radius
         drawFlag
+        currentRobotState
+        systemParameters
         startConfig
         goalConfig
         useNewColorForPlotting %new color scheme for pretty plotting
@@ -50,6 +52,11 @@ classdef PiPxPlanner < handle
             else
                 obj.drawFlag = drawFlag;
             end
+            
+            % Quadrotor Parameters (imported from funnel computation code) [!!keep both in sync!]
+            obj.systemParameters.m = 0.7;                  % mass (kg)
+            obj.systemParameters.g = 9.81;                 % gravity (m/s^2)
+            obj.systemParameters.J = [2e-3, 2e-3, 3.5e-3]; % moment of inertia (kg m^2)
 
             obj.useNewColorForPlotting = true; %true for paper plotting
 
@@ -167,12 +174,68 @@ classdef PiPxPlanner < handle
                 end
             end
             
-            %move the robot to its parent node
-            parentIndex = C.startNode.parent;
-            C.startNode = C.graphNodes(parentIndex);
-            F.startNode = C.startNode;
-            C.currentRobotNode = C.startNode;
+            C.currentRobotNode
+            obj.currentRobotState
+            %move the robot by applying the closed-loop control commands
+            %two options for integrator: 'trapezoidal' [preferred], 'rk4'
+            [obj.currentRobotState, endContained] = obj.simulateClosedLoop(traversingFunnelEdge, 'rk4');
+            
+            if ~endContained
+                error('Numerical build-ups have increased by a lot!');
+            end
 
+            obj.currentRobotState
+
+            %update node pointers in the underlying graph
+            parentIndex = C.startNode.parent;
+            C.startNode = C.graphNodes(parentIndex); F.startNode = C.startNode;
+            C.currentRobotNode = C.startNode;
+            C.currentRobotNode
+            
+            norm(obj.currentRobotState(F.workspaceDimensionIndices) - C.currentRobotNode.pose')
+
+            if norm(obj.currentRobotState(F.workspaceDimensionIndices) - C.currentRobotNode.pose') > 1e-1
+                error('Numerical errors!');
+            end
+        end
+
+        function [xFinal, endContained] = simulateClosedLoop(obj, funnelEdge, integrator)
+        % Propagate the closed-loop quadrotor along the funnel edge.
+        % Control law: u = u_nom - K (x - x_nom), evaluated at each knot and held
+        % (zero-order hold) over the interval.
+        % integrator: 2 options
+        % 1.'trapezoidal' (default) - implicit trapezoidal rule, same
+        %      transcription as the direct-collocation optimizer, so a
+        %      robot starting on the nominal reproduces the stored knots.
+        % 2.'rk4' - classical RK4 with substeps. May not reproduce the
+        %      knots exactly (transcription mismatch).
+            if nargin < 3, integrator = 'trapezoidal'; end
+            integrator = validatestring(integrator, {'trapezoidal', 'rk4'});
+        
+            x_nom = funnelEdge.trajectory_stateSpace;
+            u_nom = funnelEdge.feedforwardControlInputs;
+            K     = funnelEdge.feedbackControlGains;
+            S     = funnelEdge.invariantSet_stateSpace;
+            t     = funnelEdge.time;
+            N     = size(x_nom, 2);
+            f     = @(x, u) quadrotor_dynamics(x, u, obj.systemParameters);
+        
+            x = obj.currentRobotState(:);
+            for k = 1:N-1
+                funnelCheck(x, x_nom(:,k), S(:,:,k), k, false);    % debugging only
+                h = t(k+1) - t(k);
+                switch integrator
+                    case 'trapezoidal'
+                        x = trapezoidalCLStep(f, x, x_nom(:,k), x_nom(:,k+1), u_nom(:,k), K(:,:,k), K(:,:,k+1), h);
+                    case 'rk4'
+                        x = rk4FeedbackStep(f, x, x_nom(:,k), x_nom(:,k+1), u_nom(:,k), K(:,:,k), h);
+                end
+            end
+        
+            % Terminal containment: required for composability with the child edge
+            endContained = funnelCheck(x, x_nom(:,N), S(:,:,N), N, true);
+        
+            xFinal = x;
         end
         
         %-------------------------------------------------------------------------%
@@ -414,3 +477,115 @@ classdef PiPxPlanner < handle
     end %end of methods
     
 end %end of class defintion
+
+%% Local helper functions
+
+% Quadrotor dynamics (self-contained) (imported from funnel computation code)
+function f = quadrotor_dynamics(x, u, quadParameters)
+
+    %extracting quadrotor model parameters
+    m = quadParameters.m; g = quadParameters.g;
+    Jxx = quadParameters.J(1); Jyy = quadParameters.J(2); Jzz = quadParameters.J(3);
+
+    %assigning state variables for ease of usage
+    % State: x = [px; py; pz; vx; vy; vz; phi; theta; psi; p; q; r]
+
+    %px = x(1); py = x(2); pz = x(3);
+    vx = x(4); vy = x(5); vz = x(6);
+    phi = x(7); theta = x(8); psi = x(9);
+    p = x(10); q = x(11); r = x(12);
+
+    %assigning input variables for ease of usage
+    % Input: u = [T; Mx; My; Mz]
+    T = u(1); Mp = u(2); Mq = u(3); Mr = u(4);
+
+    % Trigonometric shortcuts
+    c_phi = cos(phi); s_phi = sin(phi);
+    c_theta = cos(theta); s_theta = sin(theta);
+    c_psi = cos(psi); s_psi = sin(psi);
+    t_theta = s_theta/c_theta;
+    sec_theta = 1/c_theta;
+
+    % Quadrotor dynamics
+    % Assumptions: no aerodynamic drag and gyroscopic coupling due to rotor inertia)
+    f = [
+        % Position derivatives
+        vx;
+        vy;
+        vz;
+
+        % Velocity derivatives
+        (T/m) * (c_phi * s_theta * c_psi + s_phi * s_psi);
+        (T/m) * (c_phi * s_theta * s_psi - s_phi * c_psi);
+        (T/m) * c_phi * c_theta - g;
+
+        % Euler angle derivatives
+        p + q * s_phi * t_theta + r * c_phi * t_theta;
+        q * c_phi - r * s_phi;
+        q * s_phi * sec_theta + r * c_phi * sec_theta;
+
+        % Angular velocity derivatives
+        (Mp + (Jyy - Jzz) * q * r) / Jxx;
+        (Mq + (Jzz - Jxx) * p * r) / Jyy;
+        (Mr + (Jxx - Jyy) * p * q) / Jzz
+    ];
+end
+
+function y = trapezoidalCLStep(f, x, x_k, x_k1, u_nom, K_k, K_k1, h)
+% Implicit trapezoidal step with feedback evaluated at both interval ends.
+% Reduces to the collocation constraint when x is on the nominal.
+    n  = numel(x);
+    fx = f(x, u_nom - K_k*(x - x_k));
+    g  = @(y) f(y, u_nom - K_k1*(y - x_k1));
+    y  = x_k1 + (x - x_k);                       % predictor: nominal + current deviation
+    for it = 1:20
+        gy = g(y);
+        r  = y - x - (h/2)*(fx + gy);
+        if norm(r, inf) <= 1e-12*(1 + norm(y, inf)), return; end
+        J = zeros(n);
+        for i = 1:n
+            d = 1e-7*max(1, abs(y(i)));
+            e = zeros(n,1);  e(i) = d;
+            J(:,i) = (g(y + e) - gy)/d;
+        end
+        y = y - (eye(n) - (h/2)*J) \ r;
+        if any(~isfinite(y)), error('PiPx:divergence', 'State diverged (non-finite).'); end
+    end
+    warning('PiPx:trapezoidalNewton', ...
+            'Trapezoidal step did not converge (residual %.2e).', norm(r, inf));
+end
+
+function x = rk4FeedbackStep(f, x, x_k, x_k1, u_nom, K_k, h)
+% RK4 with feedback re-evaluated at every stage against the trapezoidal-
+% collocation interpolant of the nominal (u_nom held over the interval).
+    f_k  = f(x_k,  u_nom);
+    f_k1 = f(x_k1, u_nom);
+    x_nom = @(tau) x_k + f_k*tau + (f_k1 - f_k)*tau^2/(2*h);
+    g     = @(tau, x) f(x, u_nom - K_k*(x - x_nom(tau)));
+
+    nSteps = 50;  hs = h/nSteps;  tau = 0; % finer integration to prevent numerical error buildups
+    for i = 1:nSteps
+        k1 = g(tau,        x);
+        k2 = g(tau + hs/2, x + hs/2*k1);
+        k3 = g(tau + hs/2, x + hs/2*k2);
+        k4 = g(tau + hs,   x + hs*k3);
+        x  = x + hs/6*(k1 + 2*k2 + 2*k3 + k4);
+        tau = tau + hs;
+    end
+end
+
+function inside = funnelCheck(x, x_nom, S, k, isTerminal)
+    tolerance = 1e-9;
+    xbar     = x - x_nom;
+    level  = xbar.' * S * xbar;
+    inside = level <= 1 + tolerance;
+    if ~inside
+        if isTerminal
+            warning('PiPx:terminalFunnelExit', ...
+                    'State outside TERMINAL funnel slice (level %.4f).', level);
+        else
+            warning('PiPx:funnelExit', ...
+                    'State outside funnel at knot %d (level %.4f).', k, level);
+        end
+    end
+end

@@ -39,7 +39,7 @@ drawForPaper = 0;
 
 %Assigning values to algorithm parameters
 epsilon = 4;          %extend-distance
-prePlanningIterationLimit = 250; %250 and 300 %no more than 200 for RRT-X!
+prePlanningIterationLimit = 250; %250 %no more than 200 for RRT-X!
 totalIterationLimit = 300; %Maximum number of iterations %keep it less than 300 always! %no more than 225 for RRT-X!
 idleTimeLimit = 5;
 
@@ -91,7 +91,7 @@ if usePresavedEnvironments
     planner.extendDistance = epsilon; planner.resolution = funnelLibraryResolution;
     % W.toleranceLimit = 0;
 
-    startPose = planner.startConfig; goalPose = planner.goalConfig;
+    startPose = planner.startConfig(1:2); goalPose = planner.goalConfig(1:2);
 else
     fprintf('\nGenerating a random environment for the planning task..\n');
     W = forestEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,'sensing');
@@ -120,7 +120,7 @@ else
     %round off to nearest integer (resolution of the motion planner)
     startPose = round(startPose * funnelLibraryResolution) / funnelLibraryResolution;
     goalPose = round(goalPose * funnelLibraryResolution) / funnelLibraryResolution;
-    planner.startConfig = startPose; planner.goalConfig = goalPose; 
+    planner.startConfig = [startPose 2]; planner.goalConfig = [goalPose 2]; %assuming flying at a constant height of 2 meters 
     
     %initially adding obstacles
     W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
@@ -128,6 +128,10 @@ else
     W.initialiseObstacleTree();
     W.senseObstacles(startPose);
 end
+
+% initialize robot state according to the startConfig
+planner.currentRobotState = zeros(size(F.stateSpaceDimensionIndices));
+planner.currentRobotState(F.CspaceDimensionIndices) = planner.startConfig;
 
 distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
@@ -395,8 +399,7 @@ end
 replanningComputeTimes = NaN(totalIterationLimit - prePlanningIterationLimit,1);
 traversedFunnelPath = cell(totalIterationLimit - prePlanningIterationLimit,1);
 count = 1; elapsedTime = 0;
-while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index
-    
+while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~= C.goalNode.index    
     
     %sense obstacles
     if mod(iteration,sensingFrequency) == 0
