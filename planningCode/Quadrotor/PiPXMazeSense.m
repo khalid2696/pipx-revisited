@@ -117,7 +117,7 @@ end
 W.useNewColorForPlotting = drawForPaper; %use the same flag to specify what color scheme to use for plotting
 
 % initialize robot state according to the startConfig
-planner.currentRobotState = zeros(size(F.stateSpaceDimensionIndices));
+planner.currentRobotState = zeros(size(F.stateSpaceDimensionIndices))';
 planner.currentRobotState(F.CspaceDimensionIndices) = planner.startConfig;
 
 distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)

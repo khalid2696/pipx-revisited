@@ -130,7 +130,7 @@ else
 end
 
 % initialize robot state according to the startConfig
-planner.currentRobotState = zeros(size(F.stateSpaceDimensionIndices));
+planner.currentRobotState = zeros(size(F.stateSpaceDimensionIndices))';
 planner.currentRobotState(F.CspaceDimensionIndices) = planner.startConfig;
 
 distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)

@@ -113,7 +113,7 @@ goalPose = round(goalPose * funnelLibraryResolution) / funnelLibraryResolution;
 
 % initialize robot state according to the startConfig
 planner.startConfig = [startPose 2]; planner.goalConfig = [goalPose 2]; %assuming flying at a constant height of 2 meters 
-planner.currentRobotState = zeros(size(F.stateSpaceDimensionIndices));
+planner.currentRobotState = zeros(size(F.stateSpaceDimensionIndices))';
 planner.currentRobotState(F.CspaceDimensionIndices) = planner.startConfig;
 
 if drawFlag

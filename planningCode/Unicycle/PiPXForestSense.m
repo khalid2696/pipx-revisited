@@ -43,7 +43,7 @@ robotMovementFrequency = 3; %decreasing this parameter increases the robot speed
 sensingFrequency = robotMovementFrequency; %for this particular forest-sense planning problem
 
 if ~exist('numTreeObstacles', 'var') 
-    numTreeObstacles = 20; %15
+    numTreeObstacles = 15; %15
 end
 
 if ~exist('fileSaveDir', 'var')
@@ -124,7 +124,7 @@ goalPose = round(temp) .* funnelLibraryResolution;
 
 % initialize robot state according to the startConfig
 planner.startConfig = [startPose pi/2]; planner.goalConfig = [goalPose pi/2]; %assuming pointing north at both start and goal
-planner.currentRobotState = planner.startConfig;
+planner.currentRobotState = planner.startConfig';
 
 %initially adding obstacles
 W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 

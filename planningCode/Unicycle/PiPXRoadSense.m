@@ -105,7 +105,7 @@ goalPose = round(temp) .* funnelLibraryResolution;
 
 % initialize robot state according to the startConfig
 planner.startConfig = [startPose pi/2]; planner.goalConfig = [goalPose pi/2]; %assuming pointing north at both start and goal
-planner.currentRobotState = planner.startConfig;
+planner.currentRobotState = planner.startConfig';
 
 %initially adding obstacles
 W.addDynamicObstacles(numCarObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
