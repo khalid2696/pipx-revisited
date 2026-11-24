@@ -86,7 +86,7 @@ if usePresavedEnvironments
     planner.extendDistance = epsilon; planner.resolution = funnelLibraryResolution; 
     % W.toleranceLimit = 0;
 
-    startPose = planner.startConfig; goalPose = planner.goalConfig;
+    startPose = planner.startConfig(1:2); goalPose = planner.goalConfig(1:2);
 else
     fprintf('\nGenerating a random environment for the planning task..\n');
     W = mazeEnvironment(envLB,envUB,robotSensorRadius,obstacleSizeRange,epsilon,1,'sensing');
@@ -110,11 +110,15 @@ else
     %round off to nearest integer (resolution of the motion planner)
     startPose = round(startPose * funnelLibraryResolution) / funnelLibraryResolution;
     goalPose = round(goalPose * funnelLibraryResolution) / funnelLibraryResolution;
-    planner.startConfig = startPose; planner.goalConfig = goalPose; 
+    planner.startConfig = [startPose 2]; planner.goalConfig = [goalPose 2]; %assuming flying at a constant height of 2 meters 
     
     W.senseObstacles(startPose);
 end
 W.useNewColorForPlotting = drawForPaper; %use the same flag to specify what color scheme to use for plotting
+
+% initialize robot state according to the startConfig
+planner.currentRobotState = zeros(size(F.stateSpaceDimensionIndices));
+planner.currentRobotState(F.CspaceDimensionIndices) = planner.startConfig;
 
 distanceFunction = @(inputA, inputB) sqrt(sum((inputA - inputB).^2,2)); %distance function (for kDTree)
 T = KDTree(2, distanceFunction); %initialise the tree, 2 - num of dimensions of configuration space
@@ -446,7 +450,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             count = count+1;
 
             %if goal reached
-            if C.goalCheck(C.startNode.pose)
+            if C.goalCheck(planner.currentRobotState)
                 traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
                 remainingPathLength = C.startNode.cost;
                 fprintf('\n\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
@@ -510,7 +514,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     iteration = iteration+1; %updating the iteration count
 
     %if goal reached
-    if C.goalCheck(C.startNode.pose)
+    if C.goalCheck(planner.currentRobotState)
         fprintf('<strong>\n\nGoal reached! \n</strong>');
         if drawFlag
             plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
@@ -555,7 +559,7 @@ traversedFunnelPath = traversedFunnelPath(1:count-1);
 %clearvars -except planner F C G T W Q traversedPathLength drawFlag saveFlag ...
 %                    fileCount startPose goalPose dir success iteration
 
-if C.goalCheck(C.startNode.pose)
+if C.goalCheck(planner.currentRobotState)
     fprintf('\n\n<strong>Success!! The robot has reached the goal location!</strong>\n');
     success = 1;
 else

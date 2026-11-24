@@ -164,8 +164,8 @@ classdef configurationSpace < handle
         end
         
         %Goal checking
-        function success = goalCheck(obj,inputPose)
-            success = norm(inputPose-obj.goalNode.pose(1:2)) < 0.5; %tolerance limit is 0.5
+        function success = goalCheck(obj,robotState)
+            success = norm(robotState(1:2)-obj.goalNode.pose') < 1 + 1e-6; %goal region radius = 1 (library resolution)
         end
         
         %-------------------------------------------------------------------------%

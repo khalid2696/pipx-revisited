@@ -474,7 +474,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             count = count+1;
 
             %if goal reached
-            if C.goalCheck(C.startNode.pose)
+            if C.goalCheck(planner.currentRobotState)
                 traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
                 remainingPathLength = C.startNode.cost;
                 fprintf('\n\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
@@ -544,7 +544,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     iteration = iteration+1; %updating the iteration count
 
     %if goal reached
-    if C.goalCheck(C.startNode.pose)
+    if C.goalCheck(planner.currentRobotState)
         fprintf('<strong>\n\nGoal reached! \n</strong>');
         if drawFlag
             plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
@@ -589,7 +589,7 @@ traversedFunnelPath = traversedFunnelPath(1:count-1);
 %clearvars -except planner F C G T W Q traversedPathLength drawFlag saveFlag ...
 %                    fileCount startPose goalPose dir success iteration
 
-if C.goalCheck(C.startNode.pose)
+if C.goalCheck(planner.currentRobotState)
     fprintf('\n\n<strong>Success!! The robot has reached the goal location!</strong>\n');
     success = 1;
 else
