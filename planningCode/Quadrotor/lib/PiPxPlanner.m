@@ -53,31 +53,6 @@ classdef PiPxPlanner < handle
             end           
 
             obj.useNewColorForPlotting = true; %true for paper plotting
-
-            if(nargin == 0)
-            
-                % obj.numNodes = 0;
-                % obj.numEdges = 0;
-                % 
-                % obj.graphNodes = nodeStruct();
-                % obj.graphEdges = edgeStruct();
-                % 
-                % obj.startNode = []; %will be updated in runtime
-                % obj.goalNode  = []; %will be updated in runtime
-                % 
-                % obj.previousRobotNode = []; %will be updated during robot motion
-                % obj.currentRobotNode = []; %will be updated during robot motion
-                return
-            end
-            
-            % obj.graphNodes = nodes;
-            % obj.graphEdges = edges;
-            % 
-            % obj.numNodes = length(nodes);
-            % obj.numEdges = length(edges);
-            % 
-            % obj.startNode = []; %will be updated in runtime
-            % obj.goalNode  = []; %will be updated in runtime
         end
 
         function flag = generateFunnelRRG(obj,F,C,G,W,T,startFound,robotMove,epsilon)
@@ -177,23 +152,25 @@ classdef PiPxPlanner < handle
             parentIndex = C.startNode.parent;
             C.startNode = C.graphNodes(parentIndex); F.startNode = C.startNode;
             C.currentRobotNode = C.startNode;
-            C.currentRobotNode.pose = obj.currentRobotState(1:2)';
             
             % norm(obj.currentRobotState(F.workspaceDimensionIndices) - C.currentRobotNode.pose')
+
+            %update pose information of robot node in the graph
+            C.currentRobotNode.pose = obj.currentRobotState(1:2)';
         end
 
         function newState = simulateClosedLoopDynamics(obj, funnelEdge, integrator)
-            % Propagate the closed-loop quadrotor along the funnel edge.
+            % Propagate the closed-loop system dynamics along the funnel edge.
             % Control law: u = u_nom - K (x - x_nom), with u_nom held constant over
             % each interval (ZOH), as in the collocation transcription.
             % integrator: 2 options
-            % 1.'trapezoidal' (default) - implicit trapezoidal rule with feedback evaluated
+            % 1.'rk4' - classical RK4 with feedback re-evaluated at every stage against
+            %      the collocation interpolant of the nominal. May not reproduce the
+            %      knots exactly (transcription mismatch).
+            % 2.'trapezoidal' [default] - implicit trapezoidal rule with feedback input evaluated
             %      at both interval ends. A-stable, and reduces to the collocation
             %      constraint on the nominal, so a robot starting on the nominal
             %      reproduces the nominal knot states.
-            % 2.'rk4' - classical RK4 with feedback re-evaluated at every stage against
-            %      the collocation interpolant of the nominal. May not reproduce the
-            %      knots exactly (transcription mismatch).
             
             if nargin < 3, integrator = 'trapezoidal'; end
             integrator = validatestring(integrator, {'trapezoidal', 'rk4'});
@@ -207,6 +184,7 @@ classdef PiPxPlanner < handle
             f     = @(x, u) systemDynamics(x, u);
         
             currState = obj.currentRobotState(:);
+            
             % Checking initial containment: for funnel invariance guarantees to be valid
             startContained = funnelCheck(currState, x_nom(:,1), E(:,:,1));
             if ~startContained
@@ -216,20 +194,20 @@ classdef PiPxPlanner < handle
             for k = 1:N-1
                 dt = t(k+1) - t(k);
                 switch integrator
-                    case 'trapezoidal'
-                        currState = trapezoidalCLStep(f, currState, x_nom(:,k), x_nom(:,k+1), u_nom(:,k), K(:,:,k), K(:,:,k+1), dt);
                     case 'rk4'
-                        currState = rk4FeedbackStep(f, currState, x_nom(:,k), x_nom(:,k+1), u_nom(:,k), K(:,:,k), dt);
+                        currState = rk4Integration(f, currState, x_nom(:,k), x_nom(:,k+1), u_nom(:,k), K(:,:,k), dt);
+                    case 'trapezoidal'
+                        currState = trapezoidalIntegration(f, currState, x_nom(:,k), x_nom(:,k+1), u_nom(:,k), K(:,:,k), K(:,:,k+1), dt);
                 end
             end
-        
-            % Terminal set containment: required for composability with the child edge
-            terminalContained = funnelCheck(currState, x_nom(:,N), E(:,:,N));
-            if ~terminalContained
-                warning('The final robot state didnot terminate inside the outlet: build-up of numerical integration errors');
-            end
-        
             newState = currState;
+
+            % Terminal set containment: required for composability with the child edge
+            terminalContained = funnelCheck(newState, x_nom(:,N), E(:,:,N));
+            if ~terminalContained
+                warning('The final robot state didnot terminate inside the outlet: build-up of numerical integration errors!');
+            end
+
         end
  
         %-------------------------------------------------------------------------%
@@ -427,7 +405,7 @@ classdef PiPxPlanner < handle
             F.drawSearchFunnel(); F.drawGoalBranch();
             W.drawAllObstacles();
 
-            plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', colorScheme.robot, ...
+            plot(obj.currentRobotState(1), obj.currentRobotState(2), 'd', 'MarkerFaceColor', colorScheme.robot, ...
                     'MarkerEdgeColor', 'k', 'MarkerSize', 4, 'LineWidth', 0.5);   % robot
             drawnow
         end
@@ -469,48 +447,69 @@ classdef PiPxPlanner < handle
 end %end of class defintion
 
 %% Local helper functions
-function y = trapezoidalCLStep(f, x, x_k, x_k1, u_nom, K_k, K_k1, h)
-    % Implicit trapezoidal step with feedback evaluated at both interval ends.
-    % Reduces to the collocation constraint when x is on the nominal.
-    n  = numel(x);
-    fx = f(x, u_nom - K_k*(x - x_k));
-    g  = @(y) f(y, u_nom - K_k1*(y - x_k1));
-    y  = x_k1 + (x - x_k); % predictor: nominal + current deviation
-    for it = 1:20
-        gy = g(y);
-        r  = y - x - (h/2)*(fx + gy);
-        if norm(r, inf) <= 1e-12*(1 + norm(y, inf)), return; end
-        J = zeros(n);
-        for i = 1:n
-            d = 1e-7*max(1, abs(y(i)));
-            e = zeros(n,1);  e(i) = d;
-            J(:,i) = (g(y + e) - gy)/d;
-        end
-        y = y - (eye(n) - (h/2)*J) \ r;
-        if any(~isfinite(y)), error('PiPX:divergence', 'State diverged (non-finite).'); end
-    end
-    warning('PiPX:TrapezoidalNewton', 'Trapezoidal step did not converge (residual %.2e).', norm(r, inf));
-end
 
-function x = rk4FeedbackStep(f, x, x_k, x_k1, u_nom, K_k, dt)
-    % RK4 with feedback re-evaluated at every stage against the trapezoidal-
-    % collocation interpolant of the nominal (u_nom held over the interval)
-    numSteps = 50;  % finer integration step size to prevent numerical errors
+function nextState = rk4Integration(f, x_k, x_nom_k, x_nom_k1, u_nom_k, K_k, dt)
+    % RK4 with closed-loop dynamics with finer integration step, using a
+    % trapezoidal-based (quadratic) interpolant of the nominal trajectory. 
+    % u_nom and feedback gain, K_k held constant over the interval (ZOH)
 
-    f_k  = f(x_k,  u_nom);
-    f_k1 = f(x_k1, u_nom);
-    x_nom = @(tau) x_k + f_k*tau + (f_k1 - f_k)*tau^2/(2*dt);
-    g     = @(tau, x) f(x, u_nom - K_k*(x - x_nom(tau)));
+    numSteps = 50; dt_fine = dt/numSteps; % finer integration step size to prevent numerical errors
 
-    dt_fine = dt/numSteps;  tau = 0; % finer integration to prevent numerical error
+    f_nom_k  = f(x_nom_k,  u_nom_k);
+    f_nom_k1 = f(x_nom_k1, u_nom_k);
+    x_nom_interp = @(tau) x_nom_k + f_nom_k*tau + (f_nom_k1 - f_nom_k)*tau^2/(2*dt);
+    g    = @(tau, x) f(x, u_nom_k - K_k*(x - x_nom_interp(tau))); %closed-loop dynamics function
+
+    tau = 0; % finer integration to prevent numerical integration errors
     for i = 1:numSteps
-        k1 = g(tau,        x);
-        k2 = g(tau + dt_fine/2, x + dt_fine/2*k1);
-        k3 = g(tau + dt_fine/2, x + dt_fine/2*k2);
-        k4 = g(tau + dt_fine,   x + dt_fine*k3);
-        x  = x + dt_fine/6*(k1 + 2*k2 + 2*k3 + k4);
+        k1 = g(tau,        x_k);
+        k2 = g(tau + dt_fine/2, x_k + dt_fine/2*k1);
+        k3 = g(tau + dt_fine/2, x_k + dt_fine/2*k2);
+        k4 = g(tau + dt_fine,   x_k + dt_fine*k3);
+        x_k  = x_k + dt_fine/6*(k1 + 2*k2 + 2*k3 + k4);
+
         tau = tau + dt_fine;
     end
+
+    nextState = x_k;
+end
+
+function nextState = trapezoidalIntegration(f, x_k, x_nom_k, x_nom_k1, u_nom_k, K_k, K_k1, dt)
+    % Implicit trapezoidal integration of the closed-loop dynamics over [t_k, t_{k+1}].
+    % Feedforward input is held over the interval (as in the collocation transcription), 
+    % feedback control input is evaluated at both interval ends.
+    % x_{k+1} = x_k + (dt/2) (g_k(x_k) + g_{k+1}(x_{k+1})),
+    % closed-loop dynamics: g_j(x)  = f(x, u_nom_k - K_j (x - x_nom_j)).
+
+    n = numel(x_k);
+    g_at_currState = f(x_k, u_nom_k - K_k*(x_k - x_nom_k));   % closed loop dynamics at t_k
+    g = @(x) f(x, u_nom_k - K_k1*(x - x_nom_k1));   % fn handle for closed loop dynamics at t_{k+1}
+
+    % Initial guess for x_{k+1} for the iterative Newton-solve (solve residual r(y) = 0)
+    nextState = x_nom_k1 + (x_k - x_nom_k); %next nominal knot + current deviation (for faster convergence)
+    for iter = 1:20
+        g_at_nextState = g(nextState);
+        residual = nextState - (x_k + (dt/2)*(g_at_currState + g_at_nextState));
+
+        % Mixed relative/absolute tolerance; keep below the collocation tolerance
+        if norm(residual, inf) <= 1e-10*(1 + norm(nextState, inf)), return; end
+
+        J = zeros(n); %numerical Jacobian computation, dg_{k+1}/dy (using forward differences)
+        for i = 1:n
+            delta = 1e-7*max(1, abs(nextState(i)));  % relative step size, floored at 1e-7 near zero
+            perturbation = zeros(n,1);  perturbation(i) = delta;
+            J(:,i) = (g(nextState + perturbation) - g_at_nextState)/delta;
+        end
+
+        % Newton update: y <- y <- y - (dr/dy)^{-1} r(y), with dr/dy = I - (dt/2) J
+        nextState = nextState - (eye(n) - (dt/2)*J) \ residual;
+
+        if any(~isfinite(nextState))
+            warning('PiPX:divergence', 'State diverged (non-finite).');
+            return;
+        end
+    end
+    warning('PiPX:TrapezoidalNewton', 'Trapezoidal step did not converge (residual %.2e).', norm(residual, inf));
 end
 
 function inside = funnelCheck(x, x_nom, E)
