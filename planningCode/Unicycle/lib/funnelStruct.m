@@ -27,11 +27,10 @@ classdef funnelStruct < handle
         
         %funnel related attributes
         time
-        
-        %Projections to lower-dimension spaces, for computation speed-up
         trajectory_stateSpace
         invariantSet_stateSpace
 
+        %Projections to lower-dimension spaces, for computation speed-up
         trajectory_configurationSpace
         invariantSet_configurationSpace
 

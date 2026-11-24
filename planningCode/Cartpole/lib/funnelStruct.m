@@ -27,13 +27,10 @@ classdef funnelStruct < handle
         
         %funnel related attributes
         time
-        trajectory
-        RofA
-        
-        %Projections to lower-dimension spaces, for computation speed-up
         trajectory_stateSpace
         invariantSet_stateSpace
 
+        %Projections to lower-dimension spaces, for computation speed-up
         trajectory_configurationSpace
         invariantSet_configurationSpace
 
@@ -63,9 +60,6 @@ classdef funnelStruct < handle
             if nargin == 0 %useful for dummy edge intialisations
                 obj.index = NaN;
                 obj.time = NaN;
-                obj.trajectory = [];
-                obj.RofA = [];
-                
                 obj.trajectory_stateSpace = [];
                 obj.invariantSet_stateSpace = [];
         

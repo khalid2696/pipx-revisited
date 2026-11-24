@@ -113,6 +113,11 @@ goalPose =  [envUB_x-5, pi];
 % temp = goalPose ./ funnelLibraryResolution;
 % goalPose = round(temp) .* funnelLibraryResolution;
 
+% initialize robot state according to the startConfig
+planner.currentRobotState = zeros(size(F.stateSpaceDimensionIndices))';
+planner.currentRobotState(F.CspaceDimensionIndices) = startPose;
+planner.startConfig = startPose; planner.goalConfig = goalPose;
+
 %initially adding obstacles
 W.addDynamicObstacles(numObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
 
@@ -171,7 +176,7 @@ if drawFlag
     %Plotting start and goal positions
     plot(goalPose(1), goalPose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
     plot(startPose(1), startPose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
-    W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
+    W.drawAllObstacles(); %W.drawSensorRadius(C.currentRobotNode.pose);
     drawnow
 end
 
@@ -394,7 +399,7 @@ while (robotMoveStatus && iteration<totalIterationLimit) || C.startNode.index ~=
             
             %xticks(0:25:50); yticks(0:25:50);
 
-            %W.drawSensorRadius(C.startNode.pose);
+            %W.drawSensorRadius(C.currentRobotNode.pose);
             %F.drawSearchFunnel();
             plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', colorScheme.robot, ...
                     'MarkerEdgeColor', 'k', 'MarkerSize', 5, 'LineWidth', 0.5);   % robot
