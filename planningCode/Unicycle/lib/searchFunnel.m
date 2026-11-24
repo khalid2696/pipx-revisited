@@ -265,7 +265,7 @@ classdef searchFunnel < handle
             %assigning the trajectory
             funnelEdge.trajectory_stateSpace = funnel.trajectory; %just for initialisation
             %shifting the trajectory along the cyclic coordinates
-            shiftVector = desiredConfig; %cyclic coordinates -- x, y and z
+            shiftVector = desiredConfig; %cyclic coordinates -- x and y
             funnelEdge.trajectory_stateSpace = obj.shiftAlongCyclicCoordinates(funnelEdge,shiftVector);
             
             %assigning the invariant sets

@@ -164,11 +164,6 @@ classdef configurationSpace < handle
             cost = obj.computeEuclidianDist(v,u);
         end
         
-        %Goal checking
-        function success = goalCheck(obj,inputPose)
-            success = norm(inputPose-obj.goalNode.pose(1:2)) < 0.5; %tolerance limit is 0.5
-        end
-        
         %-------------------------------------------------------------------------%
         %below two routines are *necessary* during robot motion and also
         %needs to be run for visualisation of robot's solution funnel-path
