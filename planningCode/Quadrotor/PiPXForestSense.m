@@ -218,7 +218,7 @@ if drawFlag
     %Plotting start and goal positions
     plot(goalPose(1), goalPose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
     plot(startPose(1), startPose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
-    W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose, 'oldColorScheme');
+    W.drawAllObstacles(); W.drawSensorRadius(planner.currentRobotState(1:2), 'oldColorScheme');
     drawnow
 end
 
@@ -410,7 +410,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
                 planner.setupPlot();
             end
 
-            W.drawAllObstacles(); W.drawSensorRadius(C.startNode.pose, 'oldColorScheme');
+            W.drawAllObstacles(); W.drawSensorRadius(planner.currentRobotState(1:2), 'oldColorScheme');
             drawnow
             
             if videoFlag
@@ -451,7 +451,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             
             xticks(0:25:50); yticks(0:25:50);
 
-            W.drawSensorRadius(C.startNode.pose);
+            W.drawSensorRadius(planner.currentRobotState(1:2));
             F.drawSearchFunnel();
             plot(planner.currentRobotState(1), planner.currentRobotState(2), 'd', 'MarkerFaceColor', colorScheme.robot, ...
                     'MarkerEdgeColor', 'k', 'MarkerSize', 7, 'LineWidth', 0.5);   % robot
@@ -526,7 +526,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             % planner.setupPlot(); F.drawSearchFunnel();
             plot(planner.currentRobotState(1), planner.currentRobotState(2), 'd', 'MarkerFaceColor', [0.80 0.47 0.65], ...
                     'MarkerEdgeColor', 'm', 'MarkerSize', 7, 'LineWidth', 0.5);   % robot
-            W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose, 'oldColorScheme');
+            W.drawAllObstacles(); %W.drawSensorRadius(planner.currentRobotState(1:2), 'oldColorScheme');
             F.drawGoalBranch(); %C.drawPathToGoal();
             drawnow
             
