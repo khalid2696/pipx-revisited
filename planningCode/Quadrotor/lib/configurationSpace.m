@@ -163,11 +163,6 @@ classdef configurationSpace < handle
             cost = obj.computeEuclidianDist(v,u);
         end
         
-        %Goal checking
-        function success = goalCheck(obj,robotState)
-            success = norm(robotState(1:2)-obj.goalNode.pose') < 1 + 1e-6; %goal region radius = 1 (library resolution)
-        end
-        
         %-------------------------------------------------------------------------%
         %below two routines are *necessary* during robot motion and also
         %needs to be run for visualisation of robot's solution funnel-path

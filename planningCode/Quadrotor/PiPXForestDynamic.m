@@ -76,10 +76,6 @@ C = configurationSpace();  %instantiate an empty configuration space class
 G = searchGraph(); %augmented graph data structure to store F and C
 
 planner = PiPxPlanner(envLB,envUB,epsilon,funnelLibraryResolution,drawFlag);
-if drawFlag
-    planner.setupPlot()
-end
-
 %------------------------------------%
 %user-input start and goal locations
 %------------------------------------%
@@ -115,6 +111,14 @@ goalPose  = [workspaceCenter - fixedDistance/2*cos(randTheta), workspaceCenter -
 startPose = round(startPose * funnelLibraryResolution) / funnelLibraryResolution;
 goalPose = round(goalPose * funnelLibraryResolution) / funnelLibraryResolution;
 
+% initialize robot state according to the startConfig
+planner.startConfig = [startPose 2]; planner.goalConfig = [goalPose 2]; %assuming flying at a constant height of 2 meters 
+planner.currentRobotState = zeros(size(F.stateSpaceDimensionIndices));
+planner.currentRobotState(F.CspaceDimensionIndices) = planner.startConfig;
+
+if drawFlag
+    planner.setupPlot()
+end
 
 %initially adding obstacles
 W.addDynamicObstacles(numTreeObstacles,startPose,goalPose); %argin - #obstacles, robot pose, goal pose, 
@@ -368,7 +372,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
             count = count+1;
 
             %if goal reached
-            if C.goalCheck(C.startNode.pose)
+            if planner.goalCheck(planner.currentRobotState)
                 traversedPathLength = traversedPathLength + (C.previousRobotNode.cost - C.startNode.cost);
                 remainingPathLength = C.startNode.cost;
                 fprintf('\n\nTraversed distance/Remaining distance to goal - <strong>%0.2f/%0.2f</strong>', ...
@@ -408,11 +412,11 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     if drawFlag
          if mod(iteration,robotMovementFrequency) == 0 && robotMoveStatus %drawing solution funnel-paths if they exist
             %planner.setupPlot(); C.drawSearchTree(); 
-            plot(C.currentRobotNode.pose(1), C.currentRobotNode.pose(2), 'd', 'MarkerFaceColor', [0.80 0.47 0.65], ...
+            plot(planner.currentRobotState(1), planner.currentRobotState(2), 'd', 'MarkerFaceColor', [0.80 0.47 0.65], ...
                     'MarkerEdgeColor', 'm', 'MarkerSize', 6, 'LineWidth', 0.5);   % robot
             W.drawAllObstacles(); %W.drawSensorRadius(C.startNode.pose);
             F.drawGoalBranch(); %C.drawPathToGoal();
-            %plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
+            %plot(planner.currentRobotState(1),planner.currentRobotState(2), ...
             % 'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
             drawnow
             
@@ -427,7 +431,7 @@ while (robotMoveStatus  && iteration<totalIterationLimit) || C.startNode.index ~
     iteration = iteration+1; %updating the iteration count
 
     %if goal reached
-    if C.goalCheck(C.startNode.pose)
+    if planner.goalCheck(planner.currentRobotState)
         fprintf('<strong>\n\nGoal reached! \n</strong>');
         if drawFlag
             plot(C.goalNode.pose(1),C.goalNode.pose(2),'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
@@ -471,7 +475,7 @@ traversedFunnelPath = traversedFunnelPath(1:count-1);
 %clearvars -except planner F C G T W Q traversedPathLength drawFlag saveFlag ...
 %                    fileCount startPose goalPose dir success iteration
 
-if C.goalCheck(C.startNode.pose)
+if planner.goalCheck(planner.currentRobotState)
     fprintf('\n\n<strong>Success!! The robot has reached the goal location!</strong>\n');
     success = 1;
 else
@@ -486,7 +490,7 @@ else
         F.drawSearchTrajectories();
         plot(C.goalNode.pose(1), C.goalNode.pose(2), 'xr', 'MarkerSize', 8, 'LineWidth', 3.5)
         plot(C.startNode.pose(1), C.startNode.pose(2), 'sg', 'MarkerSize', 8, 'LineWidth', 3.5)
-        plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
+        plot(planner.currentRobotState(1),planner.currentRobotState(2), ...
                  'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
         drawnow
     end
@@ -494,7 +498,7 @@ end
  
 if drawFlag
     planner.setupPlot()
-    plot(C.currentRobotNode.pose(1),C.currentRobotNode.pose(2), ...
+    plot(planner.currentRobotState(1),planner.currentRobotState(2), ...
              'dm', 'MarkerSize', 6, 'LineWidth', 3.5);
     C.drawSearchGraph();
     title('Overall funnel roadmap')

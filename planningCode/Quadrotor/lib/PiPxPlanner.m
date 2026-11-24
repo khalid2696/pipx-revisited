@@ -134,7 +134,7 @@ classdef PiPxPlanner < handle
         
         function [status, traversingFunnelEdge] = moveRobot(obj,F,C,G,Q)
             
-            if C.goalCheck(C.startNode.pose)
+            if obj.goalCheck(obj.currentRobotState)
                 status = 1; %if already at goal region break out
                 traversingFunnelEdge = NaN;
                 return
@@ -177,12 +177,9 @@ classdef PiPxPlanner < handle
             parentIndex = C.startNode.parent;
             C.startNode = C.graphNodes(parentIndex); F.startNode = C.startNode;
             C.currentRobotNode = C.startNode;
+            C.currentRobotNode.pose = obj.currentRobotState(1:2)';
             
             % norm(obj.currentRobotState(F.workspaceDimensionIndices) - C.currentRobotNode.pose')
-
-            if norm(obj.currentRobotState(F.workspaceDimensionIndices) - C.currentRobotNode.pose') > 1e-2
-                warning('Numerical errors!');
-            end
         end
 
         function newState = simulateClosedLoopDynamics(obj, funnelEdge, integrator)
@@ -234,7 +231,7 @@ classdef PiPxPlanner < handle
         
             newState = currState;
         end
-        
+ 
         %-------------------------------------------------------------------------%
         %Environment dynamicity (as sensed by the robot) related function
         function makeDynamicChangesToGraph(obj,F,C,G,Q,W,T,varargin)   
@@ -354,6 +351,11 @@ classdef PiPxPlanner < handle
             
             %rBall radius is saturated by max extend distance (UB) and
             %resolution of the funnelLibrary (LB)
+        end
+        
+        %Goal checking
+        function success = goalCheck(obj,robotState)
+            success = norm(robotState(1:3)-obj.goalConfig') < obj.resolution + 1e-6; %goal region radius = 1 (library resolution)
         end
         
         %-------------------------------------------------------------------------%
