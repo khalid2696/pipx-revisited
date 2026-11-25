@@ -44,6 +44,12 @@ classdef searchFunnel < handle
         startNode
         goalNode
 
+        %swing control-related attributes
+        swingUpControlFnHandle
+        swingUpControlParameters
+        swingDownControlFnHandle
+        swingDownControlParameters
+
         %new color scheme for pretty plotting
         useNewColorForPlotting
     end
@@ -71,6 +77,14 @@ classdef searchFunnel < handle
             obj.stateSpaceDimensionIndices = 1:4;     %4-state system
             obj.CspaceDimensionIndices = [1 3];    % x-theta (Note 'theta' is substitute for level - up/down)
             obj.workspaceDimensionIndices = [1 3]; % x-theta workspace
+
+            %swing-up control-related attributes
+            obj.swingUpControlFnHandle = library(num2str([0 1])).controlLawFnHandle;
+            obj.swingUpControlParameters = library(num2str([0 1])).controlLawParameters;
+
+            %swing-down control-related attributes
+            obj.swingDownControlFnHandle = library(num2str([0 -1])).controlLawFnHandle;
+            obj.swingDownControlParameters = library(num2str([0 -1])).controlLawParameters;
             
             obj.useNewColorForPlotting = true; %true for paper plotting
         end

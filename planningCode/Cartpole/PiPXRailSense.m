@@ -48,7 +48,7 @@ if ~exist('numObstacles', 'var')
     numObstacles = 3; 
 end
 
-if ~exist('fileSaveDir', 'var')
+if ~exist('fileSaveDir', 'var') && saveFlag
     fileSaveDir = './temp/rail_sense/';
     mkdir(fileSaveDir);
 end

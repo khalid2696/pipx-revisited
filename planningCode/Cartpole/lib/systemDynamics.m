@@ -34,7 +34,7 @@ function f = systemDynamics(x, u)
     ];
 end
 
-% Quadrotor Parameters (imported from funnel computation code) [!!keep both in sync!]
+% Cart-pole Parameters (imported from funnel computation code) [!!keep both in sync!]
 function params = systemParameters()
     params.M = 1.0;    % cart mass (kg)
     params.m = 0.1;    % pendulum mass (kg)

@@ -150,19 +150,14 @@ classdef PiPxPlanner < handle
             end
             
             %move the robot by applying the closed-loop control commands
-            %two options for dynamics integrator: 'trapezoidal' [preferred], 'rk4'
             tempInlet = traversingFunnelEdge.invariantSet_stateSpace(:,:,1);
             if ~all(all(isnan(tempInlet))) %if translational funnel
+                %two options for dynamics integrator: 'trapezoidal' [preferred], 'rk4'
                 newRobotState = obj.simulateClosedLoopDynamics(traversingFunnelEdge, 'trapezoidal');
             else %swing (transition) trajectory
-                if norm(obj.currentRobotState(3) - 0) < 1e-3
-                    newRobotState = obj.currentRobotState + [0 0 pi 0]'; %swing-up
-                else
-                    newRobotState = obj.currentRobotState + [0 0 -pi 0]'; %swing-down
-                end
+                newRobotState = obj.simulateSwingTrajectory(F, traversingFunnelEdge);
             end
-            
-            newRobotState
+
             obj.currentRobotState = newRobotState;
 
             %update node pointers in the underlying graph
@@ -225,6 +220,41 @@ classdef PiPxPlanner < handle
                 warning('The final robot state didnot terminate inside the outlet: build-up of numerical integration errors!');
             end
 
+        end
+        
+        function newState = simulateSwingTrajectory(obj, F, swingTrajectoryEdge)
+            % Simulate a swing (transition) trajectory under its energy-shaping + LQR law.
+            % Direction is read from the edge's nominal start state: downward -> swing-up.
+            % theta is wrapped relative to the target before the controller sees it,
+            % so the LQR switch triggers on whichever mode the pole arrives at.
+            
+            p_start     = swingTrajectoryEdge.trajectory_stateSpace(1,1);   % cart position at the edge start
+            theta_start = swingTrajectoryEdge.trajectory_stateSpace(3,1);
+            if cos(theta_start) > 0 %starts at hanging position --> so swing-up
+                ctrl = F.swingUpControlFnHandle;    params = F.swingUpControlParameters;
+            else
+                ctrl = F.swingDownControlFnHandle;  params = F.swingDownControlParameters;
+            end
+            
+            theta_f = params.xf(3);
+            wrapAngle = @(a) mod(a + pi, 2*pi) - pi;
+            transformToLocal   = @(x) [x(1) - p_start; x(2); theta_f + wrapAngle(x(3) - theta_f); x(4)];
+            
+            % Kick off the equilibrium: the energy law gives u = 0 when theta, omega (and v) are zero
+            % So give a small initial perturbation (part of swing controller design)
+            currState = obj.currentRobotState(:);
+            if abs(wrapAngle(currState(3) - params.x0(3))) < params.initial_perturbation && ...
+               abs(currState(4)) < params.initial_perturbation
+                % currState(4) = currState(4) + params.initial_perturbation;
+                currState = currState + params.initial_perturbation*randn(size(currState));
+            end
+            
+            closedLoopDynamics = @(t, x) systemDynamics(x, ctrl(t, transformToLocal(x)));
+            opts = odeset('RelTol', 1e-6, 'AbsTol', 1e-8, 'MaxStep', 1e-3);   % same as pre-computation phase
+            [~, X] = ode45(closedLoopDynamics, [0, diff(params.tspan)], currState, opts);
+            
+            newState    = X(end,:).';
+            newState(3) = theta_f + wrapAngle(newState(3) - theta_f); %"wrap-back" theta based on the swing-mode
         end
 
         %-------------------------------------------------------------------------%

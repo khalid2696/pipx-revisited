@@ -52,7 +52,7 @@ if ~exist('obstacleDynamicity', 'var')
     obstacleDynamicity = 100; % D-percent (at each sensing cycle, D*numTreeObstacles/100 obstacles would change location & size)
 end %by default all obstacles change position and direction
 
-if ~exist('fileSaveDir', 'var')
+if ~exist('fileSaveDir', 'var') && saveFlag
     fileSaveDir = './temp/rail_dynamic/';
     mkdir(fileSaveDir);
 end
